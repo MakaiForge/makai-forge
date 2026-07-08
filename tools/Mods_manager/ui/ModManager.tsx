@@ -204,8 +204,6 @@ export default function ModManager() {
   }, [selectedGame, configGamePath, configStagingDir, saveGameConfig, setGames, setSelectedGame, addLog, setShowGameConfig]);
 
   const handleDetectionWizardGame = useCallback(async (gameId: string, gamePath: string) => {
-    setSelectedGame(gameId);
-    setConfigGamePath(gamePath);
     const slug = gameId.toLowerCase().replace(/[\s:/\\]+/g, "-").replace(/[^a-z0-9-]/g, "");
     const homeDir = await window.electron.getHomeDir();
     const home = homeDir || "/home/" + (process.env.USER || "user");
@@ -219,6 +217,8 @@ export default function ModManager() {
       protonPrefix: prefix,
       protonVersion: "",
     });
+    setSelectedGame(gameId);
+    setConfigGamePath(gamePath);
     addLog(`Jogo detectado: ${gameId} em ${gamePath}`);
   }, [setSelectedGame, setConfigGamePath, setConfigStagingDir, setConfigPrefixPath, addLog]);
 
