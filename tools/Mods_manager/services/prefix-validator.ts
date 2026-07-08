@@ -1,9 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { logger } from "@main/services";
 
 export function resolvePrefixDir(prefixPath: string): string | null {
   if (!prefixPath) return null;
+  prefixPath = prefixPath.replace(/^~($|\/)/, os.homedir() + "$1");
   if (fs.existsSync(path.join(prefixPath, "user.reg"))) return prefixPath;
   if (fs.existsSync(path.join(prefixPath, "pfx", "user.reg"))) return path.join(prefixPath, "pfx");
   return null;
