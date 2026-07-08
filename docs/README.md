@@ -6,7 +6,8 @@
     <strong>ProtonForge Launcher is an open-source gaming platform created to be the single tool that you need in order to manage your gaming library. ProtonForge is written in Node.js (Electron, React, Typescript), Python, and Rust.</strong>
   </p>
 
-https://i.postimg.cc/CLK717Qg/background.png
+<img width="1280" height="903" alt="image" src="https://github.com/user-attachments/assets/e445e085-ac62-459d-a01a-7158985dea5e" />
+
 
 </div>
 
