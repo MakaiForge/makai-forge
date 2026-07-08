@@ -95,6 +95,7 @@ def _run_command(
 def build_env(prefix_path: str, compat_data_path: str | None = None) -> dict:
     env = os.environ.copy()
     env["WINEPREFIX"] = prefix_path
+    env["WINEARCH"] = "win64"
     if compat_data_path:
         env["STEAM_COMPAT_DATA_PATH"] = compat_data_path
     for var in ("STEAM_COMPAT_CLIENT_INSTALL_PATH", "STEAM_COMPAT_INSTALL_PATH",
@@ -155,7 +156,23 @@ def create_prefix(
     compat_data_path = os.environ.get("STEAM_COMPAT_DATA_PATH", "")
     tracked_file = os.path.join(compat_data_path, "tracked_files") if compat_data_path else ""
 
-    # Strategy 1: umu-run
+    # Strategy 1: system wineboot (most reliable)
+    sys_wineboot = shutil.which("wineboot") or _find_proton_wine_binary("/usr", "wineboot")
+    if sys_wineboot:
+        emit("Using system wineboot...")
+        r = _run_command([sys_wineboot, "-u"], env=build_env(resolved))
+        if r["success"] or prefix_exists(resolved):
+            result["success"] = True
+            result["initialized"] = True
+            ensure_prefix_markers(resolve_actual_prefix(resolved))
+            if auto_dlls:
+                dll_result = install_recommended_dlls(game_id, resolved, proton_path, extra_verbs)
+                result["dlls_installed"] = dll_result["installed"]
+                result["errors"].extend(dll_result["errors"])
+            return result
+        emit("System wineboot failed, trying umu-run...")
+
+    # Strategy 2: umu-run
     if use_umu:
         umu = shutil.which("umu-run")
         if umu:
