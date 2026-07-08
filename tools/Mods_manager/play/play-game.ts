@@ -46,9 +46,10 @@ export async function playGame(
       libraryPath: libraryPath || "",
     });
 
-    // Determine effective prefix (Steam compatdata takes precedence over config path)
+    // Determine effective prefix (respect configured prefix if it already exists)
     let effectivePrefix = prefixPath;
-    if (steamAppId && libraryPath) {
+    const configuredPfxExists = prefixPath && fs.existsSync(path.join(prefixPath, "user.reg"));
+    if (!configuredPfxExists && steamAppId && libraryPath) {
       const steamPfx = path.join(libraryPath, "compatdata", steamAppId, "pfx");
       if (fs.existsSync(steamPfx) && fs.existsSync(path.join(steamPfx, "drive_c"))) {
         effectivePrefix = steamPfx;

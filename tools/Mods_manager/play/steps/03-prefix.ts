@@ -58,7 +58,15 @@ export async function ensurePrefix(
     compatDataPath = prefixPath;
   }
 
-  // If it's a Steam game, use the Steam compatdata prefix (must have pfx/ subdir with valid prefix)
+  // Check if configured prefix already exists and is valid
+  const configuredPfx = resolvePrefixDir(prefixPath);
+  if (configuredPfx && isValidPrefix(configuredPfx)) {
+    _ensureTrackedFiles(compatDataPath);
+    send("prefix", `✅ Prefixo configurado válido: ${configuredPfx}`, "done");
+    return { prefixPath: configuredPfx, created: false };
+  }
+
+  // Fallback: use Steam compatdata if configured prefix doesn't exist
   if (steamAppId && libraryPath) {
     const steamCompat = path.join(libraryPath, "compatdata", steamAppId);
     const steamPrefix = path.join(steamCompat, "pfx");
@@ -67,14 +75,6 @@ export async function ensurePrefix(
       send("prefix", `✅ Usando prefixo Steam: ${steamPrefix}`, "done");
       return { prefixPath: steamPrefix, created: false };
     }
-  }
-
-  // Resolve actual prefix dir
-  const actualPfx = resolvePrefixDir(prefixPath);
-  if (actualPfx && isValidPrefix(actualPfx)) {
-    _ensureTrackedFiles(compatDataPath);
-    send("prefix", "✅ Prefixo válido (system.reg, drive_c, dosdevices ok)", "done");
-    return { prefixPath: actualPfx, created: false };
   }
 
   // Prefix incomplete or missing — create via Python venv
