@@ -66,6 +66,11 @@ export async function launchGame(
   const customEnv = mod.getLaunchEnv?.(gamePath, prefixPath, protonPath);
   if (customEnv) Object.assign(env, customEnv);
 
+  // Game modules (e.g. Skyrim) call getSteamLaunchEnv from _shared/launch.ts
+  // which sets STEAM_COMPAT_DATA_PATH to the Steam compatdata. Override it back
+  // so Proton uses the user-configured prefix, not Steam's.
+  env.STEAM_COMPAT_DATA_PATH = prefixPath;
+
   const launchExe = mod.getLaunchExe?.(gamePath, hasSkse, sksePath || undefined)
     || (hasSkse && sksePath ? sksePath : null)
     || (mod.preferredLaunchExe ? path.join(gamePath, mod.preferredLaunchExe) : null);
