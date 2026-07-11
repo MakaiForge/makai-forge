@@ -4,8 +4,8 @@ import { app } from "electron";
 import { execFileSync } from "node:child_process";
 
 const BUNDLED_7Z_CANDIDATES = [
-  path.join(app.getAppPath(), "data", "install-api", "7z", "7z"),
-  path.join(app.getAppPath(), "resources", "data", "install-api", "7z", "7z"),
+  path.join(app.getAppPath(), "data", "install-api", "7z", "7zz"),
+  path.join(app.getAppPath(), "resources", "data", "install-api", "7z", "7zz"),
 ];
 
 let _cached7zPath: string | null | undefined;
