@@ -5,6 +5,7 @@ import { app } from "electron";
 import { registerEvent } from "@main/events/register-event";
 import { gamesStore, storeKeys } from "@main/store";
 import { logger, Wine } from "@main/services";
+import { get7zPath } from "@mods/play/sevenz";
 import type { GameShop } from "@types";
 
 export const LIBRARIES = {
@@ -86,7 +87,7 @@ const extractAndInstall = (
   );
   if (fs.existsSync(workDir)) fs.rmSync(workDir, { recursive: true });
 
-  const r1 = spawnSync("7z", ["x", exePath, `-o${workDir}`, "-y"], {
+  const r1 = spawnSync(get7zPath(), ["x", exePath, `-o${workDir}`, "-y"], {
     stdio: ["ignore", "ignore", "pipe"],
     encoding: "utf8",
   });
@@ -114,7 +115,7 @@ const extractAndInstall = (
   if (!inner7z) throw new Error("No inner 7z archive found in installer");
 
   const dllDir = path.join(workDir, "_dlls");
-  const r2 = spawnSync("7z", ["x", inner7z, `-o${dllDir}`, "-y"], {
+  const r2 = spawnSync(get7zPath(), ["x", inner7z, `-o${dllDir}`, "-y"], {
     stdio: ["ignore", "ignore", "pipe"],
     encoding: "utf8",
   });

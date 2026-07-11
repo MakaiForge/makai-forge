@@ -7,6 +7,7 @@
 
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { get7zPath } from "../../play/sevenz";
 import type { ArchiveInfo, ArchiveEntry } from "@types/install.types";
 
 /**
@@ -24,7 +25,7 @@ import type { ArchiveInfo, ArchiveEntry } from "@types/install.types";
 export async function readArchiveInfo(archivePath: string): Promise<ArchiveInfo> {
   return new Promise((resolve, reject) => {
     const args = ["l", archivePath, "-slt"]; // -slt = output detalhado
-    const child = spawn("7z", args, {
+    const child = spawn(get7zPath(), args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
@@ -71,7 +72,7 @@ export async function readArchiveInfo(archivePath: string): Promise<ArchiveInfo>
  */
 export async function checkPasswordProtected(archivePath: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const child = spawn("7z", ["t", archivePath], {
+    const child = spawn(get7zPath(), ["t", archivePath], {
       stdio: ["ignore", "pipe", "pipe"],
     });
 

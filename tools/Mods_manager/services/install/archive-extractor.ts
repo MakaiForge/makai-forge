@@ -8,6 +8,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { get7zPath } from "../../play/sevenz";
 import type { ArchiveInfo, ExtractedFile } from "@types/install.types";
 
 type ExtractProgressCallback = (
@@ -47,7 +48,7 @@ export async function extractWithProgress(
   if (password) args.push(`-p${password}`);
 
   return new Promise((resolve, reject) => {
-    const child = spawn("7z", args, {
+    const child = spawn(get7zPath(), args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
 

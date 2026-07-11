@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { spawn } from "node:child_process";
 import JSZip from "jszip";
 import { ModStorageService } from "@mods/services/mod-storage-service";
+import { get7zPath } from "../../play/sevenz";
 import { getStagingDir } from "../_shared/filemap";
 import { SKYRIM_MOD_REQUIRED_FOLDERS } from "./skyrim.constants";
 
@@ -136,7 +137,7 @@ async function extract7z(
   if (password) args.push(`-p${password}`);
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn("7z", args, {
+    const child = spawn(get7zPath(), args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
