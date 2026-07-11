@@ -10,7 +10,6 @@ Re-exported by:
 
 import os
 import re
-import shutil
 import stat
 import subprocess
 import urllib.request
@@ -57,37 +56,10 @@ def _check_makaitricks_update(path: str) -> str:
 
 
 def _ensure_makaitricks(proton_path: str) -> str | None:
-    # Prefer local Makaitricks over system winetricks
-    electron_winetricks = os.path.join(_INSTALL_API_DIR, "Makaitricks")
-    if os.path.exists(electron_winetricks):
-        return _check_makaitricks_update(electron_winetricks)
-
-    makaitricks_bin = shutil.which("winetricks")
-    if makaitricks_bin:
-        return makaitricks_bin
-
-    proton_bin = os.path.join(proton_path, "proton")
-    if os.path.isfile(proton_bin):
-        return "proton"
-
-    winetricks_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "..", "..", "..", "..", "..", "resources", "binaries", "winetricks",
-    )
-    if os.path.exists(winetricks_path):
-        return winetricks_path
-
-    try:
-        os.makedirs(os.path.dirname(winetricks_path), exist_ok=True)
-        urllib.request.urlretrieve(
-            "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks",
-            winetricks_path,
-        )
-        st = os.stat(winetricks_path)
-        os.chmod(winetricks_path, st.st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
-        return winetricks_path
-    except Exception:
+    makaitricks_path = os.path.join(_INSTALL_API_DIR, "Makaitricks")
+    if not os.path.exists(makaitricks_path):
         return None
+    return _check_makaitricks_update(makaitricks_path)
 
 
 def _check_dll_installed(verb: str, drive_c: str) -> bool:
@@ -126,7 +98,7 @@ def run_makaitricks(
     env["WINEARCH"] = "win64"
 
     if makaitricks_bin is None:
-        makaitricks_bin = _ensure_winetricks(proton_path)
+        makaitricks_bin = _ensure_makaitricks(proton_path)
 
     if makaitricks_bin and makaitricks_bin != "proton":
         try:
