@@ -8,6 +8,7 @@
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { ModStorageService } from "@main/services";
 import { getStagingDir } from "@games/_shared/filemap";
@@ -344,9 +345,11 @@ export class InstallOrchestrator {
   }
 
   private getStagingDir(config: InstallConfig): string {
-    if (config.stagingDir) {
-      fs.mkdirSync(config.stagingDir, { recursive: true });
-      return config.stagingDir;
+    let stagingDir = config.stagingDir;
+    if (stagingDir) {
+      if (stagingDir.startsWith("~")) stagingDir = stagingDir.replace("~", os.homedir());
+      fs.mkdirSync(stagingDir, { recursive: true });
+      return stagingDir;
     }
     const defaultDir = getStagingDir(config.gameId);
     fs.mkdirSync(defaultDir, { recursive: true });
