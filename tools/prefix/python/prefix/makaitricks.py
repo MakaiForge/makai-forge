@@ -57,13 +57,14 @@ def _check_makaitricks_update(path: str) -> str:
 
 
 def _ensure_winetricks(proton_path: str) -> str | None:
-    winetricks_bin = shutil.which("winetricks")
-    if winetricks_bin:
-        return winetricks_bin
-
+    # Prefer local Makaitricks over system winetricks
     electron_winetricks = os.path.join(_INSTALL_API_DIR, "Makaitricks")
     if os.path.exists(electron_winetricks):
         return _check_makaitricks_update(electron_winetricks)
+
+    winetricks_bin = shutil.which("winetricks")
+    if winetricks_bin:
+        return winetricks_bin
 
     proton_bin = os.path.join(proton_path, "proton")
     if os.path.isfile(proton_bin):
