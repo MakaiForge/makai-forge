@@ -19,6 +19,7 @@ export function createWitcher3Module(): GameModule {
     detect: (gp) => WITCHER3_EXE_NAMES.some(e => fs.existsSync(path.join(gp, e))),
     getDeployTarget: (gp) => path.join(gp, WITCHER3_CONSTANTS.deployDir),
     getWineDllOverrides: () => ({ ...WITCHER3_DLL_OVERRIDES }),
+    getWinetricksComponents: () => ["vcrun2019"],
     getPluginExtensions: () => WITCHER3_CONSTANTS.pluginExtensions,
     getExternalTools: () => [
       { name: "Script Merger", exeName: "ScriptMerger.exe", searchPaths: ["."] },

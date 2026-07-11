@@ -18,6 +18,7 @@ export function createCyberpunk2077Module(): GameModule {
     aliases: ["cp2077", "cyberpunk"],
     detect: (gp) => CYBERPUNK_EXE_NAMES.some(e => fs.existsSync(path.join(gp, e))),
     getWineDllOverrides: () => ({ ...CYBERPUNK_DLL_OVERRIDES }),
+    getWinetricksComponents: () => ["vcrun2022"],
     getFrameworks: () => ({
       "RED4ext": "red4ext/win64/red4ext.dll",
       "Cyber Engine Tweaks": "bin/x64/plugins/cyber_engine_tweaks.asi",

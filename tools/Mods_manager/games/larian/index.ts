@@ -20,6 +20,7 @@ export function createBaldursGate3Module(): GameModule {
     getDeployTarget: (gp) => path.join(gp, BG3_CONSTANTS.deployDir),
     getPluginExtensions: () => [...BG3_CONSTANTS.pluginExtensions],
     getWineDllOverrides: () => ({ ...BG3_DLL_OVERRIDES }),
+    getWinetricksComponents: () => ["vcrun2022"],
     getFrameworks: () => ({
       "Script Extender": "bg3se_loader.exe",
     }),

@@ -26,6 +26,11 @@ export function createMorrowindModule(): GameModule {
     getWineDllOverrides: () => ({ ...MORROWIND_DLL_OVERRIDES }),
     getAutoInstallDeps: () => ["vcredist"],
     getWinetricksComponents: () => ["d3dx9", "xact", "vcrun2019"],
+    seedRegistry: (prefixPath: string, gamePath: string, protonPath: string, steamAppId?: string, libraryPath?: string) => {
+      const { seedBethesdaRegistryWithProton } = require("../_shared/prefix");
+      return seedBethesdaRegistryWithProton(prefixPath, gamePath, protonPath, "Morrowind", steamAppId, libraryPath);
+    },
+    getMyGamesSubpath: () => MORROWIND_CONSTANTS.myGamesSubpath,
     getCustomRoutingRules: () => [],
     getFrameworks: () => ({ "MGE XE": "MGEXEgui.exe" }),
     getArchiveInvalidationConfig: () => null,
