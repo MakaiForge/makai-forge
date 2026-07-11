@@ -1,10 +1,8 @@
-import fs from "node:fs";
-import path from "node:path";
 import os from "node:os";
 import { ModStorageService, logger } from "@main/services";
 import { getDeployFunction } from "@games/registry";
 import { getStagingDir } from "@games/_shared/filemap";
-import { detectGame, defaultPrefixDir } from "./steps/01-detect";
+import { detectGame } from "./steps/01-detect";
 import { ensureProton } from "./steps/02-proton";
 import { ensurePrefix } from "./steps/03-prefix";
 import { applyGameConfigs } from "./steps/04-configs";
@@ -47,15 +45,9 @@ export async function playGame(
       libraryPath: libraryPath || "",
     });
 
-    // Determine effective prefix (respect configured prefix if it already exists)
-    let effectivePrefix = prefixPath;
-    const configuredPfxExists = prefixPath && fs.existsSync(path.join(prefixPath, "user.reg"));
-    if (!configuredPfxExists && steamAppId && libraryPath) {
-      const steamPfx = path.join(libraryPath, "compatdata", steamAppId, "pfx");
-      if (fs.existsSync(steamPfx) && fs.existsSync(path.join(steamPfx, "drive_c"))) {
-        effectivePrefix = steamPfx;
-      }
-    }
+    // Always use the configured prefix — never fall back to Steam compatdata.
+    // The user configured this prefix in "Configurar Jogo" and expects mods to be deployed there.
+    const effectivePrefix = prefixPath;
     logPlay(gameId, "prefix_effective", { effectivePrefix: effectivePrefix || "" });
 
     // ── Step 2: Proton ──
@@ -74,7 +66,7 @@ export async function playGame(
     // ── Step 3: Prefix ──
     logStep(gameId, "prefix", "Verificando/criando prefixo...", "working");
     const _s3 = Date.now();
-    const finalPrefixPath = useCustomPrefix ? defaultPrefixDir(gameId) : prefixPath;
+    const finalPrefixPath = prefixPath;
     const { prefixPath: resolvedPrefix } = await ensurePrefix(
       gameId, finalPrefixPath, protonPath, steamAppId, gamePath, libraryPath, send,
     );

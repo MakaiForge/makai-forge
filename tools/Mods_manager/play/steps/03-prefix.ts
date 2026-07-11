@@ -43,19 +43,25 @@ export async function ensurePrefix(
   protonPath: string,
   steamAppId: string | undefined,
   gamePath: string,
-  libraryPath: string | undefined,
+  _libraryPath: string | undefined,
   send: SendProgress,
 ): Promise<PrefixResult> {
   send("prefix", "🔧 Verificando prefixo Wine/Proton...", "working");
 
-  // Derive STEAM_COMPAT_DATA_PATH early
+  // Derive compatDataPath: for custom prefixes (not inside Steam compatdata),
+  // use the parent directory of the prefix path.
+  const isSteamCompatPrefix = prefixPath.includes(path.sep + "compatdata" + path.sep);
   let compatDataPath: string;
-  if (libraryPath && steamAppId) {
-    compatDataPath = path.join(libraryPath, "compatdata", steamAppId);
-  } else if (path.basename(prefixPath) === "pfx") {
-    compatDataPath = path.dirname(prefixPath);
+  if (isSteamCompatPrefix) {
+    // Standard Steam compatdata layout
+    if (path.basename(prefixPath) === "pfx") {
+      compatDataPath = path.dirname(prefixPath);
+    } else {
+      compatDataPath = prefixPath;
+    }
   } else {
-    compatDataPath = prefixPath;
+    // Custom prefix: parent directory
+    compatDataPath = path.dirname(prefixPath);
   }
 
   // Check if configured prefix already exists and is valid
@@ -66,18 +72,8 @@ export async function ensurePrefix(
     return { prefixPath: configuredPfx, created: false };
   }
 
-  // Fallback: use Steam compatdata if configured prefix doesn't exist
-  if (steamAppId && libraryPath) {
-    const steamCompat = path.join(libraryPath, "compatdata", steamAppId);
-    const steamPrefix = path.join(steamCompat, "pfx");
-    if (fs.existsSync(steamCompat) && isValidPrefix(steamPrefix)) {
-      _ensureTrackedFiles(compatDataPath);
-      send("prefix", `✅ Usando prefixo Steam: ${steamPrefix}`, "done");
-      return { prefixPath: steamPrefix, created: false };
-    }
-  }
-
-  // Prefix incomplete or missing — create via Python venv
+  // Configured prefix exists but is incomplete, or doesn't exist yet — create/complete it.
+  // NEVER fall back to Steam compatdata: the user configured this prefix and expects mods here.
   send("prefix", "⚙️ Prefixo incompleto ou ausente. Criando via Python...", "working");
 
   const gameModule = getGameModule(gameId, gamePath);

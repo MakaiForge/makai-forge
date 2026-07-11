@@ -29,6 +29,38 @@
 - `handlers/` TS removidos (código morto não compilado)
 - 9/9 URLs do `deps-manager.js` verificadas (HTTP 200)
 
+## Prefix Path Bugfix (11/07/2026) — RESOLVIDO
+- **Problema**: plugins.txt dos jogos Bethesda ia pro Steam compatdata, não pro prefixo configurado
+- **Fixes**: play-game.ts, 03-prefix.ts, 06-launch.ts, mod-deploy.ts, 04-configs.ts
+- **Dead code**: 26 deploy.ts órfãos removidos
+- **Doc**: `docs/referencia/redmine/022-prefix-path-correct.md`
+
+### Arquivos modificados (prefix fix)
+| Arquivo | Mudança |
+|---------|---------|
+| `play/play-game.ts` | `finalPrefixPath = prefixPath` sempre, sem fallback Steam |
+| `play/steps/03-prefix.ts` | Nunca cair no Steam, criar prefixo via wineboot |
+| `play/steps/06-launch.ts` | Sem STEAM_COMPAT_DATA_PATH para prefixos customizados |
+| `events/mod-deploy.ts` | Usar `config.protonPrefix` direto (remover `resolveRealPrefix`) |
+| `play/steps/04-configs.ts` | `findPrefixUsername()` ao invés de "steamuser" hardcoded |
+
+### Fluxo do prefixo (correto)
+```
+detectGame → prefixPath = config.protonPrefix
+  ↓
+ensurePrefix → cria/completa via Python wineboot
+  ↓
+deploy → plugins.txt → {prefix}/drive_c/users/{user}/AppData/Local/{game}/plugins.txt
+  ↓
+launch → WINEPREFIX={prefix}, sem STEAM_COMPAT_DATA_PATH para prefixos customizados
+```
+
+### Jogos Bethesda (12) — afetados pelo fix
+Skyrim, SE, VR, Enderal, Enderal SE, Oblivion, Fallout 3/NV/4/4VR, Starfield
+
+### Jogos non-Bethesda (22) — NÃO afetados
+Usam deployGeneric (sem plugins.txt). Witcher 3, Cyberpunk, BG3, etc.
+
 ## Known Issues
 - jet40 requer WINEARCH=win32 (não funciona em win64)
 - Push requer repo limpo (node_modules/etc incham muito o histórico)

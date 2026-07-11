@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getGameModule, getGameInfo } from "@games/registry";
+import { findPrefixUsername } from "@games/_shared/filemap";
 import { applyWineDllOverrides } from "@prefix/core/dll-overrides";
 import { findAllSteamLibraries } from "@prefix/core/steam-paths";
 import { runPythonCommand } from "../python";
@@ -95,8 +96,9 @@ export async function applyGameConfigs(
   // ── My Games (INI/saves directory for Bethesda games) ──
   const gameSubpath = mod.getMyGamesSubpath?.();
   if (gameSubpath) {
+    const username = findPrefixUsername(prefixPath) || "steamuser";
     const myGamesTarget = path.join(
-      prefixPath, "drive_c", "users", "steamuser", "Documents", "My Games", gameSubpath,
+      prefixPath, "drive_c", "users", username, "Documents", "My Games", gameSubpath,
     );
     if (!fs.existsSync(myGamesTarget)) {
       send("registry", "📁 Criando diretório My Games no prefixo...", "working");

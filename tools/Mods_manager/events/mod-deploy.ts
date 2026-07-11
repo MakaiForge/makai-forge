@@ -1,6 +1,6 @@
 import { registerEvent } from "@main/events/register-event";
 import { ModStorageService } from "@main/services";
-import { getDeployFunction, getGameInfo, getGameModule } from "@games/registry";
+import { getDeployFunction, getGameModule } from "@games/registry";
 import { getStagingDir } from "@games/_shared/filemap";
 import { applyWineDllOverrides } from "@games/_shared/prefix";
 import { detectModType, inventoryMod } from "@mods/services/mod-deploy/inventory";
@@ -9,15 +9,6 @@ import { mkInvKey, mkMlKey } from "@mods/services/storage-keys";
 import type { InstallConfig, InstallProgress, InstallStage } from "@types/install.types";
 import path from "node:path";
 import fs from "node:fs";
-
-function resolveRealPrefix(gamePath: string, gameId: string): string | null {
-  const info = getGameInfo(gameId);
-  if (!info?.steamAppId) return null;
-  const commonDir = path.dirname(gamePath);
-  const steamappsDir = path.dirname(commonDir);
-  const pfx = path.join(steamappsDir, "compatdata", info.steamAppId, "pfx");
-  return fs.existsSync(pfx) ? pfx : null;
-}
 
 registerEvent("checkModExists", async (_event, archivePath: string, gameId: string) => {
   const modName = path.basename(archivePath).replace(/\.(zip|7z|rar|fomod|tar\.gz)$/i, "");
@@ -36,8 +27,8 @@ registerEvent("deployMods", async (_event, gameId: string, profile: string) => {
   const modlistKey = mkMlKey(gameId, profile);
   const modlist: any[] = ModStorageService.get(modlistKey) || [];
 
-  // Resolve the real Proton prefix from the Steam library (not the config)
-  const resolvedPrefix = resolveRealPrefix(config.gamePath, gameId) || config.protonPrefix;
+  // Use the user-configured prefix — never resolve to Steam compatdata
+  const resolvedPrefix = config.protonPrefix;
 
   const deployFn = getDeployFunction(gameId);
   const result = await deployFn(gameId, config.gamePath, stagingDir, modlist, profile, resolvedPrefix);

@@ -11,22 +11,30 @@ function getSteamLaunchEnv(
   steamAppId: string | undefined,
   gamePath: string,
   prefixPath: string,
-  libraryPath?: string,
+  _libraryPath?: string,
 ): Record<string, string> {
   const env: Record<string, string> = {
     WINEPREFIX: prefixPath,
   };
 
-  let compatData: string | null = null;
-  if (libraryPath && steamAppId) {
-    compatData = path.join(libraryPath, "compatdata", steamAppId);
-  } else if (path.basename(prefixPath) === "pfx") {
-    compatData = path.dirname(prefixPath);
-  } else {
-    compatData = prefixPath;
-  }
+  // Detect if the prefix is inside a Steam compatdata directory
+  const isSteamCompatPrefix = prefixPath.includes(path.sep + "compatdata" + path.sep);
 
-  if (compatData) env.STEAM_COMPAT_DATA_PATH = compatData;
+  if (isSteamCompatPrefix) {
+    // Standard Steam prefix: derive STEAM_COMPAT_DATA_PATH from the pfx path
+    let compatData: string | null = null;
+    if (path.basename(prefixPath) === "pfx") {
+      compatData = path.dirname(prefixPath);
+    } else {
+      compatData = prefixPath;
+    }
+    if (compatData) env.STEAM_COMPAT_DATA_PATH = compatData;
+  } else {
+    // Custom prefix (user-configured): do NOT set STEAM_COMPAT_DATA_PATH
+    // to Steam's compatdata — that would make Proton use the wrong prefix.
+    // umu-run and proton respect WINEPREFIX directly.
+    logger.log(`[Launch] Custom prefix detected — using WINEPREFIX only, no STEAM_COMPAT_DATA_PATH`);
+  }
   if (gamePath) env.STEAM_COMPAT_INSTALL_PATH = gamePath;
   env.STEAM_COMPAT_CLIENT_INSTALL_PATH = findSteamClientPath();
 
