@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { ModStorageService, logger } from "@main/services";
 import { getDeployFunction } from "@games/registry";
 import { getStagingDir } from "@games/_shared/filemap";
@@ -102,7 +103,8 @@ export async function playGame(
     const _s6 = Date.now();
     try {
       const config = ModStorageService.get<any>(`game:${gameId}:config`);
-      const stagingDir = config?.stagingDir || getStagingDir(gameId);
+      const rawStaging = config?.stagingDir || getStagingDir(gameId);
+      const stagingDir = rawStaging.startsWith("~") ? rawStaging.replace("~", os.homedir()) : rawStaging;
       const modlistKey = `game:${gameId}:profile:${usedProfile}:modlist`;
       const modlist = ModStorageService.get<any[]>(modlistKey) || [];
       const deployFn = getDeployFunction(gameId);

@@ -131,7 +131,8 @@ export async function detectGame(
     send("detect", `✅ Jogo encontrado: ${path.basename(gamePath)}`, "done");
   }
 
-  const prefixPath = config?.protonPrefix || defaultPrefixDir(gameId);
+  const rawPrefix = config?.protonPrefix || defaultPrefixDir(gameId);
+  const prefixPath = rawPrefix.startsWith("~") ? rawPrefix.replace("~", os.homedir()) : rawPrefix;
   const steamAppId = info?.steamAppId;
 
   // Derive libraryPath from gamePath (e.g. /.../steamapps/common/Skyrim → /.../steamapps)
