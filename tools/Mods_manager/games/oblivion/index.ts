@@ -23,8 +23,8 @@ export function createOblivionModule(): GameModule {
     shouldWritePluginsTxt: () => true,
     getPluginExtensions: () => [".esp", ".esm"],
     getWineDllOverrides: () => ({ ...OBLIVION_DLL_OVERRIDES }),
-    getAutoInstallDeps: () => [],
-    getWinetricksComponents: () => [],
+    getAutoInstallDeps: () => ["vcredist", "d3dcompiler_47"],
+    getWinetricksComponents: () => ["d3dx9", "xact", "vcrun2019"],
     seedRegistry: (prefixPath: string, gamePath: string, protonPath: string, steamAppId?: string, libraryPath?: string) => {
       const { seedBethesdaRegistryWithProton } = require("../_shared/prefix");
       return seedBethesdaRegistryWithProton(prefixPath, gamePath, protonPath, "Oblivion", steamAppId, libraryPath);

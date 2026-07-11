@@ -4,7 +4,7 @@
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$APP_DIR"
 
-ELECTRON_FLAGS="--no-sandbox --disable-gpu"
+ELECTRON_FLAGS="--no-sandbox --ozone-platform=x11"
 COMPATFLOW_SRC="$APP_DIR/data/install-api/CompactFlow"
 COMPATFLOW_INSTALL="/opt/compatflow"
 

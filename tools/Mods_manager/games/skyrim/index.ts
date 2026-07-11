@@ -7,7 +7,7 @@ import { deploySkyrim, restoreSkyrim } from "./deploy";
 export { deploySkyrimVariant, restoreSkyrimVariant } from "./deploy";
 export type { SkyrimConstants } from "./deploy";
 import { getSkyrimLaunchEnv } from "./launch";
-import { getSkyrimAutoInstallDeps, seedSkyrimRegistry, getSkyrimMyGamesSubpath } from "./prefix";
+import { getSkyrimDllOverrides, getSkyrimAutoInstallDeps, getSkyrimWinetricksComponents, seedSkyrimRegistry, getSkyrimMyGamesSubpath } from "./prefix";
 import { getCustomRoutingRules } from "./routing";
 import { getInvalidationConfig } from "./invalidation";
 import { getSkyrimFrameworks, getPreferredLaunchExe } from "./frameworks";
@@ -37,9 +37,9 @@ export function createSkyrimModule(): GameModule {
       dllPattern: /skse/i,
     }),
 
-    getWineDllOverrides: () => ({}),
+    getWineDllOverrides: () => getSkyrimDllOverrides(),
     getAutoInstallDeps: () => getSkyrimAutoInstallDeps(),
-    getWinetricksComponents: () => [],
+    getWinetricksComponents: () => getSkyrimWinetricksComponents(),
     seedRegistry: (prefixPath: string, gamePath: string, protonPath: string, steamAppId?: string, libraryPath?: string) => {
       return seedSkyrimRegistry(prefixPath, gamePath, protonPath, steamAppId, libraryPath);
     },

@@ -23,8 +23,8 @@ export function createFallout4VRModule(): GameModule {
     shouldWritePluginsTxt: () => true,
     getPluginExtensions: () => [".esp", ".esm", ".esl"],
     getWineDllOverrides: () => ({ ...FO4_VR_DLL_OVERRIDES }),
-    getAutoInstallDeps: () => [],
-    getWinetricksComponents: () => [],
+    getAutoInstallDeps: () => ["vcredist", "d3dcompiler_47"],
+    getWinetricksComponents: () => ["vcrun2022", "d3dcompiler_47"],
     seedRegistry: (prefixPath: string, gamePath: string, protonPath: string, steamAppId?: string, libraryPath?: string) => {
       const { seedBethesdaRegistryWithProton } = require("../_shared/prefix");
       return seedBethesdaRegistryWithProton(prefixPath, gamePath, protonPath, "Fallout 4 VR", steamAppId, libraryPath);
