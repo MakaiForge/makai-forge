@@ -18,7 +18,7 @@ _INSTALL_API_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), *([".."] * 4), "data", "install-api")
 )
 
-_MAKAITRICKS_REPO = "https://raw.githubusercontent.com/MakaiForge/Makaitricks/main"
+_MAKAITRICKS_REPO = "https://raw.githubusercontent.com/MakaiForge/Makaitricks/v2025.1"
 
 
 def _get_local_version(path: str) -> str | None:
@@ -57,9 +57,21 @@ def _check_makaitricks_update(path: str) -> str:
 
 def _ensure_makaitricks(proton_path: str) -> str | None:
     makaitricks_path = os.path.join(_INSTALL_API_DIR, "Makaitricks")
-    if not os.path.exists(makaitricks_path):
+    if os.path.exists(makaitricks_path):
+        return _check_makaitricks_update(makaitricks_path)
+
+    # Download Makaitricks if not present locally
+    try:
+        os.makedirs(os.path.dirname(makaitricks_path), exist_ok=True)
+        urllib.request.urlretrieve(
+            f"{_MAKAITRICKS_REPO}/Makaitricks",
+            makaitricks_path,
+        )
+        st = os.stat(makaitricks_path)
+        os.chmod(makaitricks_path, st.st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        return makaitricks_path
+    except Exception:
         return None
-    return _check_makaitricks_update(makaitricks_path)
 
 
 def _check_dll_installed(verb: str, drive_c: str) -> bool:
