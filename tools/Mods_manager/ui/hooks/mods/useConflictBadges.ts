@@ -55,13 +55,17 @@ export function useConflictBadges(mods: ModlistEntry[]) {
       }
 
       // Also check plugins for plugin-level conflicts
+      // (skip if already added from inventory to avoid self-conflicts)
       if (mod.plugins) {
         for (const plugin of mod.plugins) {
           const pluginLower = plugin.toLowerCase();
           if (!fileToMods.has(pluginLower)) {
             fileToMods.set(pluginLower, []);
           }
-          fileToMods.get(pluginLower)!.push({ name: mod.name, priority });
+          const owners = fileToMods.get(pluginLower)!;
+          if (!owners.some(o => o.name === mod.name)) {
+            owners.push({ name: mod.name, priority });
+          }
         }
       }
     }
