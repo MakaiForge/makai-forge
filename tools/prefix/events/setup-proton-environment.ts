@@ -41,6 +41,7 @@ registerEvent("setupProtonEnvironment", async (_event, gameName: string, protonP
       duration_ms: Date.now() - _startAll,
       ...extra,
     });
+    return { success, ...extra };
   };
 
   const gameNameLower = gameName.toLowerCase();
