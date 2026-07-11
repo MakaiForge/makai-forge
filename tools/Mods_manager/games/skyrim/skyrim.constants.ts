@@ -35,6 +35,6 @@ export const SKYRIM_WINE_DLL_OVERRIDES: Record<string, string> = {
 };
 
 for (let n = 0; n < 8; n++) {
-  SKYRIM_WINE_DLL_OVERRIDES[`xaudio2_${n}`] = "native,builtin";
+  SKYRIM_WINE_DLL_OVERRIDES[`xaudio2_${n}`] = "builtin";
   SKYRIM_WINE_DLL_OVERRIDES[`x3daudio1_${n}`] = "native,builtin";
 }
