@@ -30,6 +30,8 @@ export const SKYRIM_WINE_DLL_OVERRIDES: Record<string, string> = {
   "winmm": "native,builtin",
   "version": "native,builtin",
   "d3dcompiler_47": "native",
+  "dsound": "native,builtin",
+  "mmdevapi": "native,builtin",
 };
 
 for (let n = 0; n < 8; n++) {
