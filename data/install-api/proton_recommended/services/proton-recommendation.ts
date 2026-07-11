@@ -248,7 +248,7 @@ export class ProtonRecommendationService {
     prefixPath: string,
     protonPath: string,
     extraVerbs?: string[],
-    winetricksPath?: string | null
+    makaitricksPath?: string | null
   ): Promise<{
     installed: string[];
     errors: string[];
@@ -261,8 +261,8 @@ export class ProtonRecommendationService {
     if (extraVerbs && extraVerbs.length > 0) {
       params.extra_verbs = extraVerbs;
     }
-    if (winetricksPath) {
-      params.winetricks_path = winetricksPath;
+    if (makaitricksPath) {
+      params.makaitricks_path = makaitricksPath;
     }
 
     WindowManager.mainWindow?.webContents.send("on-install-progress", {
@@ -279,11 +279,11 @@ export class ProtonRecommendationService {
     }
   }
 
-  static async runWinetricks(
+  static async runMakaitricks(
     prefixPath: string,
     protonPath: string,
     verbs: string[],
-    winetricksPath?: string | null
+    makaitricksPath?: string | null
   ): Promise<{
     installed: string[];
     errors: string[];
@@ -293,10 +293,10 @@ export class ProtonRecommendationService {
       proton_path: protonPath,
       verbs,
     };
-    if (winetricksPath) {
-      params.winetricks_path = winetricksPath;
+    if (makaitricksPath) {
+      params.makaitricks_path = makaitricksPath;
     }
-    return this.request("run_winetricks", params, 0);
+    return this.request("install-makaitricks", params, 0);
   }
 
   static async analyzeExe(

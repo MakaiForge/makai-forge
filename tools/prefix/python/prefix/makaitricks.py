@@ -56,15 +56,15 @@ def _check_makaitricks_update(path: str) -> str:
     return path
 
 
-def _ensure_winetricks(proton_path: str) -> str | None:
+def _ensure_makaitricks(proton_path: str) -> str | None:
     # Prefer local Makaitricks over system winetricks
     electron_winetricks = os.path.join(_INSTALL_API_DIR, "Makaitricks")
     if os.path.exists(electron_winetricks):
         return _check_makaitricks_update(electron_winetricks)
 
-    winetricks_bin = shutil.which("winetricks")
-    if winetricks_bin:
-        return winetricks_bin
+    makaitricks_bin = shutil.which("winetricks")
+    if makaitricks_bin:
+        return makaitricks_bin
 
     proton_bin = os.path.join(proton_path, "proton")
     if os.path.isfile(proton_bin):
@@ -113,11 +113,11 @@ def _check_dll_installed(verb: str, drive_c: str) -> bool:
     return any(os.path.isfile(os.path.join(system32, dll)) for dll in expected)
 
 
-def run_winetricks(
+def run_makaitricks(
     proton_path: str,
     prefix_path: str,
     verb: str,
-    winetricks_bin: str | None = None,
+    makaitricks_bin: str | None = None,
 ) -> tuple[bool, str]:
     """Install a single winetricks verb into the prefix."""
     prefix_path = os.path.abspath(os.path.expanduser(prefix_path))
@@ -125,13 +125,13 @@ def run_winetricks(
     env["WINEPREFIX"] = prefix_path
     env["WINEARCH"] = "win64"
 
-    if winetricks_bin is None:
-        winetricks_bin = _ensure_winetricks(proton_path)
+    if makaitricks_bin is None:
+        makaitricks_bin = _ensure_winetricks(proton_path)
 
-    if winetricks_bin and winetricks_bin != "proton":
+    if makaitricks_bin and makaitricks_bin != "proton":
         try:
             result = subprocess.run(
-                [winetricks_bin, "-q", verb],
+                [makaitricks_bin, "-q", verb],
                 env=env, capture_output=True, text=True, timeout=600,
             )
             if result.returncode == 0:
@@ -145,7 +145,7 @@ def run_winetricks(
         except FileNotFoundError:
             pass
 
-    if winetricks_bin == "proton":
+    if makaitricks_bin == "proton":
         proton_bin = os.path.join(proton_path, "proton")
         if os.path.isfile(proton_bin):
             try:
@@ -166,7 +166,7 @@ def install_recommended_dlls(
     prefix_path: str,
     proton_path: str,
     extra_verbs: list[str] | None = None,
-    winetricks_bin: str | None = None,
+    makaitricks_bin: str | None = None,
 ) -> dict:
     """Install DLL verbs into prefix, skipping already-installed ones."""
     prefix_path = os.path.abspath(os.path.expanduser(prefix_path))
@@ -181,7 +181,7 @@ def install_recommended_dlls(
         if _check_dll_installed(verb, drive_c):
             result["installed"].append(verb)
             continue
-        success, error = run_winetricks(proton_path, prefix_path, verb, winetricks_bin)
+        success, error = run_makaitricks(proton_path, prefix_path, verb, makaitricks_bin)
         if success:
             result["installed"].append(verb)
         else:
@@ -190,11 +190,11 @@ def install_recommended_dlls(
     return result
 
 
-def run_winetricks_verbs(
+def run_makaitricks_verbs(
     prefix_path: str,
     proton_path: str,
     verbs: list[str],
-    winetricks_bin: str | None = None,
+    makaitricks_bin: str | None = None,
 ) -> dict:
     """Run arbitrary winetricks verbs (for external use)."""
-    return install_recommended_dlls("", prefix_path, proton_path, verbs, winetricks_bin)
+    return install_recommended_dlls("", prefix_path, proton_path, verbs, makaitricks_bin)

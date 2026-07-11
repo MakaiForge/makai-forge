@@ -47,8 +47,8 @@ from .core import (
 
 from .makaitricks import (
     install_recommended_dlls,
-    run_winetricks,
-    run_winetricks_verbs,
+    run_makaitricks,
+    run_makaitricks_verbs,
 )
 
 from .runner import (
@@ -66,7 +66,7 @@ __all__ = [
     "delete_prefix",
     "clean_prefix",
     "install_recommended_dlls",
-    "run_winetricks",
-    "run_winetricks_verbs",
+    "run_makaitricks",
+    "run_makaitricks_verbs",
     "run_proton_command_for_game",
 ]

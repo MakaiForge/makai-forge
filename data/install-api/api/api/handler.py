@@ -313,17 +313,17 @@ def handle_install_game_dlls(params: dict) -> dict:
         prefix_path=str(prefix_path),
         proton_path=str(proton_path),
         extra_verbs=params.get("extra_verbs"),
-        winetricks_bin=params.get("winetricks_path"),
+        makaitricks_bin=params.get("makaitricks_path"),
     )
 
 
-@register("run_winetricks")
-def handle_run_winetricks(params: dict) -> dict:
-    """Executa verbos winetricks arbitrários em um prefixo.
+@register("install-makaitricks")
+def handle_install_makaitricks(params: dict) -> dict:
+    """Executa verbos Makaitricks em um prefixo.
 
     Args:
         params: Deve conter "prefix_path" (str), "proton_path" (str), "verbs" (list[str])
-                Opcional: "winetricks_path" (str) — caminho do binário winetricks
+                Opcional: "makaitricks_path" (str) — caminho do script Makaitricks
 
     Retorna:
         Dict com listas "installed" e "errors"
@@ -336,11 +336,11 @@ def handle_run_winetricks(params: dict) -> dict:
     if not isinstance(verbs, list):
         raise RpcError("invalid_param", "verbs must be a list")
 
-    return prefix.run_winetricks_verbs(
+    return prefix.run_makaitricks_verbs(
         prefix_path=str(prefix_path),
         proton_path=str(proton_path),
         verbs=[str(v) for v in verbs],
-        winetricks_bin=params.get("winetricks_path"),
+        makaitricks_bin=params.get("makaitricks_path"),
     )
 
 

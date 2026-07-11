@@ -2,8 +2,8 @@
 Unified CLI for Wine/Proton operations from TypeScript.
 Usage:
   python3 cli.py create-prefix <gameId> <prefixPath> <protonPath> [verb...]
-  python3 cli.py install-winetricks <prefixPath> <protonPath> [verb...]
-  python3 cli.py run <exePath> <protonPath>
+  python3 cli.py install-makaitricks <prefixPath> <protonPath> [verb...]
+  python3 cli.py run <exePath> <protonPath> [flags]
   python3 cli.py validate-prefix <prefixPath>
 """
 
@@ -35,7 +35,7 @@ def cmd_create_prefix(args: list[str]) -> None:
     print(json.dumps(result))
 
 
-def cmd_install_winetricks(args: list[str]) -> None:
+def cmd_install_makaitricks(args: list[str]) -> None:
     from prefix.makaitricks import install_recommended_dlls
 
     prefix_path = args[0]
@@ -102,7 +102,7 @@ def cmd_validate_prefix(args: list[str]) -> None:
 
 COMMANDS = {
     "create-prefix": cmd_create_prefix,
-    "install-winetricks": cmd_install_winetricks,
+    "install-makaitricks": cmd_install_makaitricks,
     "run": cmd_run,
     "validate-prefix": cmd_validate_prefix,
 }

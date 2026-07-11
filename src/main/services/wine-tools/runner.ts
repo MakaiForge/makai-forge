@@ -137,10 +137,10 @@ export class WineToolRunner {
     this.spawnWithUmu(args);
   }
 
-  public async runWinetricks(): Promise<WineToolResult> {
+  public async runMakaitricks(): Promise<WineToolResult> {
     try {
-      this.spawnTool(["winetricks", "--gui"]);
-      logger.info("Wine tool launched: winetricks", { prefix: this.prefix });
+      this.spawnTool(["Makaitricks", "--gui"]);
+      logger.info("Wine tool launched: Makaitricks", { prefix: this.prefix });
       return { success: true };
     } catch (error) {
       logger.error("Failed to run winetricks", { error, prefix: this.prefix });
@@ -339,7 +339,7 @@ export class WineToolRunner {
   public async run(tool: WineTool): Promise<WineToolResult> {
     switch (tool) {
       case "winetricks":
-        return this.runWinetricks();
+        return this.runMakaitricks();
       case "taskmgr":
         return this.runTaskmgr();
       case "control":

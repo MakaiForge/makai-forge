@@ -30,14 +30,14 @@ export async function applyGameConfigs(
     send("dll", "✅ Nenhum DLL override necessário", "done");
   }
 
-  // ── Auto Install Deps (via Python winetricks) ──
+  // ── Auto Install Deps (via Python Makaitricks) ──
   const deps = mod.getAutoInstallDeps?.();
-  const winetricksVerbs = mod.getWinetricksComponents?.();
+  const makaitricksVerbs = mod.getWinetricksComponents?.();
 
   if (deps && deps.length > 0) {
     send("dll", `📥 Instalando dependências: ${deps.join(", ")}...`, "working");
     const result = await runPythonCommand(
-      "install-winetricks",
+      "install-makaitricks",
       [prefixPath, protonPath, ...deps],
     );
     if (result.success) {
@@ -47,14 +47,14 @@ export async function applyGameConfigs(
     }
   }
 
-  if (winetricksVerbs && winetricksVerbs.length > 0) {
-    send("dll", `📥 Instalando componentes wine: ${winetricksVerbs.join(", ")}...`, "working");
+  if (makaitricksVerbs && makaitricksVerbs.length > 0) {
+    send("dll", `📥 Instalando componentes wine: ${makaitricksVerbs.join(", ")}...`, "working");
     const result = await runPythonCommand(
-      "install-winetricks",
-      [prefixPath, protonPath, ...winetricksVerbs],
+      "install-makaitricks",
+      [prefixPath, protonPath, ...makaitricksVerbs],
     );
     if (result.success) {
-      send("dll", `✅ Componentes wine instalados: ${winetricksVerbs.join(", ")}`, "done");
+      send("dll", `✅ Componentes wine instalados: ${makaitricksVerbs.join(", ")}`, "done");
     } else {
       send("dll", `⚠️ Falha ao instalar alguns componentes: ${result.stderr.slice(0, 100)}`, "done");
     }

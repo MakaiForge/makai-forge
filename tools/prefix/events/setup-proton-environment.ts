@@ -348,7 +348,7 @@ registerEvent("setupProtonEnvironment", async (_event, gameName: string, protonP
     if (deps.length > 0) {
       addLog(`   Dependências: ${deps.join(", ")}`);
       try {
-        const depResult = await ProtonRecommendationService.runWinetricks(
+        const depResult = await ProtonRecommendationService.runMakaitricks(
           prefixPath, protonPath, deps,
         );
         if (depResult.installed?.length > 0) {
