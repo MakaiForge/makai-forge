@@ -30,10 +30,11 @@ function getSteamLaunchEnv(
     }
     if (compatData) env.STEAM_COMPAT_DATA_PATH = compatData;
   } else {
-    // Custom prefix (user-configured): do NOT set STEAM_COMPAT_DATA_PATH
-    // to Steam's compatdata — that would make Proton use the wrong prefix.
-    // umu-run and proton respect WINEPREFIX directly.
-    logger.log(`[Launch] Custom prefix detected — using WINEPREFIX only, no STEAM_COMPAT_DATA_PATH`);
+    // Custom prefix: Proton ALWAYS overrides WINEPREFIX with
+    // $STEAM_COMPAT_DATA_PATH/pfx/. The custom prefix dir contains
+    // a 'pfx' symlink, so setting STEAM_COMPAT_DATA_PATH to the
+    // prefix path itself makes Proton resolve correctly.
+    env.STEAM_COMPAT_DATA_PATH = prefixPath;
   }
   if (gamePath) env.STEAM_COMPAT_INSTALL_PATH = gamePath;
   env.STEAM_COMPAT_CLIENT_INSTALL_PATH = findSteamClientPath();
