@@ -10,8 +10,16 @@ export function useProfiles(gameId: string) {
     (async () => {
       try {
         const ps: ProfileEntry[] = (await window.electron.modsStore.get(`game:${gameId}:profiles`)) as ProfileEntry[] || [];
-        setProfiles(ps);
-        if (ps.length > 0) setSelectedProfile(ps[0].name);
+        if (ps.length === 0) {
+          const defaultProfile: ProfileEntry = { name: "Default", active: true };
+          const initialized = [defaultProfile];
+          setProfiles(initialized);
+          setSelectedProfile("Default");
+          await window.electron.modsStore.put(`game:${gameId}:profiles`, initialized);
+        } else {
+          setProfiles(ps);
+          setSelectedProfile(ps[0].name);
+        }
       } catch { setProfiles([]); }
     })();
   }, [gameId]);
