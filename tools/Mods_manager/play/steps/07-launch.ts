@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { app } from "electron";
@@ -112,7 +113,9 @@ export async function launchGame(
     logger.info(`[Launch] STEAM_COMPAT_INSTALL_PATH: ${launchEnv.STEAM_COMPAT_INSTALL_PATH}`);
     logger.info(`[Launch] STEAM_COMPAT_CLIENT_INSTALL_PATH: ${launchEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH}`);
     logger.info(`[Launch] SteamAppId: ${launchEnv.SteamAppId}`);
+    logger.info(`[Launch] SteamGameId: ${launchEnv.SteamGameId}`);
     logger.info(`[Launch] GAMEID: ${launchEnv.GAMEID}`);
+    logger.info(`[Launch] PROTONPATH: ${launchEnv.PROTONPATH}`);
     logger.info(`[Launch] protonExe exists: ${fs.existsSync(protonExe)}`);
     logger.info(`[Launch] launchExe exists: ${fs.existsSync(launchExe)}`);
     logger.info(`[Launch] gameDir: ${gameDir}`);
@@ -141,21 +144,41 @@ export async function launchGame(
     const killallResult = spawnSync("killall", ["-9", "wineserver"], { stdio: "pipe" });
     logger.info(`[Launch] killall wineserver: status=${killallResult.status}`);
 
+    // umu-run resolves PROTONPATH as a dir name under ~/.local/share/Steam/compatibilitytools.d/
+    // Extract the directory name and ensure a symlink exists there.
+    const protonDirName = path.basename(protonPath);
+    const steamCompatDir = path.join(os.homedir(), ".local", "share", "Steam", "compatibilitytools.d");
+    const steamCompatLink = path.join(steamCompatDir, protonDirName);
+    if (!fs.existsSync(steamCompatLink) && fs.existsSync(protonPath)) {
+      try {
+        fs.mkdirSync(steamCompatDir, { recursive: true });
+        fs.symlinkSync(protonPath, steamCompatLink);
+        logger.info(`[Launch] Created symlink: ${steamCompatLink} → ${protonPath}`);
+      } catch (err) {
+        logger.warn(`[Launch] Failed to create Proton symlink: ${err}`);
+      }
+    }
+
+    // wineEnvVars: used by `su` (root) path AND the proton fallback path
+    const wineEnvVars = [
+      `WINEPREFIX="${launchEnv.WINEPREFIX}"`,
+      `STEAM_COMPAT_DATA_PATH="${launchEnv.STEAM_COMPAT_DATA_PATH}"`,
+      `STEAM_COMPAT_INSTALL_PATH="${launchEnv.STEAM_COMPAT_INSTALL_PATH}"`,
+      `STEAM_COMPAT_CLIENT_INSTALL_PATH="${launchEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH}"`,
+      `SteamAppId="${launchEnv.SteamAppId}"`,
+      `SteamGameId="${launchEnv.SteamGameId}"`,
+      `GAMEID="${launchEnv.GAMEID}"`,
+      `PROTONPATH="${protonDirName}"`,
+      `PROTON_LOG=1`,
+    ].join(" ");
+
     if (umuRunPath) {
       send("launch", `🚀 Iniciando ${path.basename(launchExe)} via umu-run...`, "working");
       logger.info(`[Launch] Using umu-run: ${umuRunPath}`);
+      logger.info(`[Launch] PROTONPATH (dir name): ${protonDirName}`);
 
       // When running as root, Wine can't connect to the user's Xwayland display.
       // Wrap in `su - <user> -c` with env vars inline so Wine runs as the real user.
-      const wineEnvVars = [
-        `WINEPREFIX="${launchEnv.WINEPREFIX}"`,
-        `STEAM_COMPAT_DATA_PATH="${launchEnv.STEAM_COMPAT_DATA_PATH}"`,
-        `STEAM_COMPAT_INSTALL_PATH="${launchEnv.STEAM_COMPAT_INSTALL_PATH}"`,
-        `STEAM_COMPAT_CLIENT_INSTALL_PATH="${launchEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH}"`,
-        `SteamAppId="${launchEnv.SteamAppId}"`,
-        `GAMEID="${launchEnv.GAMEID}"`,
-        `PROTON_LOG=1`,
-      ].join(" ");
       const umuCmd = `${wineEnvVars} ${umuRunPath} "${launchExe}" ${launchArgs.join(" ")}`;
 
       const spawnBin = realUser ? "su" : umuRunPath;
@@ -165,10 +188,13 @@ export async function launchGame(
 
       logger.info(`[Launch] spawn: ${realUser ? `su - ${realUser} -c "..."` : umuRunPath}`);
 
+      // For umu-run non-root: ensure PROTONPATH is the dir name, not absolute path
+      const umuLaunchEnv = { ...launchEnv, PROTONPATH: protonDirName };
+
       return new Promise<PlayResult>((resolve) => {
         const child = spawn(spawnBin, spawnArgs, {
           cwd: gameDir,
-          env: realUser ? { HOME: `/home/${realUser}`, PATH: process.env.PATH } : launchEnv,
+          env: realUser ? { HOME: `/home/${realUser}`, PATH: process.env.PATH } : umuLaunchEnv,
           stdio: ["ignore", "pipe", "pipe"],
           detached: true,
         });
