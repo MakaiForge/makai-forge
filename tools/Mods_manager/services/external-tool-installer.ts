@@ -80,6 +80,15 @@ export async function installTool(
       if (fs.existsSync(innerPath)) {
         sourceDir = innerPath;
       }
+    } else {
+      // Auto-detect: if extract root has exactly 1 subfolder and 0 files,
+      // use that subfolder as source (e.g. LOOT extracts to loot_version/)
+      const entries = fs.readdirSync(extractDir, { withFileTypes: true });
+      const dirs = entries.filter(e => e.isDirectory());
+      const files = entries.filter(e => e.isFile());
+      if (dirs.length === 1 && files.length === 0) {
+        sourceDir = path.join(extractDir, dirs[0].name);
+      }
     }
 
     send?.("tools", `📋 Instalando ${tool.name}...`, "working");
