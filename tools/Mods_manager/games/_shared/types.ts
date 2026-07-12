@@ -106,6 +106,16 @@ export interface ExternalToolDef {
   name: string
   exeName: string
   searchPaths: string[]
+  /** URL de download direto (GitHub releases) — opcional */
+  downloadUrl?: string
+  /** Detector: arquivo/pasta que deve existir se já instalado */
+  detector?: { file?: string; folder?: string }
+  /** Pasta dentro do zip que contém os arquivos (se houver) */
+  innerFolder?: string
+  /** Args extras ao lançar (ex: "-autoclean") */
+  args?: string
+  /** Se true, lança via proton */
+  useProton?: boolean
 }
 
 export interface FrameworkDef {

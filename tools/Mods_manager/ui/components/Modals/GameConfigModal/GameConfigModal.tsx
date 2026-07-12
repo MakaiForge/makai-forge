@@ -4,6 +4,14 @@ import type { ExternalTool } from "../../../../declaration.d.ts";
 
 import "./GameConfigModal.scss";
 
+interface ModuleTool {
+  name: string;
+  exeName: string;
+  hasDownload: boolean;
+  downloadUrl: string;
+  useProton: boolean;
+}
+
 interface GameConfigModalProps {
   open: boolean;
   games: GameInfo[];
@@ -21,15 +29,18 @@ export function GameConfigModal({
   onSelectGame, onSelectProfile, onAddProfile, onClose,
 }: GameConfigModalProps) {
   const [tools, setTools] = useState<ExternalTool[]>([]);
+  const [moduleTools, setModuleTools] = useState<ModuleTool[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPath, setNewPath] = useState("");
   const [newArgs, setNewArgs] = useState("");
   const [newProton, setNewProton] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && currentGameId) {
       window.electron.getExternalTools(currentGameId).then(setTools);
+      window.electron.getGameModuleTools(currentGameId).then(setModuleTools);
     }
   }, [open, currentGameId]);
 
@@ -59,6 +70,19 @@ export function GameConfigModal({
     if (!currentGameId) return;
     await window.electron.launchExternalTool(currentGameId, name);
   }
+
+  async function handleDownload(toolName: string) {
+    if (!currentGameId) return;
+    setDownloading(toolName);
+    try {
+      await window.electron.installExternalTool(currentGameId, toolName);
+      setTools(await window.electron.getExternalTools(currentGameId));
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  const installedNames = new Set(tools.map(t => t.name));
 
   return (
     <div className="game-config-modal__overlay" onClick={onClose}>
@@ -90,7 +114,39 @@ export function GameConfigModal({
           <hr className="game-config-modal__sep" />
 
           <label>External Tools</label>
-          {tools.length === 0 && !showAdd && (
+
+          {moduleTools.length > 0 && (
+            <div className="game-config-modal__module-tools">
+              {moduleTools.map(mt => {
+                const isInstalled = installedNames.has(mt.name);
+                const isDownloading = downloading === mt.name;
+                return (
+                  <div key={mt.name} className="game-config-modal__tool">
+                    <div className="game-config-modal__tool-info">
+                      <strong>{mt.name}</strong>
+                      {isInstalled && <span className="game-config-modal__tool-status">✅ Instalado</span>}
+                      {mt.useProton && <span className="game-config-modal__tool-proton">🐧 Proton</span>}
+                    </div>
+                    <div className="game-config-modal__tool-actions">
+                      {isInstalled ? (
+                        <button className="game-config-modal__tool-launch" onClick={() => handleLaunch(mt.name)}>Launch</button>
+                      ) : mt.hasDownload ? (
+                        <button
+                          className="game-config-modal__tool-download"
+                          onClick={() => handleDownload(mt.name)}
+                          disabled={isDownloading}
+                        >
+                          {isDownloading ? "Baixando..." : "Baixar"}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {tools.length === 0 && moduleTools.length === 0 && !showAdd && (
             <p className="game-config-modal__empty">No tools configured.</p>
           )}
           {tools.map(tool => (

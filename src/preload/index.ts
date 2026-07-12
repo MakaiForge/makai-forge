@@ -1142,6 +1142,10 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("launchExternalTool", gameId, toolName),
   scanExternalTools: (gameId: string) =>
     ipcRenderer.invoke("scanExternalTools", gameId),
+  installExternalTool: (gameId: string, toolName: string) =>
+    ipcRenderer.invoke("installExternalTool", gameId, toolName),
+  getGameModuleTools: (gameId: string) =>
+    ipcRenderer.invoke("getGameModuleTools", gameId),
   modBridgeLog: (level: string, ...args: unknown[]) =>
     ipcRenderer.invoke("modBridgeLog", level, ...args),
   modBridgeListGames: () =>

@@ -1,9 +1,11 @@
 import { registerEvent } from "@main/events/register-event";
 import { spawn } from "node:child_process";
 import { app } from "electron";
-import { ModStorageService } from "@main/services";
+import { ModStorageService, logger } from "@main/services";
 import path from "node:path";
 import fs from "node:fs";
+import { getGameModule } from "@games/registry";
+import { installTool, isToolInstalled, resolveToolPath } from "@mods/services/external-tool-installer";
 
 const TOOLS_KEY = "external_tools";
 
@@ -36,6 +38,44 @@ registerEvent("removeExternalTool", async (_event, name: string, gameId: string)
   return { ok: true };
 });
 
+registerEvent("installExternalTool", async (_event, gameId: string, toolName: string) => {
+  const gameConfig = ModStorageService.get<{ gamePath?: string }>(`game:${gameId}:config`);
+  const gamePath = gameConfig?.gamePath;
+  if (!gamePath || !fs.existsSync(gamePath)) {
+    return { ok: false, error: "Game path not found" };
+  }
+
+  const mod = getGameModule(gameId, gamePath);
+  const tools = mod?.getExternalTools?.() || [];
+  const toolDef = tools.find(t => t.name === toolName && t.downloadUrl);
+  if (!toolDef) {
+    return { ok: false, error: `Tool "${toolName}" not found or no download URL` };
+  }
+
+  const ok = await installTool(gamePath, toolDef);
+  if (!ok) {
+    return { ok: false, error: `Failed to install ${toolName}` };
+  }
+
+  const exePath = resolveToolPath(gamePath, toolDef);
+  if (exePath) {
+    const entry: ToolEntry = {
+      name: toolDef.name,
+      exePath,
+      args: toolDef.args || "",
+      gameId,
+      useProton: toolDef.useProton || false,
+    };
+    const all: ToolEntry[] = ModStorageService.get(TOOLS_KEY) || [];
+    const idx = all.findIndex(t => t.name === entry.name && t.gameId === gameId);
+    if (idx >= 0) all[idx] = entry;
+    else all.push(entry);
+    ModStorageService.put(TOOLS_KEY, all);
+  }
+
+  return { ok: true, exePath };
+});
+
 registerEvent("launchExternalTool", async (_event, gameId: string, toolName: string) => {
   const all: ToolEntry[] = ModStorageService.get(TOOLS_KEY) || [];
   const tool = all.find(t => t.name === toolName && t.gameId === gameId);
@@ -51,9 +91,6 @@ registerEvent("launchExternalTool", async (_event, gameId: string, toolName: str
   if (tool.useProton && gameConfig?.gamePath) {
     const protonBin = ModStorageService.get<string>("proton_binary")
       || path.join(app.getAppPath(), "tools", "prefix", "umu-run");
-    const args = tool.args
-      ? [tool.exePath, ...tool.args.split(/\s+/)]
-      : [tool.exePath];
     spawn(protonBin, [
       "-protonpath", ModStorageService.get<string>("proton_path") || "",
       "-waitforprocess", "-wine",
@@ -75,20 +112,19 @@ registerEvent("launchExternalTool", async (_event, gameId: string, toolName: str
   return { ok: true, data: { launched: toolName } };
 });
 
-const KNOWN_TOOLS: { name: string; exe: string; dir?: string; args?: string }[] = [
-  { name: "SSEEdit", exe: "SSEEdit.exe", dir: ".." },
-  { name: "SSEEdit (Quick Auto Clean)", exe: "SSEEdit.exe", dir: "..", args: "-autoclean" },
-  { name: "FNIS", exe: "FNIS.exe", dir: "tools/GenerateFNIS_for_Users" },
-  { name: "BodySlide", exe: "BodySlide.exe", dir: "tools/BodySlide" },
-  { name: "Outfit Studio", exe: "OutfitStudio.exe", dir: "tools/BodySlide" },
-  { name: "LOOT", exe: "LOOT.exe", dir: ".." },
-  { name: "Wrye Bash", exe: "Wrye Bash.exe", dir: ".." },
-  { name: "Creation Kit", exe: "CreationKit.exe", dir: ".." },
-  { name: "zEdit", exe: "zedit.exe", dir: ".." },
-  { name: "Cathedral Assets Optimizer", exe: "Cathedral Assets Optimizer.exe", dir: ".." },
-  { name: "Nemesis", exe: "Nemesis Unlimited Behavior Engine.exe", dir: "tools/Nemesis_Engine" },
-  { name: "BethINI", exe: "BethINI.exe", dir: ".." },
-];
+registerEvent("getGameModuleTools", async (_event, gameId: string) => {
+  const gameConfig = ModStorageService.get<{ gamePath?: string }>(`game:${gameId}:config`);
+  const gamePath = gameConfig?.gamePath || "";
+  const mod = getGameModule(gameId, gamePath);
+  const tools = mod?.getExternalTools?.() || [];
+  return tools.map(t => ({
+    name: t.name,
+    exeName: t.exeName,
+    hasDownload: !!t.downloadUrl,
+    downloadUrl: t.downloadUrl || "",
+    useProton: t.useProton || false,
+  }));
+});
 
 registerEvent("scanExternalTools", async (_event, gameId: string) => {
   const gameConfig = ModStorageService.get<{ gamePath?: string }>(`game:${gameId}:config`);
@@ -97,12 +133,14 @@ registerEvent("scanExternalTools", async (_event, gameId: string) => {
     return { found: [], error: "Game path not found" };
   }
 
+  const mod = getGameModule(gameId, gamePath);
+  const toolDefs = mod?.getExternalTools?.() || [];
+
   const found: { name: string; exePath: string; args: string }[] = [];
-  for (const tool of KNOWN_TOOLS) {
-    const searchDir = tool.dir ? path.resolve(gamePath, tool.dir) : gamePath;
-    const exePath = path.join(searchDir, tool.exe);
-    if (fs.existsSync(exePath)) {
-      found.push({ name: tool.name, exePath, args: tool.args || "" });
+  for (const toolDef of toolDefs) {
+    const exePath = resolveToolPath(gamePath, toolDef);
+    if (exePath) {
+      found.push({ name: toolDef.name, exePath, args: toolDef.args || "" });
     }
   }
 

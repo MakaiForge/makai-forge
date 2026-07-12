@@ -7,7 +7,9 @@ import { detectGame } from "./steps/01-detect";
 import { ensureProton } from "./steps/02-proton";
 import { ensurePrefix } from "./steps/03-prefix";
 import { applyGameConfigs } from "./steps/04-configs";
+import type { ConfigsResult } from "./steps/04-configs";
 import { ensureGameFrameworks } from "./steps/05-frameworks";
+import { ensureGameExternalTools } from "./steps/05.5-external-tools";
 import { ensureSkse } from "./steps/06-skse";
 import { launchGame } from "./steps/07-launch";
 import { bridgePrefixToSteam } from "@mods/services/steam-prefix-bridge";
@@ -94,11 +96,23 @@ export async function playGame(
     }
 
     // ── Step 4: Configs (DLL overrides + winetricks + registry) ──
-    logStep(gameId, "configs", "Aplicando configurações do jogo...", "working");
+    logStep(gameId, "configs", "Aplicando configuracoes do jogo...", "working");
     const _s4 = Date.now();
-    await applyGameConfigs(gameId, gamePath, resolvedPrefix, protonPath, send, steamAppId, libraryPath);
-    logStep(gameId, "configs", "Configurações aplicadas", "done", { duration_ms: Date.now() - _s4 });
-    logPlay(gameId, "configs_applied", { resolvedPrefix, protonPath });
+    const configsResult: ConfigsResult = await applyGameConfigs(gameId, gamePath, resolvedPrefix, protonPath, send, steamAppId, libraryPath);
+    logStep(gameId, "configs", configsResult.ok ? "Configuracoes aplicadas e verificadas" : "FALHA na verificacao", configsResult.ok ? "done" : "error", {
+      duration_ms: Date.now() - _s4,
+      dll_ok: String(configsResult.dllOk),
+      registry_ok: String(configsResult.registryOk),
+    });
+    logPlay(gameId, "configs_applied", { resolvedPrefix, protonPath, ok: String(configsResult.ok) });
+
+    // Block launch if DLL overrides or registry failed
+    if (!configsResult.ok) {
+      const errMsg = `Verificacao falhou: ${configsResult.errors.join("; ")}`;
+      logEvent(gameId, "play_blocked", { reason: "configs_verification_failed", errors: configsResult.errors });
+      send("error", `BLOQUEADO: ${errMsg}`, "error");
+      return { success: false, error: errMsg };
+    }
 
     // ── Step 5: Frameworks (BepInEx, SMAPI, CET, etc.) ──
     logStep(gameId, "frameworks", "Verificando frameworks...", "working");
@@ -109,6 +123,17 @@ export async function playGame(
       installed: frameworksResult.installed.join(", "),
       skipped: frameworksResult.skipped.join(", "),
       failed: frameworksResult.failed.join(", "),
+    });
+
+    // ── Step 5.5: External Tools (LOOT, xEdit, etc.) ──
+    logStep(gameId, "tools", "Verificando tools externas...", "working");
+    const _s5t = Date.now();
+    const toolsResult = await ensureGameExternalTools(gameId, gamePath, send);
+    logStep(gameId, "tools", `Tools: ${toolsResult.installed.length} instaladas, ${toolsResult.skipped.length} existentes`, "done", { duration_ms: Date.now() - _s5t });
+    logPlay(gameId, "external_tools", {
+      installed: toolsResult.installed.join(", "),
+      skipped: toolsResult.skipped.join(", "),
+      failed: toolsResult.failed.join(", "),
     });
 
     // ── Step 6: SKSE (antes do deploy para o swap do launcher funcionar) ──
