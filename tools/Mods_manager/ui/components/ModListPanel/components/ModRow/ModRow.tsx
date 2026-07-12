@@ -117,6 +117,15 @@ export function ModRow({
       onContextMenu={handleContextMenu}
       title={conflictTooltip}
     >
+      <div className="mod-row__checkbox" onClick={e => { e.stopPropagation(); onToggle(); }}>
+        <input
+          type="checkbox"
+          checked={mod.enabled}
+          readOnly
+          className="mod-row__checkbox-input"
+        />
+      </div>
+
       <div className="mod-row__name">
         {conflicts && (
           <span

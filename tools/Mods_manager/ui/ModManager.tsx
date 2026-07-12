@@ -169,7 +169,7 @@ export default function ModManager() {
     elapsedTime: installElapsedTime,
   } = useInstallOrchestrator(selectedGame, selectedProfile, configStagingDir, addLog, loadMods);
 
-  // Wrapper: abre file dialog → chama orquestrador
+  // Wrapper: abre file dialog → chama orquestrador → abre FOMOD se necessário
   const pickAndOrchInstall = useCallback(async () => {
     try {
       const result = await window.electron.showOpenDialog({
@@ -181,11 +181,17 @@ export default function ModManager() {
         properties: ["openFile"],
       });
       if (result.canceled || !result.filePaths.length) return;
-      await startOrchInstall(result.filePaths[0]);
+      const archivePath = result.filePaths[0];
+      const installResult = await startOrchInstall(archivePath);
+      // Se o mod tem FOMOD, abre o wizard de seleção
+      if (installResult?.success && installResult.hasFomod) {
+        await loadMods();
+        openFomod(installResult.stagingDir, archivePath, installResult.modName);
+      }
     } catch (err) {
       addLog(`Erro ao selecionar arquivo: ${String(err)}`);
     }
-  }, [startOrchInstall, addLog, t]);
+  }, [startOrchInstall, addLog, openFomod, loadMods, t]);
 
   const [showAddProfile, setShowAddProfile] = useState(false);
   const [showConflictDetails, setShowConflictDetails] = useState(false);
