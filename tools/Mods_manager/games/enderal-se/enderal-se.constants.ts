@@ -21,6 +21,5 @@ export const ENDERAL_SE_DLL_OVERRIDES: Record<string, string> = {
 };
 
 for (let n = 0; n < 8; n++) {
-  ENDERAL_SE_DLL_OVERRIDES[`xaudio2_${n}`] = "native,builtin";
   ENDERAL_SE_DLL_OVERRIDES[`x3daudio1_${n}`] = "native,builtin";
 }

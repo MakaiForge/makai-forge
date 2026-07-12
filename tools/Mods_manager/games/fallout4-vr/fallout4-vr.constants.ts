@@ -20,6 +20,5 @@ export const FO4_VR_DLL_OVERRIDES: Record<string, string> = {
 };
 
 for (let n = 0; n < 8; n++) {
-  FO4_VR_DLL_OVERRIDES[`xaudio2_${n}`] = "native,builtin";
   FO4_VR_DLL_OVERRIDES[`x3daudio1_${n}`] = "native,builtin";
 }

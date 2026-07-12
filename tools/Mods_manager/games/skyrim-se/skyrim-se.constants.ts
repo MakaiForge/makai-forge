@@ -22,7 +22,9 @@ export const SKYRIM_SE_DLL_OVERRIDES: Record<string, string> = {
   "d3dcompiler_47": "native",
 };
 
+// xaudio2: REMOVIDO — Proton usa FAudio (reimplementação nativa Linux)
+// que funciona melhor que qualquer DLL nativa/builtin do Wine para vozes.
+// x3daudio mantido como native,builtin para positional audio.
 for (let n = 0; n < 8; n++) {
-  SKYRIM_SE_DLL_OVERRIDES[`xaudio2_${n}`] = "native,builtin";
   SKYRIM_SE_DLL_OVERRIDES[`x3daudio1_${n}`] = "native,builtin";
 }
