@@ -20,6 +20,13 @@ export interface ModEntry {
   category?: string;
 }
 
+export interface FomodComponent {
+  name: string;
+  description: string;
+  enabled: boolean;
+  files: string[];
+}
+
 export interface ModlistEntry {
   name: string;
   enabled: boolean;
@@ -31,6 +38,7 @@ export interface ModlistEntry {
   plugins?: string[];
   hasFomod?: boolean;
   hasSkse?: boolean;
+  fomodComponents?: FomodComponent[];
 }
 
 export interface ModMeta {

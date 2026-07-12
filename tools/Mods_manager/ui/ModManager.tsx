@@ -4,6 +4,7 @@ import { Modal } from "@renderer/components";
 import { BrowserMirror } from "@renderer/components/browser-view";
 import type { ModlistEntry } from "./types";
 import type { ProtonVersion, ProtonFork } from "@types";
+import type { FomodComponent } from "@types";
 
 import { useModLog, useMods, useDeploy, useFomod, useMedia, useRightPanel, useModManagerShortcuts, usePlugins, useSplitPane, useInstallMod, useConflictBadges, useSortPlugins } from "./hooks";
 import { useInstallOrchestrator } from "./hooks/mods/useInstallOrchestrator";
@@ -129,6 +130,29 @@ export default function ModManager() {
   const { activeRightTab, setActiveRightTab, modFiles, iniFiles, selectedIni, setSelectedIni, iniContent, setIniContent, dataFiles, excludedFiles, toggleExcludedFile } = useRightPanel(selectedMod, selectedGame);
   const { plugins, togglePlugin } = usePlugins(selectedGame, selectedProfile, mods);
   const { sorting, sortWarnings, handleSortPlugins } = useSortPlugins(selectedGame, plugins, mods, addLog);
+
+  // FOMOD component toggle state
+  const [fomodComponents, setFomodComponents] = useState<FomodComponent[]>([]);
+
+  // Load FOMOD components when selected mod changes
+  useEffect(() => {
+    if (!selectedMod || !selectedGame) {
+      setFomodComponents([]);
+      return;
+    }
+    if (!selectedMod.hasFomod) {
+      setFomodComponents([]);
+      return;
+    }
+    (async () => {
+      try {
+        const components = await window.electron.modsStore.get(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`);
+        setFomodComponents(Array.isArray(components) ? components : []);
+      } catch {
+        setFomodComponents([]);
+      }
+    })();
+  }, [selectedMod, selectedGame]);
 
   // Install Orchestrator — novo sistema de instalação com verificação
   const {
@@ -436,6 +460,36 @@ export default function ModManager() {
 
   const { onDividerMouseDown } = useSplitPane(containerRef);
 
+  const handleToggleFomodComponent = useCallback(async (componentName: string) => {
+    if (!selectedMod || !selectedGame) return;
+    const component = fomodComponents.find(c => c.name === componentName);
+    if (!component) return;
+
+    // Toggle the component
+    const newComponents = fomodComponents.map(c =>
+      c.name === componentName ? { ...c, enabled: !c.enabled } : c
+    );
+    setFomodComponents(newComponents);
+
+    // Persist to storage
+    await window.electron.modsStore.put(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`, newComponents);
+
+    // Toggle files in staging
+    if (selectedMod.stagingDir) {
+      try {
+        await window.electron.toggleFomodComponent(selectedMod.stagingDir, component.files, component.enabled);
+        addLog(`${component.enabled ? "Disabled" : "Enabled"} FOMOD component: ${componentName}`);
+      } catch (err) {
+        addLog(`Failed to toggle ${componentName}: ${err}`);
+      }
+    }
+  }, [selectedMod, selectedGame, fomodComponents, addLog]);
+
+  const handleReconfigureFomod = useCallback(() => {
+    if (!selectedMod?.stagingDir || !selectedMod.hasFomod) return;
+    openFomod(selectedMod.stagingDir, "", selectedMod.name);
+  }, [selectedMod, openFomod]);
+
   useModManagerShortcuts({
     selectedModIdx,
     filteredMods,
@@ -577,6 +631,9 @@ export default function ModManager() {
                 onToggleExclude={toggleExcludedFile}
                 onIniSelect={(path, content) => { setSelectedIni(path); setIniContent(content); }}
                 onIniChange={setIniContent}
+                fomodComponents={fomodComponents}
+                onToggleFomodComponent={handleToggleFomodComponent}
+                onReconfigureFomod={handleReconfigureFomod}
               />
             </div>
           </div>

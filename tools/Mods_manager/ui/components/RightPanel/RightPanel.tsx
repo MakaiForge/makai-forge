@@ -2,9 +2,11 @@ import { IniEditorTab } from "./components/IniEditorTab/IniEditorTab";
 import { PluginListTab } from "./components/PluginListTab/PluginListTab";
 import { ModFilesTab } from "./components/ModFilesTab/ModFilesTab";
 import { DataFolderTab } from "./components/DataFolderTab/DataFolderTab";
+import { FomodComponentsTab } from "./components/FomodComponentsTab/FomodComponentsTab";
 import type { ModlistEntry, PluginEntry, FileTreeEntry } from "../../types/mod.types";
+import type { FomodComponent } from "@types";
 
-type RightTab = "files" | "ini" | "data";
+type RightTab = "files" | "ini" | "data" | "fomod";
 
 interface RightPanelProps {
   selectedMod: ModlistEntry | null;
@@ -21,6 +23,9 @@ interface RightPanelProps {
   onToggleExclude: (path: string) => void;
   onIniSelect: (path: string, content: string) => void;
   onIniChange: (content: string) => void;
+  fomodComponents: FomodComponent[];
+  onToggleFomodComponent: (componentName: string) => void;
+  onReconfigureFomod: () => void;
 }
 
 const tabs: { id: RightTab; label: string }[] = [
@@ -35,11 +40,17 @@ export function RightPanel({
   activeRightTab, onTabChange,
   onTogglePlugin, onToggleExclude,
   onIniSelect, onIniChange,
+  fomodComponents, onToggleFomodComponent, onReconfigureFomod,
 }: RightPanelProps) {
+  const hasFomod = fomodComponents.length > 0;
+  const rightTabs = hasFomod
+    ? [...tabs, { id: "fomod" as RightTab, label: "FOMOD" }]
+    : tabs;
+
   return (
     <>
       <div className="mod-manager__right-tabs">
-        {tabs.map(t => (
+        {rightTabs.map(t => (
           <button
             key={t.id}
             className={`mod-manager__tab ${activeRightTab === t.id ? "mod-manager__tab--active" : ""}`}
@@ -78,6 +89,13 @@ export function RightPanel({
         {activeRightTab === "data" && (
           <DataFolderTab
             entries={dataFolderEntries}
+          />
+        )}
+        {activeRightTab === "fomod" && (
+          <FomodComponentsTab
+            components={fomodComponents}
+            onToggle={onToggleFomodComponent}
+            onReconfigure={onReconfigureFomod}
           />
         )}
       </div>

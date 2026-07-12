@@ -66,4 +66,4 @@ export interface DeployResult {
   conflicts?: FileConflict[];
 }
 
-export type RightTab = "files" | "ini" | "data";
+export type RightTab = "files" | "ini" | "data" | "fomod";

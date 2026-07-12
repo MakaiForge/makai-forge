@@ -184,12 +184,17 @@ export function useFomod(
     setError(null);
     addLog("Applying FOMOD selections...");
     try {
-      const result = await window.electron.installFomod(fomodDir, fomodDir, selections);
+      const result = await window.electron.installFomodWithComponents(fomodDir, fomodDir, selections);
       addLog(`FOMOD install complete: ${result.filesCopied} files`);
       // Save selections for future reinstalls
       if (modName && gameId) {
         await window.electron.modsStore.put(fomodSelectionsKey(modName), selections);
         addLog(`Saved FOMOD selections for ${modName}`);
+      }
+      // Save component toggle data if components were captured
+      if (modName && gameId && result.components?.length) {
+        await window.electron.modsStore.put(`game:${gameId}:mod:${modName}:fomodComponents`, result.components);
+        addLog(`Saved ${result.components.length} FOMOD component(s) for toggle UI`);
       }
     } catch (err) {
       addLog(`FOMOD error: ${String(err)}`);

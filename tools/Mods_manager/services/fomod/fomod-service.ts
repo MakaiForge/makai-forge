@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseFomodXml, resolveFomodFiles } from "./fomod-parser";
 import type { FomodConfig } from "./fomod-types";
+import type { FomodComponent } from "@types";
 
 export class FomodService {
   /** Find the ModuleConfig.xml in a mod's staging directory. */
@@ -43,10 +44,30 @@ export class FomodService {
     targetDir: string,
     selections: Record<string, string[]>
   ): Promise<{ success: boolean; log: string[]; filesCopied: number }> {
+    const result = await this.installWithComponents(stagingDir, targetDir, selections, false);
+    return { success: result.success, log: result.log, filesCopied: result.filesCopied };
+  }
+
+  /**
+   * Install FOMOD with optional component tracking.
+   * When `captureComponents` is true, keeps ALL files (no cleanup) and returns
+   * a component→files mapping so the UI can toggle sub-mods later.
+   */
+  static async installWithComponents(
+    stagingDir: string,
+    targetDir: string,
+    selections: Record<string, string[]>,
+    captureComponents: boolean = false,
+  ): Promise<{
+    success: boolean;
+    log: string[];
+    filesCopied: number;
+    components: FomodComponent[];
+  }> {
     const log: string[] = [];
     const config = this.parse(stagingDir);
     if (!config) {
-      return { success: false, log: ["No FOMOD config found"], filesCopied: 0 };
+      return { success: false, log: ["No FOMOD config found"], filesCopied: 0, components: [] };
     }
 
     const pairs = resolveFomodFiles(config, selections);
@@ -65,8 +86,6 @@ export class FomodService {
         }
 
         const isDir = fs.statSync(sourcePath).isDirectory();
-        // <file destination=""> → preserve source path (destination = source)
-        // <folder destination=""> → copy CONTENTS to target root (keep empty)
         const effectiveDest = pair.destination || (isDir ? "" : pair.source);
         const destPath = path.join(targetDir, effectiveDest);
 
@@ -84,12 +103,20 @@ export class FomodService {
 
       log.push(`Copied ${filesCopied} files from FOMOD selections`);
 
-      // Clean up non-selected files — use the coped file paths to know
-      // which top-level entries to keep (fomod/ + selected destinations)
-      const removed = this.cleanupNonSelected(stagingDir, copied);
-      log.push(`Cleaned up ${removed} non-selected files/directories`);
+      // Build component→files mapping BEFORE any cleanup
+      let components: FomodComponent[] = [];
+      if (captureComponents) {
+        components = this.buildComponentMap(config, selections, stagingDir, targetDir);
+        log.push(`Captured ${components.length} component(s) for toggle UI`);
+      }
 
-      return { success: true, log, filesCopied };
+      // Only cleanup when NOT capturing components (legacy behavior)
+      if (!captureComponents) {
+        const removed = this.cleanupNonSelected(stagingDir, copied);
+        log.push(`Cleaned up ${removed} non-selected files/directories`);
+      }
+
+      return { success: true, log, filesCopied, components };
     } catch (err) {
       log.push(`FOMOD install failed: ${String(err)}. Rolling back...`);
       for (const filePath of copied) {
@@ -98,7 +125,64 @@ export class FomodService {
         } catch { /* skip */ }
       }
       log.push(`Rolled back ${copied.length} files`);
-      return { success: false, log, filesCopied };
+      return { success: false, log, filesCopied, components: [] };
+    }
+  }
+
+  /**
+   * Build a component→files mapping from FOMOD config and selections.
+   * Each plugin in a SelectAny/SelectExactlyOne group becomes a toggleable component.
+   */
+  private static buildComponentMap(
+    config: FomodConfig,
+    selections: Record<string, string[]>,
+    stagingDir: string,
+    targetDir: string,
+  ): FomodComponent[] {
+    const components: FomodComponent[] = [];
+
+    for (const step of config.steps) {
+      const stepSelections = selections[step.id] || selections[step.name] || [];
+      for (const group of step.groups) {
+        for (const plugin of group.plugins) {
+          if (!plugin.files || plugin.files.length === 0) continue;
+          const files: string[] = [];
+          for (const f of plugin.files) {
+            const effectiveDest = f.destination || f.source;
+            const destPath = path.join(targetDir, effectiveDest);
+            // Walk directory if source is a directory
+            const srcPath = path.join(stagingDir, f.source);
+            if (fs.existsSync(srcPath) && fs.statSync(srcPath).isDirectory()) {
+              this.walkDir(srcPath, (rel) => {
+                files.push(path.join(effectiveDest, rel));
+              });
+            } else {
+              files.push(effectiveDest);
+            }
+          }
+          components.push({
+            name: plugin.name,
+            description: plugin.description || "",
+            enabled: stepSelections.includes(plugin.name),
+            files,
+          });
+        }
+      }
+    }
+
+    return components;
+  }
+
+  private static walkDir(dir: string, callback: (relPath: string) => void, base: string = dir): void {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      const rel = path.relative(base, full);
+      if (entry.isDirectory()) {
+        this.walkDir(full, callback, base);
+      } else {
+        callback(rel);
+      }
     }
   }
 
