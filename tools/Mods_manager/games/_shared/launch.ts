@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
+import { app } from "electron";
 import { logger } from "@main/services";
 
 export interface LaunchOptions {
@@ -159,10 +160,12 @@ export function launchViaProton(
     return;
   }
 
-  // Fallback: umu-run
+  // Fallback: umu-run (bundled in tools/prefix/)
   try {
+    const bundledUmu = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
+    const umuBin = fs.existsSync(bundledUmu) ? bundledUmu : "umu-run";
     logger.info(`Launching via umu-run: ${exePath}`);
-    spawn("umu-run", [exePath], {
+    spawn(umuBin, [exePath], {
       cwd: gameDir,
       env: launchEnv,
       stdio: "ignore",

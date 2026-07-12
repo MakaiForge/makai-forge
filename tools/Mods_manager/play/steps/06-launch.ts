@@ -115,7 +115,7 @@ export async function launchGame(
       ? "umu-run"
       : null;
     if (!umuRunPath) {
-      const bundled = path.join(app.getAppPath(), "resources", "binaries", "umu-run");
+      const bundled = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
       if (fs.existsSync(bundled)) umuRunPath = bundled;
     }
 

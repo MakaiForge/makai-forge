@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import { app } from "electron";
 import { ModStorageService, logger } from "@main/services";
 import { getGameInfo, getGameModule } from "@games/registry";
 import { scanFixGame } from "./scanfix-game";
@@ -148,7 +149,7 @@ export async function launchGame(
       const env = getSteamLaunchEnv(steamAppId, gamePath, prefixPath);
       const gameProtonPath = config?.protonVersion;
       const globalProtonPath = ModStorageService.get<string>("proton_binary");
-      const protonPath = gameProtonPath || globalProtonPath || "umu-run";
+      const protonPath = gameProtonPath || globalProtonPath || path.join(app.getAppPath(), "tools", "prefix", "umu-run");
       launchViaProton(sksePath, protonPath, env);
       send("launch", `✅ ${info?.name || gameId} iniciado!`, "done");
       return { success: true, method: "skse" };
@@ -169,7 +170,7 @@ export async function launchGame(
         const env = getSteamLaunchEnv(undefined, gamePath, prefixPath);
         const gameProtonPath = config?.protonVersion;
         const globalProtonPath = ModStorageService.get<string>("proton_binary");
-        const protonPath = gameProtonPath || globalProtonPath || "umu-run";
+        const protonPath = gameProtonPath || globalProtonPath || path.join(app.getAppPath(), "tools", "prefix", "umu-run");
         launchViaProton(exePath, protonPath, env);
         send("launch", `✅ ${info?.name || gameId} iniciado!`, "done");
         return { success: true, method: "direct" };

@@ -1,5 +1,6 @@
 import { registerEvent } from "@main/events/register-event";
 import { spawn } from "node:child_process";
+import { app } from "electron";
 import { ModStorageService } from "@main/services";
 import path from "node:path";
 import fs from "node:fs";
@@ -48,7 +49,8 @@ registerEvent("launchExternalTool", async (_event, gameId: string, toolName: str
   const gameConfig = ModStorageService.get<{ gamePath?: string }>(`game:${gameId}:config`);
 
   if (tool.useProton && gameConfig?.gamePath) {
-    const protonBin = ModStorageService.get<string>("proton_binary") || "umu-run";
+    const protonBin = ModStorageService.get<string>("proton_binary")
+      || path.join(app.getAppPath(), "tools", "prefix", "umu-run");
     const args = tool.args
       ? [tool.exePath, ...tool.args.split(/\s+/)]
       : [tool.exePath];
