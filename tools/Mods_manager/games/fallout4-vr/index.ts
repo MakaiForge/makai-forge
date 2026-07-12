@@ -44,7 +44,7 @@ export function createFallout4VRModule(): GameModule {
       bsaVersion: null,
       archiveListKey: "SArchiveList",
       archiveListInPrefsIni: true,
-      needsModBsas: false,
+      needsModBsas: true,
       modBsaExtensions: [".ba2"],
       invalidationIniKey: "bInvalidateOlderFiles",
       iniFilename: "Fallout4.ini",

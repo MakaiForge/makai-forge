@@ -176,6 +176,7 @@ export function revertInvalidation(
   gamePath: string,
   prefixPath: string | undefined,
   myGamesSubpath: string,
+  modBsaNames?: string[],
 ): void {
   if (!config.enabled || !prefixPath) return;
 
@@ -194,8 +195,8 @@ export function revertInvalidation(
     if (config.bsaName) {
       let current = readIniKey(iniPath, "Archive", config.archiveListKey) || "";
       let updated = removeFromArchiveList(current, config.bsaName);
-      if (config.needsModBsas) {
-        updated = removeManyFromArchiveList(updated, [config.bsaName]);
+      if (config.needsModBsas && modBsaNames) {
+        updated = removeManyFromArchiveList(updated, modBsaNames);
       }
       setIniKey(iniPath, "Archive", config.archiveListKey, updated || null);
       setIniKey(iniPath, "Archive", "SInvalidationFile", null);

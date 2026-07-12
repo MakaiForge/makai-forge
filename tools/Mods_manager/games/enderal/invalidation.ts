@@ -7,7 +7,7 @@ export function getInvalidationConfig(): ArchiveInvalidationConfig {
     bsaVersion: 0x68,
     archiveListKey: "SArchiveList",
     archiveListInPrefsIni: true,
-    needsModBsas: false,
+    needsModBsas: true,
     modBsaExtensions: [".bsa"],
     invalidationIniKey: "bInvalidateOlderFiles",
     iniFilename: "Enderal.ini",

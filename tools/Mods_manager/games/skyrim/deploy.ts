@@ -3,7 +3,7 @@ import path from "node:path";
 import type { DeploymentResult, ModlistEntry } from "@types";
 import type { LinkMode } from "../_shared/types";
 import { deployFilemap, restoreCore, symlinkPluginsTxt, removePluginsTxtSymlink, symlinkIniFiles, removeIniSymlinks } from "../_shared/bethesda-deploy-helpers";
-import { applyInvalidation, revertInvalidation } from "../_shared/bethesda-invalidation";
+import { applyInvalidation, revertInvalidation, deployedModBsas } from "../_shared/bethesda-invalidation";
 import { collectPlugins } from "../_shared/bethesda-plugins";
 import { SKYRIM_CONSTANTS } from "./skyrim.constants";
 import { getInvalidationConfig } from "./invalidation";
@@ -152,7 +152,8 @@ export async function restoreSkyrimVariant(
   }
 
   const config = getInvalidationConfig();
-  revertInvalidation(config, gamePath, prefixPath, sc.myGamesSubpath);
+  const modBsaNames = deployedModBsas(dataDir);
+  revertInvalidation(config, gamePath, prefixPath, sc.myGamesSubpath, modBsaNames);
 
   restoreCore(dataDir, undefined, (m) => log.push(m));
   if (!sc.skipLauncherSwap) {
