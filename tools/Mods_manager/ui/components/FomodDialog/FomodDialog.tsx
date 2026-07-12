@@ -15,11 +15,12 @@ interface FomodDialogProps {
   onPrevStep: () => void;
   onInstall: () => void;
   onCancel: () => void;
+  onResetSelections?: () => void;
 }
 
 export function FomodDialog({
   open, loading = false, steps, currentStep, installing, error,
-  onTogglePlugin, onNextStep, onPrevStep, onInstall, onCancel,
+  onTogglePlugin, onNextStep, onPrevStep, onInstall, onCancel, onResetSelections,
 }: FomodDialogProps) {
   if (!open) return null;
   if (loading) {
@@ -90,6 +91,16 @@ export function FomodDialog({
         </div>
 
         <div className="fomod-dialog__footer">
+          {onResetSelections && (
+            <button
+              className="fomod-dialog__reset"
+              disabled={installing}
+              onClick={onResetSelections}
+              title="Reset to default selections"
+            >
+              Reset
+            </button>
+          )}
           <button disabled={isFirst || installing} onClick={onPrevStep}>Back</button>
           <span className="fomod-dialog__footer-info">
             {installing ? "Installing..." : step?.groups?.length ? `${step.groups.length} group(s)` : ""}

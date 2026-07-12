@@ -92,3 +92,10 @@
   color: #bfb !important;
 }
 .fomod-dialog__install:hover:not(:disabled) { background: #3a9a3a !important; }
+
+.fomod-dialog__reset {
+  background: #4a3a1a !important;
+  border-color: #6a5a2a !important;
+  color: #dda !important;
+}
+.fomod-dialog__reset:hover:not(:disabled) { background: #5a4a2a !important; }

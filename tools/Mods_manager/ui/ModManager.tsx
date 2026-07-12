@@ -78,7 +78,7 @@ export default function ModManager() {
 
   const { conflictSet, conflictDetails, allConflicts } = useConflictBadges(mods);
   const { deploying, deployResult, setDeployResult, conflicts, showConflicts, setShowConflicts, showDeployConfirm, setShowDeployConfirm, handleDeploy, detectAndShowConflicts } = useDeploy(selectedGame, selectedProfile, addLog);
-  const { showFomod, fomodDir, config, filteredSteps, loading: fomodLoading, error: fomodError, currentStep, installing, selections, openFomod, handleTogglePlugin, handleNextStep, handlePrevStep, handleInstall, handleFomodCancel } = useFomod(addLog, loadMods, selectedGame, handleModInstalled);
+  const { showFomod, fomodDir, config, filteredSteps, loading: fomodLoading, error: fomodError, currentStep, installing, selections, openFomod, handleTogglePlugin, handleNextStep, handlePrevStep, handleInstall, handleFomodCancel, handleResetSelections } = useFomod(addLog, loadMods, selectedGame, handleModInstalled);
   const [bainVisible, setBainVisible] = useState(false);
   const [bainLoading, setBainLoading] = useState(false);
   const [bainPackages, setBainPackages] = useState<{ order: number; name: string; directory: string; file_count: number }[]>([]);
@@ -549,6 +549,12 @@ export default function ModManager() {
                 onRemoveMod={(name) => { removeMod(name); setSelectedModIdx(null); }}
                 onDeleteMod={handleDeleteMod}
                 onEslify={handleEslify}
+                onReconfigureFomod={(modName) => {
+                  const mod = mods.find(m => m.name === modName);
+                  if (mod?.stagingDir && mod.hasFomod) {
+                    openFomod(mod.stagingDir, "", mod.name);
+                  }
+                }}
                 onConflictClick={handleConflictClick}
               />
             </div>
@@ -646,6 +652,7 @@ export default function ModManager() {
           onPrevStep={handlePrevStep}
           onInstall={handleInstall}
           onCancel={handleFomodCancel}
+          onResetSelections={handleResetSelections}
         />
 
         <BainDialog

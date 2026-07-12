@@ -206,6 +206,36 @@ export function useFomod(
     await onRefresh();
   }, [addLog, onRefresh]);
 
+  const handleResetSelections = useCallback(async () => {
+    if (!config || !fomodDir) return;
+    // Delete saved selections from storage
+    if (modName && gameId) {
+      try {
+        await window.electron.modsStore.put(fomodSelectionsKey(modName), null);
+        addLog(`Reset FOMOD selections for ${modName}`);
+      } catch { /* ignore */ }
+    }
+    // Recompute defaults
+    const defaults: Record<string, string[]> = {};
+    for (const step of config.steps || []) {
+      const sel: string[] = [];
+      for (const group of step.groups || []) {
+        if (group.type === "SelectExactlyOne" || group.type === "SelectAtMostOne") {
+          if (group.plugins?.[0]) sel.push(group.plugins[0].name);
+        } else {
+          for (const plugin of group.plugins || []) {
+            if (plugin.type === "Recommended" || plugin.type === "Required") {
+              sel.push(plugin.name);
+            }
+          }
+        }
+      }
+      defaults[step.id] = sel;
+    }
+    setSelections(defaults);
+    setCurrentStep(0);
+  }, [config, fomodDir, modName, gameId, fomodSelectionsKey, addLog]);
+
   const handleInstallMod = useCallback(async (): Promise<string | null> => {
     try {
       const result = await window.electron.showOpenDialog({
@@ -238,6 +268,7 @@ export function useFomod(
     handlePrevStep,
     handleInstall,
     handleFomodCancel,
+    handleResetSelections,
     handleInstallMod,
   };
 }

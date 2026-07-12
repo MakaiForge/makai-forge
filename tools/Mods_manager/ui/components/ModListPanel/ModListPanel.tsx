@@ -27,6 +27,7 @@ interface ModListPanelProps {
   onRemoveMod?: (modName: string) => void;
   onDeleteMod?: (modName: string) => void;
   onEslify?: (modName: string) => void;
+  onReconfigureFomod?: (modName: string) => void;
   onConflictClick?: (mod: ModlistEntry) => void;
 }
 
@@ -34,7 +35,7 @@ export function ModListPanel({
   mods, selectedMod, searchQuery, mediaCache, loading, conflicts,
   conflictDetails, searchRef, onToggle, onSelect, onSearch, onReorder,
   onPreview, onReadme, onLock, onAddSeparator, onRemoveMod, onDeleteMod, onEslify,
-  onConflictClick,
+  onReconfigureFomod, onConflictClick,
 }: ModListPanelProps) {
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const dragIdxRef = useRef<number | null>(null);
@@ -139,6 +140,7 @@ export function ModListPanel({
                     onRemove={onRemoveMod ? () => onRemoveMod(mod.name) : undefined}
                     onDelete={onDeleteMod ? () => onDeleteMod(mod.name) : undefined}
                     onEslify={onEslify ? () => onEslify(mod.name) : undefined}
+                    onReconfigureFomod={onReconfigureFomod ? () => onReconfigureFomod(mod.name) : undefined}
                     onConflictClick={onConflictClick ? () => onConflictClick(mod) : undefined}
                   />
                 </div>

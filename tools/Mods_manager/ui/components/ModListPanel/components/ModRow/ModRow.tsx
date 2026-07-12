@@ -28,6 +28,7 @@ interface ModRowProps {
   onRemove?: () => void;
   onDelete?: () => void;
   onEslify?: () => void;
+  onReconfigureFomod?: () => void;
   onConflictClick?: () => void;
 }
 
@@ -35,7 +36,7 @@ export function ModRow({
   mod, index, selected, dragOver, media, conflicts, conflictInfo,
   onToggle, onSelect, onDragStart, onDragOver, onDrop, onDragEnd,
   onPreview, onReadme, onLock, onAddSeparator, onRemove, onDelete, onEslify,
-  onConflictClick,
+  onReconfigureFomod, onConflictClick,
 }: ModRowProps) {
   const [ctxOpen, setCtxOpen] = useState(false);
   const [ctxPos, setCtxPos] = useState({ x: 0, y: 0 });
@@ -166,6 +167,11 @@ export function ModRow({
           {hasEsp && (
             <button onClick={() => { setCtxOpen(false); onEslify?.(); }}>
               ESLify (convert to ESL)
+            </button>
+          )}
+          {mod.hasFomod && (
+            <button onClick={() => { setCtxOpen(false); onReconfigureFomod?.(); }}>
+              Reconfigure FOMOD
             </button>
           )}
           <hr className="mod-row__ctx-div" />
