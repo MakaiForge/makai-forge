@@ -23,6 +23,24 @@ registerEvent("deployMods", async (_event, gameId: string, profile: string) => {
   const config = ModStorageService.get<any>(`game:${gameId}:config`);
   if (!config) return { success: false, log: ["Game not configured"], filemap: {} };
 
+  // Guard: validate gamePath is usable
+  const gamePath = config.gamePath;
+  if (!gamePath || typeof gamePath !== "string") {
+    return { success: false, log: ["Game path not configured — set the game path first"], filemap: {} };
+  }
+  if (gamePath === "." || gamePath === "./" || gamePath === ".." || gamePath === "../") {
+    return { success: false, log: [`Game path cannot be relative ("${gamePath}") — set the actual game directory`], filemap: {} };
+  }
+  if (gamePath.includes("~")) {
+    return { success: false, log: [`Game path contains unexpanded "~" — use the full path (e.g. /home/cas/Games/...)`], filemap: {} };
+  }
+  if (!path.isAbsolute(gamePath)) {
+    return { success: false, log: [`Game path must be absolute ("${gamePath}")`], filemap: {} };
+  }
+  if (!fs.existsSync(gamePath)) {
+    return { success: false, log: [`Game path does not exist: ${gamePath}`], filemap: {} };
+  }
+
   const stagingDir = config.stagingDir || getStagingDir(gameId);
   const modlistKey = mkMlKey(gameId, profile);
   const modlist: any[] = ModStorageService.get(modlistKey) || [];
