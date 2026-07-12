@@ -608,7 +608,8 @@ export default function ModManager() {
               onStagingDirChange={setConfigStagingDir}
               onPrefixPathChange={setConfigPrefixPath}
               onProtonPathChange={setConfigProtonPath}
-              onOpenProtonSwitch={() => {
+              onOpenProtonSwitch={async () => {
+                await handleSaveGameConfig();
                 setProtonSelectorMode("switch");
                 setShowGameConfig(false);
                 setShowProtonSelector(true);

@@ -338,11 +338,36 @@ export function ProtonRecommendationModal({
 
     if (!protonPath && !selectedFork) return;
 
-    if (mode === "switch" && onSwitchProton && protonPath) {
+    if (mode === "switch" && onSwitchProton) {
+      let pathToSwitch = protonPath;
+
+      // Se o fork não está instalado, baixar primeiro
+      if (!pathToSwitch && selectedFork && onDownloadAndSelect) {
+        setSwitching(true);
+        setSwitchResult(null);
+        try {
+          pathToSwitch = await window.electron.downloadProton(selectedFork);
+        } catch {
+          setSwitchResult({ ok: false, msg: "Falha ao baixar o Proton selecionado." });
+          setSwitching(false);
+          return;
+        }
+        if (!pathToSwitch) {
+          setSwitchResult({ ok: false, msg: "Falha ao baixar o Proton selecionado." });
+          setSwitching(false);
+          return;
+        }
+      }
+
+      if (!pathToSwitch) {
+        setSwitchResult({ ok: false, msg: "Nenhum Proton selecionado para trocar." });
+        return;
+      }
+
       setSwitching(true);
       setSwitchResult(null);
       try {
-        const result = await onSwitchProton(protonPath);
+        const result = await onSwitchProton(pathToSwitch);
         if (result && typeof result === "object") {
           if (result.ok) {
             setSwitchResult({ ok: true, msg: `Proton trocado com sucesso! Saves restaurados: ${result.data?.savesRestored ?? 0}` });
