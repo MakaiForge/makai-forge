@@ -65,6 +65,14 @@ export async function ensureProton(
   send: SendProgress,
   prefixPath?: string,
 ): Promise<ProtonInfo> {
+  // Check if user already has a Proton configured and installed
+  const storedProton = ModStorageService.get<string>("proton_binary");
+  if (storedProton && fs.existsSync(path.join(storedProton, "proton"))) {
+    logger.log(`[ProtonDebug] using stored proton_binary: ${storedProton}`);
+    send("proton", `✅ Proton configurado: ${path.basename(storedProton)}`, "done");
+    return { protonPath: storedProton };
+  }
+
   send("proton", "🔍 Consultando Proton recomendado...", "working");
 
   const mod = getGameModule(gameId);
@@ -106,16 +114,36 @@ export async function ensureProton(
 
   const installed = await getInstalledTools();
   const match = installed.find(i => {
-    const n = i.tool.id.toLowerCase();
+    const toolId = i.tool.id.toLowerCase();
+    const dirLower = path.basename(i.path).toLowerCase();
+    const forkLower = forkName.toLowerCase();
+    // Match by tool ID (e.g. "proton-ge" matches fork "ge-proton")
+    if (toolId === "proton-ge" && forkLower.includes("ge-proton")) return true;
+    if (toolId.includes(forkLower) || forkLower.includes(toolId)) return true;
+    // Match by directory name (e.g. "GE-Proton11-1" includes "ge-proton")
+    if (dirLower.includes(forkLower)) return true;
+    // Match by version string
     const v = i.version.toLowerCase();
-    return n.includes(forkName.toLowerCase()) || v.includes(forkName.toLowerCase());
+    if (v.includes(forkLower) || forkLower.includes(v)) return true;
+    return false;
   });
 
-  if (match) {
-    send("proton", `✅ ${protonLabel} já instalado: ${match.path}`, "done");
-    ModStorageService.put("proton_binary", match.path);
-    logger.log(`[ProtonDebug] usando GE-Proton instalado, useCustomPrefix=${useCustomPrefix}`);
-    return { protonPath: match.path, useCustomPrefix };
+  // Also try to find a version-specific match (e.g. GE-Proton11-1)
+  const versionMatch = installed.find(i => {
+    const dirLower = path.basename(i.path).toLowerCase();
+    const v = i.version.toLowerCase();
+    const fv = forkVersion.toLowerCase().replace(/^v/, "");
+    if (fv === "latest") return false;
+    return dirLower.includes(fv) || v.includes(fv);
+  });
+
+  const bestMatch = versionMatch || match;
+
+  if (bestMatch) {
+    send("proton", `✅ ${bestMatch.version || path.basename(bestMatch.path)} já instalado: ${bestMatch.path}`, "done");
+    ModStorageService.put("proton_binary", bestMatch.path);
+    logger.log(`[ProtonDebug] usando Proton instalado: ${bestMatch.path}, useCustomPrefix=${useCustomPrefix}`);
+    return { protonPath: bestMatch.path, useCustomPrefix };
   }
 
   send("proton", `⬇️ Baixando ${protonLabel}...`, "working");
