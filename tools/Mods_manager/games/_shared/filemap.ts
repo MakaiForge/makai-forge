@@ -14,6 +14,29 @@ export function stripDataPrefix(relativePath: string): string {
   return relativePath;
 }
 
+const KNOWN_DATA_FOLDERS = new Set([
+  "meshes", "textures", "scripts", "sounds", "music", "interface",
+  "materials", "particles", "grass", "landscape", "trees", "clutter",
+  "programs", "strings", "video", "skse", "calientetools", "fnis",
+]);
+
+function stripWrapperFolders(relativePath: string, modName: string): string {
+  let result = stripDataPrefix(relativePath);
+  const modNameLower = modName.toLowerCase();
+  const resultParts = result.split(path.sep);
+  if (resultParts.length > 0 && resultParts[0].toLowerCase() === modNameLower) {
+    result = resultParts.slice(1).join(path.sep);
+  }
+  const finalParts = result.split(path.sep);
+  if (finalParts.length > 1 && !KNOWN_DATA_FOLDERS.has(finalParts[0].toLowerCase())) {
+    const secondLower = finalParts[1].toLowerCase();
+    if (KNOWN_DATA_FOLDERS.has(secondLower) || secondLower === "calientetools") {
+      result = finalParts.slice(1).join(path.sep);
+    }
+  }
+  return result;
+}
+
 export interface WalkDirOptions {
   skipDotfiles?: boolean;
 }
@@ -121,7 +144,12 @@ export async function buildFilemap(
     if (!modStaging) continue;
 
     walkDir(modStaging, (fullPath, relativePath) => {
-      filemap[relativePath] = fullPath;
+      const stripped = stripWrapperFolders(relativePath, modName);
+      if (stripped && stripped !== "." && stripped !== relativePath) {
+        filemap[stripped] = fullPath;
+      } else {
+        filemap[relativePath] = fullPath;
+      }
     }, { skipDotfiles: true });
   }
 
@@ -154,7 +182,7 @@ export async function buildPluginFilemap(
           && (ext === ".exe" || ext === ".dll");
         if (!isPlugin && !isSE) return;
       }
-      const strippedPath = stripDataPrefix(relativePath);
+      const strippedPath = stripWrapperFolders(relativePath, modName);
       filemap[strippedPath] = fullPath;
     });
   }
