@@ -124,6 +124,27 @@ export async function applyGameConfigs(
     } else {
       send("registry", `✅ My Games\\${gameSubpath} já existe`, "done");
     }
+
+    // ── Skyrim LE: borderless fix (bFull Screen=1 + DXVK → crash) ──
+    if (gameId === "skyrim") {
+      const prefsIni = path.join(myGamesTarget, "SkyrimPrefs.ini");
+      if (fs.existsSync(prefsIni)) {
+        let content = fs.readFileSync(prefsIni, "utf-8");
+        let changed = false;
+        if (content.includes("bFull Screen=1")) {
+          content = content.replace("bFull Screen=1", "bFull Screen=0");
+          changed = true;
+        }
+        if (!content.includes("bBorderless=")) {
+          content = content.replace(/\[Display\]/, "[Display]\nbBorderless=1");
+          changed = true;
+        }
+        if (changed) {
+          fs.writeFileSync(prefsIni, content, "utf-8");
+          send("ini", "✅ SkyrimPrefs.ini: borderless ativado (previne crash com DXVK)", "done");
+        }
+      }
+    }
   }
 }
 

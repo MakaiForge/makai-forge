@@ -85,7 +85,7 @@ export async function launchGame(
 
   if (launchExe && fs.existsSync(launchExe)) {
     const gameDir = path.dirname(launchExe);
-    const launchEnv = { ...process.env, ...env };
+    const launchEnv = { ...process.env, ...env, PROTON_LOG: "1" };
     const protonExe = path.join(protonPath, "proton");
 
     logger.info(`[Launch] === LAUNCH DEBUG ===`);
