@@ -40,6 +40,7 @@ export default function ModManager() {
 
   const [showDetectionWizard, setShowDetectionWizard] = useState(false);
   const [healthBanner, setHealthBanner] = useState<{ status: "loading" | "valid" | "issues" | "error"; message: string } | null>(null);
+  const [originalProtonPath, setOriginalProtonPath] = useState<string>("");
 
   const { log, addLog } = useModLog();
   const { games, setGames, selectedGame, setSelectedGame, currentGame, showGameConfig, setShowGameConfig, configGamePath, setConfigGamePath, configStagingDir, setConfigStagingDir, configPrefixPath, setConfigPrefixPath, configProtonPath, setConfigProtonPath, saveGameConfig, discoverInstalledGames } = useGameConfig();
@@ -334,6 +335,20 @@ export default function ModManager() {
     await setupProton(selectedGame, protonPath);
   }, [selectedGame, configGamePath, configStagingDir, saveGameConfig, setConfigProtonPath, addLog, setupProton, saveGlobalProton]);
 
+  const handleSwitchProton = useCallback(async (newProtonPath: string) => {
+    if (!selectedGame) return;
+    addLog(`Iniciando troca de Proton: ${configProtonPath} → ${newProtonPath}`);
+    const result = await window.electron.switchProton(selectedGame, newProtonPath);
+    if (result.ok) {
+      setConfigProtonPath(newProtonPath);
+      setOriginalProtonPath(newProtonPath);
+      addLog(`Proton trocado com sucesso! Saves restaurados: ${result.data?.savesRestored ?? 0}`);
+    } else {
+      addLog(`Falha na troca: ${result.error}`);
+    }
+    return result;
+  }, [selectedGame, configProtonPath, setConfigProtonPath, addLog]);
+
   const handleLaunchClick = useCallback(() => {
     if (!selectedGame) return;
     const displayName = currentGame?.name || selectedGame;
@@ -462,7 +477,7 @@ export default function ModManager() {
                 selectedProfile={selectedProfile}
                 onGameChange={(g) => { setSelectedGame(g); setSelectedModIdx(null); }}
                 onProfileChange={setSelectedProfile}
-                onGameConfig={() => setShowGameConfig(true)}
+                onGameConfig={() => { setOriginalProtonPath(configProtonPath); setShowGameConfig(true); }}
                 onAddProfile={() => setShowAddProfile(true)}
                 onDetectGames={() => setShowDetectionWizard(true)}
               />
@@ -490,7 +505,7 @@ export default function ModManager() {
               {healthBanner.status === "error" && "❌ "}
               {healthBanner.message}
               {healthBanner.status !== "valid" && (
-                <button className="mod-manager__health-banner-fix" onClick={() => setShowGameConfig(true)}>
+                <button className="mod-manager__health-banner-fix" onClick={() => { setOriginalProtonPath(configProtonPath); setShowGameConfig(true); }}>
                   Configurar
                 </button>
               )}
@@ -584,10 +599,12 @@ export default function ModManager() {
               configStagingDir={configStagingDir}
               configPrefixPath={configPrefixPath}
               configProtonPath={configProtonPath}
+              originalProtonPath={originalProtonPath}
               onGamePathChange={setConfigGamePath}
               onStagingDirChange={setConfigStagingDir}
               onPrefixPathChange={setConfigPrefixPath}
               onProtonPathChange={setConfigProtonPath}
+              onSwitchProton={handleSwitchProton}
               onSave={handleSaveGameConfig}
               onCancel={() => setShowGameConfig(false)}
               t={t}

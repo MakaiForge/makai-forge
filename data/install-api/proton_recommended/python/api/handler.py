@@ -437,6 +437,144 @@ def handle_list_mod_compatible_games(params: dict) -> list:
     return mod_compat.list_mod_compatible_games(str(query) if query else "")
 
 
+# ── Prefix management (para troca de Proton) ────────────────────────────────
+
+
+@register("delete_prefix")
+def handle_delete_prefix(params: dict) -> dict:
+    """Deleta um prefixo Wine/Proton (shutil.rmtree).
+
+    Args:
+        params: Deve conter "prefix_path" (str)
+
+    Retorna:
+        Dict com "success" (bool)
+    """
+    prefix_path = params.get("prefix_path")
+    if not prefix_path:
+        raise RpcError("missing_param", "prefix_path is required")
+    from prefix.core import delete_prefix
+    return {"success": delete_prefix(str(prefix_path))}
+
+
+@register("clean_prefix")
+def handle_clean_prefix(params: dict) -> dict:
+    """Limpa um prefixo: remove user.reg, system.reg, userdef.reg,
+    mantendo a estrutura de diretórios.
+
+    Args:
+        params: Deve conter "prefix_path" (str)
+
+    Retorna:
+        Dict com "success" (bool)
+    """
+    prefix_path = params.get("prefix_path")
+    if not prefix_path:
+        raise RpcError("missing_param", "prefix_path is required")
+    from prefix.core import clean_prefix
+    return {"success": clean_prefix(str(prefix_path))}
+
+
+@register("get_prefix_saves")
+def handle_get_prefix_saves(params: dict) -> dict:
+    """Lista diretórios de saves dentro do prefixo Wine/Proton.
+
+    Procura em locations comuns: Documents/My Games, AppData/Local,
+    AppData/Roaming.
+
+    Args:
+        params: Deve conter "prefix_path" (str)
+                Opcional: "game_id" (str) para filtrar por nome do jogo
+
+    Retorna:
+        Dict com "saves" (list[str]) — caminhos relativos ao prefixo
+    """
+    import os
+    from pathlib import Path
+
+    prefix_path = params.get("prefix_path")
+    if not prefix_path:
+        raise RpcError("missing_param", "prefix_path is required")
+
+    pfx = Path(prefix_path)
+    if not pfx.is_dir():
+        return {"saves": [], "error": "prefix directory not found"}
+
+    saves = []
+    game_id = params.get("game_id", "")
+
+    search_bases = [
+        "drive_c/users/*/Documents/My Games",
+        "drive_c/users/*/AppData/Local",
+        "drive_c/users/*/AppData/Roaming",
+    ]
+
+    for pattern in search_bases:
+        for base in pfx.glob(pattern):
+            if not base.is_dir():
+                continue
+            for child in base.iterdir():
+                if not child.is_dir():
+                    continue
+                child_lower = child.name.lower()
+                if game_id:
+                    gid = game_id.lower().replace("_", "").replace("-", "")
+                    cname = child_lower.replace("_", "").replace("-", "").replace(" ", "")
+                    if gid not in cname and cname not in gid:
+                        continue
+                saves.append(str(child.relative_to(pfx)))
+
+    return {"saves": saves}
+
+
+@register("restore_saves")
+def handle_restore_saves(params: dict) -> dict:
+    """Restaura saves de um backup para o novo prefixo.
+
+    Copia os diretórios de saves do prefixo antigo (backup_source)
+    para o novo prefixo (prefix_path).
+
+    Args:
+        params: Deve conter:
+            "prefix_path" (str) — caminho do novo prefixo
+            "saves_backup" (list[str]) — caminhos relativos dos saves
+            "backup_source" (str) — caminho do prefixo antigo (backup)
+
+    Retorna:
+        Dict com "restored" (list[str]), "errors" (list[str])
+    """
+    import shutil
+    from pathlib import Path
+
+    prefix_path = params.get("prefix_path")
+    saves_backup = params.get("saves_backup", [])
+    backup_source = params.get("backup_source")
+
+    if not all([prefix_path, backup_source]):
+        raise RpcError("missing_param", "prefix_path and backup_source are required")
+
+    pfx = Path(prefix_path)
+    src = Path(backup_source)
+    restored = []
+    errors = []
+
+    for save_rel in saves_backup:
+        src_path = src / save_rel
+        dst_path = pfx / save_rel
+        if not src_path.exists():
+            errors.append(f"{save_rel}: fonte não encontrada em {backup_source}")
+            continue
+        try:
+            if dst_path.exists():
+                shutil.rmtree(dst_path)
+            shutil.copytree(src_path, dst_path)
+            restored.append(save_rel)
+        except Exception as e:
+            errors.append(f"{save_rel}: {str(e)[:150]}")
+
+    return {"restored": restored, "errors": errors}
+
+
 def dispatch(method: str, params: dict | None) -> object:
     """Despacha uma chamada RPC para o método registrado.
 

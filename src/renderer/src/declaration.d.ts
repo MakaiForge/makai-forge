@@ -934,6 +934,7 @@ declare global {
     prefixHealthCheck: (gameId: string) => Promise<{ ok: boolean; data?: HealthReport; error?: string }>;
     prefixAutoFix: (gameId: string) => Promise<{ ok: boolean; data?: { fixed: string[]; errors: string[] }; error?: string }>;
     createModPrefix: (gameId: string) => Promise<{ ok: boolean; data?: { prefixPath: string; initialized: boolean; dllsInstalled: string[]; errors: string[] }; error?: string }>;
+    switchProton: (gameId: string, protonPath: string) => Promise<{ ok: boolean; data?: { newProtonPath: string; prefixPath: string; savesRestored: number; dllsInstalled: string[] }; error?: string }>;
     installGameDlls: (gameId: string, extraVerbs?: string[]) => Promise<{ ok: boolean; data?: { installed: string[]; errors: string[] }; error?: string }>;
     modBridgeSetContext: (ctx: { source: string; gameId: string; prefixPath: string; gamePath?: string }) => Promise<{ ok: boolean; data?: any }>;
     modBridgeGetContext: () => Promise<{ ok: boolean; data?: { source: string; gameId: string; prefixPath: string; gamePath?: string } }>;

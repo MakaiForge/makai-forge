@@ -11,10 +11,12 @@ interface GameConfigPanelProps {
   configStagingDir: string;
   configPrefixPath: string;
   configProtonPath: string;
+  originalProtonPath?: string;
   onGamePathChange: (path: string) => void;
   onStagingDirChange: (path: string) => void;
   onPrefixPathChange: (path: string) => void;
   onProtonPathChange: (path: string) => void;
+  onSwitchProton?: (newProtonPath: string) => Promise<{ ok: boolean; data?: { savesRestored: number; dllsInstalled: string[] }; error?: string } | void>;
   onSave: () => void;
   onCancel: () => void;
   t: (key: string) => string;
@@ -22,7 +24,9 @@ interface GameConfigPanelProps {
 
 export function GameConfigPanel({
   open, selectedGame, configGamePath, configStagingDir, configPrefixPath, configProtonPath,
+  originalProtonPath,
   onGamePathChange, onStagingDirChange, onPrefixPathChange, onProtonPathChange,
+  onSwitchProton,
   onSave, onCancel, t,
 }: GameConfigPanelProps) {
   if (!open) return null;
@@ -37,6 +41,8 @@ export function GameConfigPanel({
   const [installingDep, setInstallingDep] = useState<string | null>(null);
   const [preparingPrefix, setPreparingPrefix] = useState(false);
   const [prefixPrepResult, setPrefixPrepResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [switchingProton, setSwitchingProton] = useState(false);
+  const [switchResult, setSwitchResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const runHealthCheck = useCallback(async () => {
     if (!selectedGame) return;
@@ -103,6 +109,27 @@ export function GameConfigPanel({
     setPreparingPrefix(false);
   };
 
+  const protonChanged = originalProtonPath !== undefined && configProtonPath !== originalProtonPath && configProtonPath.trim() !== "";
+
+  const handleSwitchProton = async () => {
+    if (!selectedGame || !onSwitchProton) return;
+    setSwitchingProton(true);
+    setSwitchResult(null);
+    try {
+      const result = await onSwitchProton(configProtonPath);
+      if (result && typeof result === "object") {
+        if (result.ok) {
+          setSwitchResult({ ok: true, msg: `Proton trocado! Saves restaurados: ${result.data?.savesRestored ?? 0}` });
+        } else {
+          setSwitchResult({ ok: false, msg: result.error || "Falha ao trocar Proton" });
+        }
+      }
+    } catch (err) {
+      setSwitchResult({ ok: false, msg: `Erro: ${String(err)}` });
+    }
+    setSwitchingProton(false);
+  };
+
   const handleDetect = async () => {
     if (!selectedGame) return;
     const res = await window.electron.showOpenDialog({ properties: ["openDirectory"] });
@@ -153,6 +180,27 @@ export function GameConfigPanel({
         </div>
         <label>Proton version (path)</label>
         <input value={configProtonPath} onChange={e => onProtonPathChange(e.target.value)} placeholder="/path/to/proton (ou deixe vazio pra usar o Steam)" />
+
+        {protonChanged && onSwitchProton && (
+          <div className="mod-manager__config-switch-proton">
+            <p className="mod-manager__config-switch-warning">
+              ⚠️ Proton diferente detectado. Trocar recria o prefixo (saves são preservados).
+            </p>
+            <Button
+              onClick={handleSwitchProton}
+              disabled={switchingProton}
+              theme="primary"
+              className="mod-manager__config-switch-btn"
+            >
+              {switchingProton ? "Trocando Proton..." : "Trocar Proton (Recriar Prefixo)"}
+            </Button>
+            {switchResult && (
+              <div className={`mod-manager__config-switch-result ${switchResult.ok ? "--ok" : "--fail"}`}>
+                {switchResult.ok ? "✅ " : "❌ "}{switchResult.msg}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {configGamePath && (
