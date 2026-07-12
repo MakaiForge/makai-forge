@@ -69,8 +69,11 @@ interface ProtonRecommendationModalProps {
   gameId: string;
   gameTitle: string;
   installedProtons: ProtonVersion[];
+  mode?: "install" | "switch";
+  currentProtonPath?: string;
   onClose: () => void;
   onSelect: (protonPath: string) => void;
+  onSwitchProton?: (protonPath: string) => Promise<{ ok: boolean; data?: { savesRestored: number; dllsInstalled: string[] }; error?: string } | void>;
   onDownloadAndSelect?: (fork: ProtonFork) => Promise<void>;
 }
 
@@ -85,8 +88,11 @@ export function ProtonRecommendationModal({
   gameId,
   gameTitle,
   installedProtons: _installedProtons,
+  mode = "install",
+  currentProtonPath,
   onClose,
   onSelect,
+  onSwitchProton,
   onDownloadAndSelect,
 }: ProtonRecommendationModalProps) {
   const [loading, setLoading] = useState(false);
@@ -102,6 +108,8 @@ export function ProtonRecommendationModal({
   const [allTools, setAllTools] = useState<any[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const [switchResult, setSwitchResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -114,6 +122,8 @@ export function ProtonRecommendationModal({
     setExpandedForks(new Set());
     setProtonDbData(null);
     setDownloadProgress(null);
+    setSwitchResult(null);
+    setSwitching(false);
 
     Promise.all([
       window.electron.recommendProton(gameId),
@@ -320,6 +330,33 @@ export function ProtonRecommendationModal({
   }, [allForks, forkInfoMap, handleSelectVersion, detectForkId, findInstalled, handleSelectManual]);
 
   const handleConfirm = useCallback(async () => {
+    const protonPath = selectedProton || (() => {
+      if (!selectedFork) return null;
+      const installed = findInstalled(selectedFork.version);
+      return installed?.path || null;
+    })();
+
+    if (!protonPath && !selectedFork) return;
+
+    if (mode === "switch" && onSwitchProton && protonPath) {
+      setSwitching(true);
+      setSwitchResult(null);
+      try {
+        const result = await onSwitchProton(protonPath);
+        if (result && typeof result === "object") {
+          if (result.ok) {
+            setSwitchResult({ ok: true, msg: `Proton trocado com sucesso! Saves restaurados: ${result.data?.savesRestored ?? 0}` });
+          } else {
+            setSwitchResult({ ok: false, msg: result.error || "Falha ao trocar Proton" });
+          }
+        }
+      } catch (err) {
+        setSwitchResult({ ok: false, msg: `Erro: ${String(err)}` });
+      }
+      setSwitching(false);
+      return;
+    }
+
     if (selectedProton) {
       onSelect(selectedProton);
       return;
@@ -343,7 +380,7 @@ export function ProtonRecommendationModal({
         }
       }
     }
-  }, [selectedProton, selectedFork, onSelect, onDownloadAndSelect, findInstalled]);
+  }, [selectedProton, selectedFork, mode, onSelect, onSwitchProton, onDownloadAndSelect, findInstalled]);
 
   const toggleExpand = useCallback((forkId: string) => {
     setExpandedForks((prev) => {
@@ -357,7 +394,7 @@ export function ProtonRecommendationModal({
   return (
     <Modal
       visible={visible}
-      title={`Selecionar Proton — ${gameTitle}`}
+      title={mode === "switch" ? `Trocar Proton — ${gameTitle}` : `Selecionar Proton — ${gameTitle}`}
       onClose={onClose}
       large
     >
@@ -374,6 +411,14 @@ export function ProtonRecommendationModal({
 
         {!loading && !error && (
           <>
+            {mode === "switch" && (
+              <div className="prm__switch-warning">
+                <p>⚠️ Trocar o Proton recriará o prefixo do jogo. <strong>Saves serão preservados</strong>, mas configurações de mods e registry serão recriadas.</p>
+                {currentProtonPath && (
+                  <p className="prm__switch-current">Proton atual: <code>{currentProtonPath.split("/").pop()}</code></p>
+                )}
+              </div>
+            )}
             {(selectedProton || selectedFork) && (
               <div className="prm__selected">
                 <div className="prm__selected-header">
@@ -432,18 +477,27 @@ export function ProtonRecommendationModal({
                   <Button
                     theme="primary"
                     onClick={handleConfirm}
-                    disabled={isDownloading}
+                    disabled={isDownloading || switching}
                   >
-                    {isDownloading
-                      ? "Baixando..."
-                      : selectedProton
-                        ? `Instalar com ${selectedDisplayName || selectedVersion}`
-                        : `Baixar e Instalar ${selectedDisplayName || selectedVersion}`}
+                    {switching
+                      ? "Trocando Proton..."
+                      : isDownloading
+                        ? "Baixando..."
+                        : mode === "switch"
+                          ? `Trocar para ${selectedDisplayName || selectedVersion}`
+                          : selectedProton
+                            ? `Instalar com ${selectedDisplayName || selectedVersion}`
+                            : `Baixar e Instalar ${selectedDisplayName || selectedVersion}`}
                   </Button>
-                  <Button onClick={() => { setSelectedFork(null); setSelectedProton(null); setSelectedVersion(""); setDownloadProgress(null); }}>
+                  <Button onClick={() => { setSelectedFork(null); setSelectedProton(null); setSelectedVersion(""); setDownloadProgress(null); setSwitchResult(null); }}>
                     Limpar
                   </Button>
                 </div>
+                {switchResult && (
+                  <div className={`prm__switch-result ${switchResult.ok ? "--ok" : "--fail"}`}>
+                    {switchResult.ok ? "✅ " : "❌ "}{switchResult.msg}
+                  </div>
+                )}
               </div>
             )}
 
@@ -682,18 +736,22 @@ export function ProtonRecommendationModal({
             {(selectedProton || selectedFork) && (
               <div className="proton-recommendation-modal__actions">
                 <Button theme="dark" onClick={onClose}>
-                  Cancelar
+                  {mode === "switch" && switchResult?.ok ? "Fechar" : "Cancelar"}
                 </Button>
                 <Button
                   theme="primary"
                   onClick={handleConfirm}
-                  disabled={isDownloading}
+                  disabled={isDownloading || switching}
                 >
-                  {isDownloading
-                    ? "Baixando..."
-                    : selectedProton
-                      ? `Instalar com ${selectedDisplayName || selectedVersion}`
-                      : `Baixar e Instalar ${selectedDisplayName || selectedVersion}`}
+                  {switching
+                    ? "Trocando Proton..."
+                    : isDownloading
+                      ? "Baixando..."
+                      : mode === "switch"
+                        ? `Trocar para ${selectedDisplayName || selectedVersion}`
+                        : selectedProton
+                          ? `Instalar com ${selectedDisplayName || selectedVersion}`
+                          : `Baixar e Instalar ${selectedDisplayName || selectedVersion}`}
                 </Button>
               </div>
             )}

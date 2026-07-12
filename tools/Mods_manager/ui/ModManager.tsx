@@ -28,6 +28,7 @@ export default function ModManager() {
 
   const [activeTab, setActiveTab] = useState<TabId>("mods");
   const [showProtonSelector, setShowProtonSelector] = useState(false);
+  const [protonSelectorMode, setProtonSelectorMode] = useState<"install" | "switch">("install");
   const [installedProtons, setInstalledProtons] = useState<ProtonVersion[]>([]);
   const [launchSteps, setLaunchSteps] = useState<{ key: string; label: string; status: "waiting" | "working" | "done" | "error"; message?: string }[]>([]);
   const [showLaunchOverlay, setShowLaunchOverlay] = useState(false);
@@ -459,8 +460,11 @@ export default function ModManager() {
         gameId={selectedGame!}
         gameTitle={currentGame?.name || selectedGame || ""}
         installedProtons={installedProtons}
+        mode={protonSelectorMode}
+        currentProtonPath={configProtonPath}
         onClose={() => setShowProtonSelector(false)}
         onSelect={handleProtonSelect}
+        onSwitchProton={handleSwitchProton}
         onDownloadAndSelect={handleDownloadAndSelect}
       />
 
@@ -492,7 +496,7 @@ export default function ModManager() {
               onInstallMod={() => pickAndOrchInstall()}
               onDeploy={handleDeployClick}
               onLaunchGame={handleLaunchClick}
-              onProtonConfig={() => setShowProtonSelector(true)}
+              onProtonConfig={() => { setProtonSelectorMode("install"); setShowProtonSelector(true); }}
               onRefresh={() => { loadMods(); addLog(t("refresh")); }}
               onRemoveMod={handleRemoveMod}
             />
@@ -604,7 +608,11 @@ export default function ModManager() {
               onStagingDirChange={setConfigStagingDir}
               onPrefixPathChange={setConfigPrefixPath}
               onProtonPathChange={setConfigProtonPath}
-              onSwitchProton={handleSwitchProton}
+              onOpenProtonSwitch={() => {
+                setProtonSelectorMode("switch");
+                setShowGameConfig(false);
+                setShowProtonSelector(true);
+              }}
               onSave={handleSaveGameConfig}
               onCancel={() => setShowGameConfig(false)}
               t={t}

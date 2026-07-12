@@ -776,3 +776,26 @@
   font-size: 11px;
   color: #888;
 }
+
+.prm__switch-warning {
+  background: #2a2000;
+  border: 1px solid #553800;
+  border-radius: 6px;
+  padding: 10px 12px;
+  p { margin: 0; font-size: 12px; color: #ffaa33; }
+  code { background: #1a1200; padding: 1px 4px; border-radius: 3px; font-size: 11px; color: #ddd; }
+}
+
+.prm__switch-current {
+  margin-top: 6px !important;
+  color: #999 !important;
+}
+
+.prm__switch-result {
+  margin-top: 8px;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  &--ok { color: #4c4; background: #0a1a0a; }
+  &--fail { color: #f44; background: #1a0a0a; }
+}
