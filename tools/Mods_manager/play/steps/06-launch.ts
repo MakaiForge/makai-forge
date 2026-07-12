@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import { app } from "electron";
 
 import { getGameInfo, getGameModule } from "@games/registry";
 import { findSteamClientPath } from "@prefix/core/steam-paths";
@@ -110,9 +111,15 @@ export async function launchGame(
     logger.info(`[Launch] cwd: ${process.cwd()}`);
 
     // Prefer umu-run over direct Proton (umu-run handles Steam Runtime)
-    const useUmu = spawnSync("which", ["umu-run"], { stdio: "pipe" }).status === 0;
+    let umuRunPath = spawnSync("which", ["umu-run"], { stdio: "pipe" }).status === 0
+      ? "umu-run"
+      : null;
+    if (!umuRunPath) {
+      const bundled = path.join(app.getAppPath(), "resources", "binaries", "umu-run");
+      if (fs.existsSync(bundled)) umuRunPath = bundled;
+    }
 
-    if (!useUmu && !fs.existsSync(protonExe)) {
+    if (!umuRunPath && !fs.existsSync(protonExe)) {
       const msg = `Proton não encontrado em: ${protonExe}`;
       logger.error(`[Launch] ${msg}`);
       send("launch", `❌ ${msg}`, "error");
@@ -126,11 +133,11 @@ export async function launchGame(
     const killallResult = spawnSync("killall", ["-9", "wineserver"], { stdio: "pipe" });
     logger.info(`[Launch] killall wineserver: status=${killallResult.status}`);
 
-    if (useUmu) {
+    if (umuRunPath) {
       send("launch", `🚀 Iniciando ${path.basename(launchExe)} via umu-run...`, "working");
-      logger.info(`[Launch] Using umu-run instead of direct proton`);
+      logger.info(`[Launch] Using umu-run: ${umuRunPath}`);
       return new Promise<PlayResult>((resolve) => {
-        const child = spawn("umu-run", [launchExe, ...launchArgs], {
+        const child = spawn(umuRunPath, [launchExe, ...launchArgs], {
           cwd: gameDir,
           env: launchEnv,
           stdio: ["ignore", "pipe", "pipe"],
