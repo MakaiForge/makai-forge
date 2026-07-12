@@ -130,24 +130,24 @@ export async function launchGame(
     logger.info(`[Launch] gameDir: ${gameDir}`);
     logger.info(`[Launch] cwd: ${process.cwd()}`);
 
-    // Prefer direct Proton over umu-run (umu-run doesn't set up Steam API properly,
-    // causing SKSE's skse_steam_loader.dll to load broken Wine steamclient stubs)
-    let useUmuRun = false;
+    // Prefer umu-run — it provides the Steam Runtime container needed for
+    // audio (character voices). Proton run alone lacks PulseAudio/Pipewire
+    // routing, so voices are silent. Fallback to proton run if umu-run isn't
+    // available.
+    let useUmuRun = true;
     let umuRunPath: string | null = null;
 
-    // Check if umu-run is available (only used as fallback if proton exe is missing)
-    if (!fs.existsSync(protonExe)) {
-      umuRunPath = spawnSync("which", ["umu-run"], { stdio: "pipe" }).status === 0
-        ? "umu-run"
-        : null;
-      if (!umuRunPath) {
-        const bundled = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
-        if (fs.existsSync(bundled)) umuRunPath = bundled;
-      }
-    if (useUmuRun && umuRunPath) {
-        useUmuRun = true;
-        logger.info(`[Launch] Proton not found, falling back to umu-run: ${umuRunPath}`);
-      }
+    umuRunPath = spawnSync("which", ["umu-run"], { stdio: "pipe" }).status === 0
+      ? "umu-run"
+      : null;
+    if (!umuRunPath) {
+      const bundled = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
+      if (fs.existsSync(bundled)) umuRunPath = bundled;
+    }
+
+    if (!umuRunPath) {
+      useUmuRun = false;
+      logger.info(`[Launch] umu-run not found, falling back to proton run`);
     }
 
     if (!useUmuRun && !fs.existsSync(protonExe)) {
