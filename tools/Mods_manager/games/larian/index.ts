@@ -4,6 +4,7 @@ import type { GameModule } from "../_shared/types";
 import { genericModule } from "../generic";
 import { BG3_CONSTANTS, BG3_EXE_NAMES, BG3_DLL_OVERRIDES } from "./larian.constants";
 import { getCustomRoutingRules } from "./routing";
+import { deployBg3, restoreBg3 } from "./deploy";
 
 export function createBaldursGate3Module(): GameModule {
   const base = genericModule("larian", "");
@@ -23,6 +24,8 @@ export function createBaldursGate3Module(): GameModule {
     getWineDllOverrides: () => ({ ...BG3_DLL_OVERRIDES }),
     getWinetricksComponents: () => ["vcrun2022"],
     getCustomRoutingRules: (prefixPath?: string) => getCustomRoutingRules(prefixPath),
+    deploy: deployBg3,
+    restore: restoreBg3,
     getFrameworks: () => ({
       "Script Extender": "bg3se_loader.exe",
     }),

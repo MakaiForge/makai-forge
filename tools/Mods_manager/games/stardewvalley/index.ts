@@ -5,8 +5,8 @@ import type { DeploymentResult, ModlistEntry } from "@types";
 import { genericModule } from "../generic";
 import { STARDEW_CONSTANTS, STARDEW_EXE_NAMES } from "./stardewvalley.constants";
 import { getCustomRoutingRules } from "./routing";
-import { buildFilemap, scanSymlinks } from "../_shared/filemap";
-import { linkAll, restoreSymlinks } from "../_shared/symlink";
+import { buildFilemap } from "../_shared/filemap";
+import { scanSymlinks, linkAll, restoreSymlinks } from "../_shared/symlink";
 
 /**
  * Stardew Valley deploy: preserves mod folder structure.
