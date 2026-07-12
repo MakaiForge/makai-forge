@@ -84,6 +84,14 @@ export async function launchGame(
   // Solução permanente: bBorderless=1 no SkyrimPrefs.ini (sem device reset).
   // PROTON_USE_WINED3D não funciona — WineD3D é muito lento em NVIDIA.
 
+  // Ensure steam_appid.txt exists in game dir (SKSE and some games need it)
+  if (steamAppId && launchExe) {
+    const appIdFile = path.join(path.dirname(launchExe), "steam_appid.txt");
+    if (!fs.existsSync(appIdFile)) {
+      try { fs.writeFileSync(appIdFile, steamAppId, "utf-8"); } catch { /* ignore */ }
+    }
+  }
+
   if (launchExe && fs.existsSync(launchExe)) {
     const gameDir = path.dirname(launchExe);
     const launchEnv = { ...process.env, ...env, PROTON_LOG: "1" };
@@ -122,21 +130,34 @@ export async function launchGame(
     logger.info(`[Launch] gameDir: ${gameDir}`);
     logger.info(`[Launch] cwd: ${process.cwd()}`);
 
-    // Prefer umu-run over direct Proton (umu-run handles Steam Runtime)
-    let umuRunPath = spawnSync("which", ["umu-run"], { stdio: "pipe" }).status === 0
-      ? "umu-run"
-      : null;
-    if (!umuRunPath) {
-      const bundled = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
-      if (fs.existsSync(bundled)) umuRunPath = bundled;
+    // Prefer direct Proton over umu-run (umu-run doesn't set up Steam API properly,
+    // causing SKSE's skse_steam_loader.dll to load broken Wine steamclient stubs)
+    let useUmuRun = false;
+    let umuRunPath: string | null = null;
+
+    // Check if umu-run is available (only used as fallback if proton exe is missing)
+    if (!fs.existsSync(protonExe)) {
+      umuRunPath = spawnSync("which", ["umu-run"], { stdio: "pipe" }).status === 0
+        ? "umu-run"
+        : null;
+      if (!umuRunPath) {
+        const bundled = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
+        if (fs.existsSync(bundled)) umuRunPath = bundled;
+      }
+    if (useUmuRun && umuRunPath) {
+        useUmuRun = true;
+        logger.info(`[Launch] Proton not found, falling back to umu-run: ${umuRunPath}`);
+      }
     }
 
-    if (!umuRunPath && !fs.existsSync(protonExe)) {
+    if (!useUmuRun && !fs.existsSync(protonExe)) {
       const msg = `Proton não encontrado em: ${protonExe}`;
       logger.error(`[Launch] ${msg}`);
       send("launch", `❌ ${msg}`, "error");
       return { success: false, error: msg };
     }
+
+    logger.info(`[Launch] Using: ${useUmuRun ? "umu-run" : "proton run"}`);
 
     // Kill any stale wineserver
     const killResult = spawnSync("pkill", ["-9", "wineserver"], { stdio: "pipe" });
@@ -261,6 +282,11 @@ export async function launchGame(
         logger.info(`[Launch] exit code: ${code}`);
         if (stdoutOut) logger.info(`[Launch] stdout:\n${stdoutOut}`);
         if (stderrOut) logger.warn(`[Launch] stderr:\n${stderrOut}`);
+        if (stderrOut.includes("0xc0000005") || stderrOut.includes("Unhandled exception") || stderrOut.includes("page fault")) {
+          send("launch", `❌ Jogo crashou (exit ${code}). Verifique o console F12 para detalhes.`, "error");
+        } else if (code !== 0 && code !== null) {
+          send("launch", `⚠️ Jogo encerrou com código ${code}`, "warning");
+        }
       });
 
       child.unref();

@@ -30,8 +30,6 @@ export const SKYRIM_WINE_DLL_OVERRIDES: Record<string, string> = {
   "winmm": "native,builtin",
   "version": "native,builtin",
   "d3dcompiler_47": "native",
-  "steamclient": "builtin",
-  "steam_api": "builtin",
 };
 
 // dsound e mmdevapi: REMOVIDOS — forçar DLLs nativas do Wine para
