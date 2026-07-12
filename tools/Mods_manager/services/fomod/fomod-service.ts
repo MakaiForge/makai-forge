@@ -252,7 +252,8 @@ export class FomodService {
     const config = this.parse(stagingDir);
     if (!config) return [];
 
-    const components: FomodComponent[] = [];
+    // Map to deduplicate: same component name from different steps (e.g. Default vs CBBE) merges files
+    const map = new Map<string, FomodComponent>();
 
     for (const step of config.steps) {
       for (const group of step.groups) {
@@ -281,19 +282,32 @@ export class FomodService {
           }
 
           if (existsCount > 0) {
-            components.push({
-              name: plugin.name,
-              description: plugin.description || "",
-              enabled: true,
-              files,
-              sourceFiles,
-            });
+            const existing = map.get(plugin.name);
+            if (existing) {
+              // Merge: add files that aren't already tracked
+              const existingFileSet = new Set(existing.files);
+              for (const f of files) {
+                if (!existingFileSet.has(f)) existing.files.push(f);
+              }
+              const existingSourceSet = new Set(existing.sourceFiles.map(s => s.source));
+              for (const sf of sourceFiles) {
+                if (!existingSourceSet.has(sf.source)) existing.sourceFiles.push(sf);
+              }
+            } else {
+              map.set(plugin.name, {
+                name: plugin.name,
+                description: plugin.description || "",
+                enabled: true,
+                files,
+                sourceFiles,
+              });
+            }
           }
         }
       }
     }
 
-    return components;
+    return Array.from(map.values());
   }
 
   private static copyRecursive(src: string, dest: string, copied: string[]): void {

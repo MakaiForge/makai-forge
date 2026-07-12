@@ -6,7 +6,7 @@ import type { ModlistEntry } from "./types";
 import type { ProtonVersion, ProtonFork } from "@types";
 import type { FomodComponent } from "@types";
 
-import { useModLog, useMods, useDeploy, useFomod, useMedia, useRightPanel, useModManagerShortcuts, usePlugins, useSplitPane, useInstallMod, useConflictBadges, useSortPlugins } from "./hooks";
+import { useModLog, useMods, useDeploy, useFomod, useMedia, useRightPanel, useModManagerShortcuts, usePlugins, useSplitPane, useInstallMod, useConflictBadges, normalizeToDeployPath, useSortPlugins } from "./hooks";
 import { useInstallOrchestrator } from "./hooks/mods/useInstallOrchestrator";
 import { InstallProgressOverlay } from "./components/InstallProgressOverlay";
 import { useGameConfig, useProfiles, GamePresetBar } from "../presets";
@@ -134,7 +134,7 @@ export default function ModManager() {
   // FOMOD component toggle state
   const [fomodComponents, setFomodComponents] = useState<FomodComponent[]>([]);
 
-  // Load FOMOD components when selected mod changes
+  // Load FOMOD components when selected mod changes + auto-switch to FOMOD tab
   useEffect(() => {
     if (!selectedMod || !selectedGame) {
       setFomodComponents([]);
@@ -149,6 +149,7 @@ export default function ModManager() {
         let components = await window.electron.modsStore.get(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`);
         if (Array.isArray(components) && components.length > 0) {
           setFomodComponents(components);
+          setActiveRightTab("fomod");
           return;
         }
         // Auto-capture retroactively
@@ -157,6 +158,7 @@ export default function ModManager() {
           if (captured && captured.length > 0) {
             await window.electron.modsStore.put(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`, captured);
             setFomodComponents(captured);
+            setActiveRightTab("fomod");
             addLog(`Captured ${captured.length} FOMOD component(s) for ${selectedMod.name}`);
             return;
           }
@@ -479,20 +481,41 @@ export default function ModManager() {
     detectAndShowConflicts(mods.filter(m => m.enabled && !m.isSeparator).map((m, i) => ({ name: m.name, priority: m.priority ?? i })));
   }, [mods, detectAndShowConflicts]);
 
-  // Compute FOMOD component conflicts
+  // Compute FOMOD component conflicts using normalized deploy paths
   const fomodConflicts = useMemo(() => {
     if (!selectedMod || fomodComponents.length === 0 || allConflicts?.conflicts?.length === 0) return [];
-    const result: { modName: string; files: string[] }[] = [];
     const modConflicts = allConflicts?.conflicts?.filter(c =>
       c.mods.some(m => m.name === selectedMod.name)
-    ) || [];
+    );
+    if (!modConflicts || modConflicts.length === 0) return [];
+
+    const result: { modName: string; files: string[] }[] = [];
+
     for (const conflict of modConflicts) {
       const otherMod = conflict.mods.find(m => m.name !== selectedMod.name);
-      if (otherMod) {
-        result.push({
-          modName: otherMod.name,
-          files: [conflict.relativePath],
-        });
+      if (!otherMod) continue;
+
+      const conflictNorm = conflict.relativePath;
+      const matchingComponentFiles: string[] = [];
+
+      for (const component of fomodComponents) {
+        for (const file of component.files) {
+          const fileNorm = normalizeToDeployPath(file.toLowerCase());
+          if (fileNorm === conflictNorm) {
+            matchingComponentFiles.push(file);
+          }
+        }
+      }
+
+      if (matchingComponentFiles.length > 0) {
+        let existing = result.find(r => r.modName === otherMod.name);
+        if (existing) {
+          for (const f of matchingComponentFiles) {
+            if (!existing.files.includes(f)) existing.files.push(f);
+          }
+        } else {
+          result.push({ modName: otherMod.name, files: matchingComponentFiles });
+        }
       }
     }
     return result;
@@ -537,6 +560,23 @@ export default function ModManager() {
     if (!selectedMod?.stagingDir || !selectedMod.hasFomod) return;
     openFomod(selectedMod.stagingDir, "", selectedMod.name);
   }, [selectedMod, openFomod]);
+
+  const handleDetectFomodComponents = useCallback(async () => {
+    if (!selectedMod?.stagingDir || !selectedGame) return;
+    try {
+      const captured = await window.electron.captureFomodComponents(selectedMod.stagingDir);
+      if (captured && captured.length > 0) {
+        await window.electron.modsStore.put(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`, captured);
+        setFomodComponents(captured);
+        addLog(`Detected ${captured.length} FOMOD component(s) for ${selectedMod.name}`);
+      } else {
+        addLog(`No FOMOD components found for ${selectedMod.name}`);
+      }
+    } catch (err) {
+      console.error("[FOMOD] manual detect error:", err);
+      addLog(`Error detecting FOMOD components: ${String(err)}`);
+    }
+  }, [selectedMod, selectedGame, addLog]);
 
   useModManagerShortcuts({
     selectedModIdx,
@@ -682,6 +722,7 @@ export default function ModManager() {
                 fomodComponents={fomodComponents}
                 onToggleFomodComponent={handleToggleFomodComponent}
                 onReconfigureFomod={handleReconfigureFomod}
+                onDetectFomodComponents={handleDetectFomodComponents}
                 fomodConflicts={fomodConflicts}
               />
             </div>

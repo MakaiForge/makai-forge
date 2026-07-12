@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { FomodComponent } from "@types";
 
 interface ConflictInfo {
@@ -10,9 +11,11 @@ interface FomodComponentsTabProps {
   onToggle: (componentName: string) => void;
   onReconfigure: () => void;
   conflicts?: ConflictInfo[];
+  onDetectComponents?: () => void;
+  detectError?: string | null;
 }
 
-export function FomodComponentsTab({ components, onToggle, onReconfigure, conflicts }: FomodComponentsTabProps) {
+export function FomodComponentsTab({ components, onToggle, onReconfigure, conflicts, onDetectComponents, detectError }: FomodComponentsTabProps) {
   const hasConflicts = conflicts && conflicts.length > 0;
 
   const isComponentConflicting = (component: FomodComponent): ConflictInfo | null => {
@@ -30,10 +33,19 @@ export function FomodComponentsTab({ components, onToggle, onReconfigure, confli
   if (components.length === 0) {
     return (
       <div className="mod-manager__fomod-empty">
-        <p>No FOMOD components available.</p>
+        <p>No FOMOD components detected.</p>
         <p className="mod-manager__fomod-hint">
-          Install a mod with FOMOD support to see components here.
+          Click below to scan the mod's FOMOD configuration and detect sub-components.
         </p>
+        {onDetectComponents && (
+          <button
+            className="mod-manager__fomod-reconfigure-btn"
+            onClick={onDetectComponents}
+            style={{ marginTop: 8 }}
+          >
+            Detect Components
+          </button>
+        )}
       </div>
     );
   }

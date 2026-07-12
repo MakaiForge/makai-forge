@@ -135,7 +135,11 @@ function normalizePath(p: string): string {
 
 function parseFiles(node: XmlNode): FomodFile[] {
   const files: FomodFile[] = [];
-  for (const fileNode of findChildren(node, "file")) {
+  // Some FOMOD XMLs wrap <file>/<folder> inside a <files> node; others put them
+  // directly inside the parent. Support both formats.
+  const filesWrapper = findChild(node, "files");
+  const container = filesWrapper || node;
+  for (const fileNode of findChildren(container, "file")) {
     files.push({
       source: normalizePath(fileNode.attrs["source"] || ""),
       destination: normalizePath(fileNode.attrs["destination"] || ""),
@@ -143,7 +147,7 @@ function parseFiles(node: XmlNode): FomodFile[] {
       alwaysInstall: fileNode.attrs["alwaysInstall"] === "true",
     });
   }
-  for (const folderNode of findChildren(node, "folder")) {
+  for (const folderNode of findChildren(container, "folder")) {
     const source = normalizePath(folderNode.attrs["source"] || "");
     const dest = folderNode.attrs["destination"] !== undefined
       ? normalizePath(folderNode.attrs["destination"])
@@ -190,7 +194,10 @@ function parseVisible(node: XmlNode): Record<string, string> | null {
   const vis = findChild(node, "visible");
   if (!vis) return null;
   const flags: Record<string, string> = {};
-  for (const child of vis.children) {
+  // Support <flagDependency> directly under <visible> or wrapped in <dependencies>
+  const depsWrapper = findChild(vis, "dependencies");
+  const container = depsWrapper || vis;
+  for (const child of container.children) {
     if (child.tag !== "flagDependency") continue;
     const flag = child.attrs["flag"] || "";
     if (!flag) continue;
