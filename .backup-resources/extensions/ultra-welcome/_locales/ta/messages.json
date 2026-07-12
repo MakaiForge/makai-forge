@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf ஆல் இயக்கப்படுகிறது",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "உங்கள் மாட்களை அதிகம் பயன்படுத்த, இந்த உலாவி UltraSurf ஐ உள்ளடக்கியது. இந்த வழியில் நீங்கள் கட்டுப்பாடுகள் இல்லாமல் மற்றும் முக அடையாளம் இல்லாமல் உங்கள் மாட்களை பதிவிறக்கம் செய்யலாம். மகிழுங்கள்!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "தொடரவும்",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "மூடுகிறது",
+    "description": "Closing in countdown"
+  }
+}

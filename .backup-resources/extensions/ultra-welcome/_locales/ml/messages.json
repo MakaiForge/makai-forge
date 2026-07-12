@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf പ്രവർത്തനത്താൽ",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "നിങ്ങളുടെ മോഡുകൾ പരമാവധി പ്രയോജനപ്പെടുത്താൻ, ഈ ബ്രൗസറിൽ UltraSurf ഉൾപ്പെടുത്തിയിരിക്കുന്നു. ഈ രീതിയിൽ നിങ്ങൾക്ക് നിയന്ത്രണങ്ങളും മുഖം തിരിച്ചറിയലും ഇല്ലാതെ നിങ്ങളുടെ മോഡുകൾ ഡൗൺലോഡ് ചെയ്യാം. ആസ്വദിക്കൂ!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "തുടരുക",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "അടയ്ക്കുന്നു",
+    "description": "Closing in countdown"
+  }
+}

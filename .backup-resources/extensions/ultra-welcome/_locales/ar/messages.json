@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "مدعوم من UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "للحصول على أقصى استفادة من التعديلات الخاصة بك، يتضمن هذا المتصفح UltraSurf. بهذه الطريقة يمكنك تنزيل التعديلات دون قيود وبدون التعرف على الوجه. استمتع!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "متابعة",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "الإغلاق خلال",
+    "description": "Closing in countdown"
+  }
+}

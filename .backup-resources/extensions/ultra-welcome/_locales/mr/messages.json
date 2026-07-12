@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf द्वारा समर्थित",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "तुमच्या मॉड्सचा जास्तीत जास्त फायदा घेण्यासाठी, या ब्राउझरमध्ये UltraSurf समाविष्ट आहे. अशा प्रकारे तुम्ही निर्बंधांशिवाय आणि चेहरा ओळख न करता तुमचे मॉड्स डाउनलोड करू शकता. आनंद घ्या!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "सुरू ठेवा",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "बंद होत आहे",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Поддржано од UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "За да го извлечете максимумот од вашите модови, овој прелистувач вклучува UltraSurf. На овој начин можете да ги преземате вашите модови без ограничувања и без идентификација на лицето. Уживајте!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Продолжи",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Затворање за",
+    "description": "Closing in countdown"
+  }
+}

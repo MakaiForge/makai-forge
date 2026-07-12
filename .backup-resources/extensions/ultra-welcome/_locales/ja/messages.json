@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf 提供",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "モッドを最大限に樂しむため、このブラウザにはUltraSurfが含まれています。制限や顔認証なしでモッドをダウンロードできます。お楽しみください。",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "続ける",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "閉じるまで",
+    "description": "Closing in countdown"
+  }
+}

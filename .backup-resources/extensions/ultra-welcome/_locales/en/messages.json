@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Powered by UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "To get the most out of your mods, this browser includes UltraSurf. This way you can download your mods without restrictions and without face identification. Enjoy!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Continue",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Closing in",
+    "description": "Closing in countdown"
+  }
+}

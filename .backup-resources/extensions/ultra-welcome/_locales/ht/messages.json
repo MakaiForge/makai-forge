@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Alimante pa UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Pou jwenn pi plis nan mod ou yo, navigatè sa a gen ladan UltraSurf. Konsa, ou kapab telechaje mod ou yo san restriksyon ak san idantifikasyon figi. Pran plezi!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Kontinye",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Fèmen nan",
+    "description": "Closing in countdown"
+  }
+}

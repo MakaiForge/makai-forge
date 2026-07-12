@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf ဖြင့် မောင်းနှင်ထားသည်",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "သင့် mods များကို အကောင်းဆုံးအသုံးချနိုင်ရန် ဤဘရောက်ဆာတွင် UltraSurf ပါဝင်သည်။ ဤနည်းဖြင့် သင်သည် ကန့်သတ်ချက်များနှင့် မျက်နှာမှတ်သားခြင်းမရှိဘဲ သင့် mods များကို ဒေါင်းလုဒ်လုပ်နိုင်သည်။ ပျော်ရွှင်ပါစေ!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "ဆက်လုပ်",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "ပိတ်မည်",
+    "description": "Closing in countdown"
+  }
+}

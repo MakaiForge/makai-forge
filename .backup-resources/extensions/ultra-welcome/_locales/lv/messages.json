@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Darbojas ar UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Lai no saviem modiem iegūtu maksimālu labumu, šī pārlūkprogramma ietver UltraSurf. Tādā veidā jūs varat lejupielādēt savus modus bez ierobežojumiem un bez sejas atpazīšanas. Izbaudiet!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Turpināt",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Aizvērsies pēc",
+    "description": "Closing in countdown"
+  }
+}

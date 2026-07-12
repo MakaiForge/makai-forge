@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf দ্বারা চালিত",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "আপনার মডগুলি থেকে সর্বাধিক পেতে, এই ব্রাউজারটি UltraSurf অন্তর্ভুক্ত করে। এইভাবে আপনি সীমাবদ্ধতা এবং মুখ শনাক্তকরণ ছাড়াই আপনার মডগুলি ডাউনলোড করতে পারেন। উপভোগ করুন!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "চালিয়ে যান",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "বন্ধ হচ্ছে",
+    "description": "Closing in countdown"
+  }
+}

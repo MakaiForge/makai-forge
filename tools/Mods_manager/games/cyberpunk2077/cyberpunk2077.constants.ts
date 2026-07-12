@@ -4,7 +4,6 @@ export const CYBERPUNK_CONSTANTS = {
   exeName: "Cyberpunk2077.exe",
   preferredLaunchExe: "Cyberpunk2077.exe",
   nexusDomain: "cyberpunk2077",
-  deployDirs: ["archive/pc/mod", "bin/x64/plugins", "r6/scripts", "r6/tweaks"],
 } as const;
 
 export const CYBERPUNK_EXE_NAMES = ["bin/x64/Cyberpunk2077.exe", "Cyberpunk2077.exe"];

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Dikuasakan oleh UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Untuk memanfaatkan sepenuhnya mod anda, pelayar ini merangkumi UltraSurf. Dengan cara ini anda boleh memuat turun mod anda tanpa sekatan dan tanpa pengenalan muka. Selamat berseronok!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Teruskan",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Tutup dalam",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Mundësuar nga UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Për të përfituar sa më shumë nga mod-et tuaja, ky shfletues përfshin UltraSurf. Në këtë mënyrë ju mund të shkarkoni mod-et tuaja pa kufizime dhe pa identifikim të fytyrës. Kënaquni!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Vazhdo",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Mbyllet për",
+    "description": "Closing in countdown"
+  }
+}

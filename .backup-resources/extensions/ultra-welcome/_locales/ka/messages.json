@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf-ის მხარდაჭერით",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "თქვენი მოდების მაქსიმალურად გამოყენებისთვის, ეს ბრაუზერი მოიცავს UltraSurf-ს. ამ გზით შეგიძლიათ ჩამოტვირთოთ თქვენი მოდები შეზღუდვების გარეშე და სახის ამოცნობის გარეშე. ისიამოვნეთ!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "გაგრძელება",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "იხურება",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Được hỗ trợ bởi UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Để tận dụng tối đa các bản mod của bạn, trình duyệt này bao gồm UltraSurf. Bằng cách này, bạn có thể tải xuống các bản mod của mình mà không bị hạn chế và không cần nhận dạng khuôn mặt. Chúc bạn vui vẻ!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Tiếp tục",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Đóng trong",
+    "description": "Closing in countdown"
+  }
+}

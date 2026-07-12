@@ -1,6 +1,6 @@
 import type { GameModule, LinkMode } from "./_shared/types";
 import type { DeploymentResult, ModlistEntry } from "@types";
-import { genericModule, deployGeneric } from "./generic";
+import { genericModule, deployGeneric, deployGenericWithRouting } from "./generic";
 
 import { createSkyrimModule } from "./skyrim";
 import { createSkyrimSEModule } from "./skyrim-se";
@@ -119,7 +119,17 @@ export function getDeployFunction(
   const mod = getGameModule(gameId, "");
   const deploy = mod.deploy;
   if (deploy) return (_gameId: string, gamePath: string, ...args: [string, ModlistEntry[], string, string?, LinkMode?]) => deploy(gamePath, ...args);
-  return deployGeneric;
+
+  // For generic games, wrap deployGeneric with routing rules from the game module
+  const routingRules = mod.getCustomRoutingRules?.() || [];
+  const filemapCasing = mod.filemapCasing;
+  if (routingRules.length > 0) {
+    return (_gameId: string, gamePath: string, stagingDir: string, modlist: ModlistEntry[], profile: string, prefixPath?: string, mode?: LinkMode) =>
+      deployGenericWithRouting(gamePath, stagingDir, modlist, profile, prefixPath, mode, routingRules, filemapCasing);
+  }
+
+  return (gameId: string, gamePath: string, stagingDir: string, modlist: ModlistEntry[], profile: string, prefixPath?: string, mode?: LinkMode) =>
+    deployGeneric(gameId, gamePath, stagingDir, modlist, profile, prefixPath, mode, filemapCasing);
 }
 
 export function getRestoreFunction(

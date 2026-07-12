@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Keyrt af UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Til að njóta modsanna sem best, þessi vafri inniheldur UltraSurf. Þannig geturðu hlaðið niður modsunum þínum án takmarkana og án andlitsgreiningar. Njóttu!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Halda áfram",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Lokar eftir",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Inaendeshwa na UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Ili kupata manufaa zaidi kutoka kwa mods zako, kivinjari hiki kinajumuisha UltraSurf. Kwa njia hii unaweza kupakua mods zako bila vikwazo na bila utambuzi wa uso. Furahiya!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Endelea",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Kufunga kwa",
+    "description": "Closing in countdown"
+  }
+}

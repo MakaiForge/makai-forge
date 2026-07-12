@@ -29,6 +29,12 @@ export interface GameModule {
           profile: string, prefixPath?: string, mode?: LinkMode): Promise<DeploymentResult>
   restore?(gamePath: string, stagingDir: string, profile: string,
            prefixPath?: string): Promise<void>
+  /** Default link mode for this game's deploy (overridden by user config) */
+  defaultLinkMode?: LinkMode
+  /** Whether to create a Core backup before deploying (default: true) */
+  coreBackupEnabled?: boolean
+  /** Case normalization mode for filemap paths: "lower" for case-sensitive games */
+  filemapCasing?: "lower" | "preserve"
   getLaunchCommand?(): string[] | null
   /** Extra args appended to the launch command (e.g. "-windowed") */
   getLaunchArgs?(): string[]
@@ -43,7 +49,10 @@ export interface GameModule {
   /** Retorna o subpath para o diretório My Games (ex: "Skyrim", "Fallout4") */
   getMyGamesSubpath?(): string
   getCustomRoutingRules?(): CustomRule[]
+  /** Frameworks detectados (chave=nome, valor=caminho do arquivo) */
   getFrameworks?(): Record<string, string>
+  /** Frameworks com auto-download disponível */
+  getAutoInstallFrameworks?(): FrameworkDef[]
   getArchiveInvalidationConfig?(): ArchiveInvalidationConfig | null
   getArchiveHandlers(): ArchiveHandler[]
   getScriptExtender(): ScriptExtenderDef | null
@@ -97,4 +106,22 @@ export interface ExternalToolDef {
   name: string
   exeName: string
   searchPaths: string[]
+}
+
+export interface FrameworkDef {
+  /** Nome exibido ao usuário */
+  name: string
+  /** URL de download direto (zip/7z) */
+  downloadUrl: string
+  /** Detector: arquivo que deve existir no game root se já instalado */
+  detector: {
+    file?: string
+    folder?: string
+  }
+  /** Pasta dentro do zip que contém os arquivos (se houver) */
+  innerFolder?: string
+  /** Arquivos pra chmod +x após extrair */
+  chmodFiles?: string[]
+  /** Pós-install: mover arquivos pra locais específicos */
+  postInstall?: (gamePath: string) => Promise<void>
 }

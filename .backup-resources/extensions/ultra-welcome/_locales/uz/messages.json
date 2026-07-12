@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf tomonidan quvvatlanadi",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Modlaringizdan maksimal darajada foydalanish uchun ushbu brauzer UltraSurf-ni o'z ichiga oladi. Shu tarzda siz modlaringizni hech qanday cheklovlarsiz va yuz identifikatsiyasisiz yuklab olishingiz mumkin. Rohatlaning!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Davom etish",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Yopilmoqda",
+    "description": "Closing in countdown"
+  }
+}

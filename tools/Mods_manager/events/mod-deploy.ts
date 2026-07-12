@@ -30,11 +30,14 @@ registerEvent("deployMods", async (_event, gameId: string, profile: string) => {
   // Use the user-configured prefix — never resolve to Steam compatdata
   const resolvedPrefix = config.protonPrefix;
 
+  // Resolve link mode: user config > game module default > "symlink"
+  const mod = getGameModule(gameId, config.gamePath);
+  const linkMode = config.deployMode || mod.defaultLinkMode || "symlink";
+
   const deployFn = getDeployFunction(gameId);
-  const result = await deployFn(gameId, config.gamePath, stagingDir, modlist, profile, resolvedPrefix);
+  const result = await deployFn(gameId, config.gamePath, stagingDir, modlist, profile, resolvedPrefix, linkMode);
 
   if (resolvedPrefix) {
-    const mod = getGameModule(gameId, config.gamePath);
     const overrides = mod.getWineDllOverrides?.();
     if (overrides && Object.keys(overrides).length > 0) {
       applyWineDllOverrides(resolvedPrefix, overrides);

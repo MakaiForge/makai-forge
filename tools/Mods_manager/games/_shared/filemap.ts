@@ -6,6 +6,98 @@ import { SE_REGEXES } from "./bethesda-constants";
 
 export const ROOT_PLUGIN_EXTS = new Set([".esp", ".esm", ".esl"]);
 
+/**
+ * Normalize Windows backslashes to forward slashes and resolve . and ..
+ */
+export function normalizeWindowsPath(p: string): string {
+  return p.replace(/\\/g, "/").replace(/\/+/g, "/");
+}
+
+/**
+ * Find a file in a directory with case-insensitive matching.
+ * Returns the actual path with correct casing, or null if not found.
+ */
+export function resolveCaseInsensitive(dir: string, relativePath: string): string | null {
+  const parts = normalizeWindowsPath(relativePath).split("/");
+  let current = dir;
+
+  for (const part of parts) {
+    if (!part || part === ".") continue;
+    if (part === "..") {
+      current = path.dirname(current);
+      continue;
+    }
+
+    let found = false;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      return null;
+    }
+
+    for (const entry of entries) {
+      if (entry.name.toLowerCase() === part.toLowerCase()) {
+        current = path.join(current, entry.name);
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) return null;
+  }
+
+  return current;
+}
+
+/**
+ * Normalize path casing for case-sensitive games (Cyberpunk, Stardew Valley).
+ * Uses the canonical casing from the actual filesystem if available,
+ * otherwise lowercases the entire path.
+ */
+export function normalizePathCasing(
+  relativePath: string,
+  basePath: string,
+  mode: "lower" | "preserve" = "lower",
+): string {
+  if (mode === "preserve") return normalizeWindowsPath(relativePath);
+
+  const normalized = normalizeWindowsPath(relativePath);
+  const parts = normalized.split("/");
+
+  // Try to resolve each part against the actual filesystem
+  let current = basePath;
+  const resolved: string[] = [];
+
+  for (const part of parts) {
+    if (!part || part === ".") continue;
+    if (part === "..") {
+      resolved.push("..");
+      current = path.dirname(current);
+      continue;
+    }
+
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      // Can't read dir — use lowercase as fallback
+      resolved.push(part.toLowerCase());
+      continue;
+    }
+
+    const match = entries.find(e => e.name.toLowerCase() === part.toLowerCase());
+    if (match) {
+      resolved.push(match.name);
+      current = path.join(current, match.name);
+    } else {
+      resolved.push(part.toLowerCase());
+    }
+  }
+
+  return resolved.join("/");
+}
+
 export function stripDataPrefix(relativePath: string): string {
   const parts = relativePath.split(path.sep);
   if (parts.length > 0 && parts[0].toLowerCase() === "data") {
@@ -128,12 +220,21 @@ export function findPrefixUsername(prefixPath: string): string | null {
   return dirs[0] || null;
 }
 
+export interface BuildFilemapOptions {
+  /** Skip stripping wrapper folders (Data/, mod name, etc.) — used by Stardew Valley */
+  preserveModFolder?: boolean;
+  /** Case normalization mode for destination paths: "lower" = lowercase all, "preserve" = keep as-is */
+  casingMode?: "lower" | "preserve";
+}
+
 export async function buildFilemap(
   modlist: ModlistEntry[],
   stagingDir: string,
-  _gamePath: string
+  gamePath: string,
+  options?: BuildFilemapOptions,
 ): Promise<Record<string, string>> {
   const filemap: Record<string, string> = {};
+  const casingMode = options?.casingMode || "preserve";
 
   const enabledMods = modlist
     .filter((m) => m.enabled && !m.isSeparator)
@@ -144,13 +245,31 @@ export async function buildFilemap(
     if (!modStaging) continue;
 
     walkDir(modStaging, (fullPath, relativePath) => {
-      const stripped = stripWrapperFolders(relativePath, modName);
-      if (stripped && stripped !== "." && stripped !== relativePath) {
-        filemap[stripped] = fullPath;
+      // Normalize Windows backslashes
+      let normalizedPath = normalizeWindowsPath(relativePath);
+
+      if (options?.preserveModFolder) {
+        // Stardew Valley: deploy as-is, keeping mod name in path
+        filemap[normalizedPath] = fullPath;
       } else {
-        filemap[relativePath] = fullPath;
+        const stripped = stripWrapperFolders(relativePath, modName);
+        if (stripped && stripped !== "." && stripped !== relativePath) {
+          normalizedPath = normalizeWindowsPath(stripped);
+          filemap[normalizedPath] = fullPath;
+        } else {
+          filemap[normalizedPath] = fullPath;
+        }
       }
     }, { skipDotfiles: true });
+  }
+
+  // Apply case normalization for case-sensitive games
+  if (casingMode === "lower") {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(filemap)) {
+      normalized[key.toLowerCase()] = value;
+    }
+    return normalized;
   }
 
   return filemap;

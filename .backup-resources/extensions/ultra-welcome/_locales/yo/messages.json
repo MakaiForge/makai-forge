@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf ni o nṣiṣẹ",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Lati gba julọ ti awọn mods rẹ, ẹrọ aṣawakiri yii pẹlu UltraSurf. Ni ọna yii o le ṣe igbasilẹ awọn mods rẹ laisi awọn ihamọ ati laisi idanimọ oju. Gbadun!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Tẹsiwaju",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Titiipa ni",
+    "description": "Closing in countdown"
+  }
+}

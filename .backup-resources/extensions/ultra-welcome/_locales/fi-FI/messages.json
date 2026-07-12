@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf-käyttöinen",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Saadaksesi kaiken irti modeistasi, tämä selain sisältää UltraSurfin. Näin voit ladata modejasi ilman rajoituksia ja ilman kasvojentunnistusta. Nauti!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Jatka",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Sulkeutuu",
+    "description": "Closing in countdown"
+  }
+}

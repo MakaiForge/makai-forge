@@ -1,0 +1,15 @@
+{
+  "rules": [
+    {
+      "gameId": "tera-reforged",
+      "matchTitle": "TERA Reforged",
+      "type": "exe-with-companions",
+      "needsWine": true,
+      "needsRegistrySetup": true,
+      "confidence": 1.0,
+      "extractorOptions": {
+        "companionPattern": "tera_client\\.7z\\."
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "ដំណើរការដោយ UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "ដើម្បីទទួលបានអត្ថប្រយោជន៍ច្រើនបំផុតពី mods របស់អ្នក កម្មវិធីរុករកនេះរួមបញ្ចូល UltraSurf។ វិធីនេះអ្នកអាចទាញយក mods របស់អ្នកដោយគ្មានការរឹតបន្តឹង និងគ្មានការកំណត់អត្តសញ្ញាណមុខ។ សូមរីករាយ!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "បន្ត",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "បិទក្នុង",
+    "description": "Closing in countdown"
+  }
+}

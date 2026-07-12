@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "description": "Override rules para tipos específicos de instalador",
+  "rules": [
+    {
+      "gameId": "tera-reforged",
+      "matchFile": "TERA_Reforged_Setup",
+      "type": "exe-with-companions",
+      "method": "native-7z-and-wine",
+      "needsWine": true,
+      "needsRegistrySetup": true,
+      "confidence": 1.0,
+      "extractorOptions": {
+        "companionPattern": "tera_client\\.7z\\.",
+        "extractToSubdir": "TERA"
+      }
+    }
+  ]
+}

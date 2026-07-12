@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf meghajtással",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Hogy a legtöbbet hozza ki a modjából, ez a böngésző tartalmazza az UltraSurf-ot. Így korlátozások és arcfelismerés nélkül töltheti le modjait. Élvezze!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Folytatás",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Bezárás",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "components": {
+    "bootstrap": {
+      "version": 1,
+      "tag": "bootstrap-v0.0.1",
+      "sha256": "881f5985c2e9edc8a9d6264ab5710b2b1757f516334ad5d1cf99c9261d36898b",
+      "size": 2461661,
+      "original_size": 0,
+      "archive": "bootstrap.tar.gz",
+      "github_repo": "MakaiForge/the-bootstrap",
+      "gitlab_project_id": 0
+    },
+    "installer-api": {
+      "version": 8,
+      "tag": "installer-api-v0.0.7",
+      "sha256": "d588004dfe6c96f295cacca5bb85c172fc7ebe03e44565f54d94f2f538940ff1",
+      "size": 6578,
+      "original_size": 0,
+      "archive": "installer-api.tar.gz",
+      "github_repo": "MakaiForge/the-bootstrap",
+      "gitlab_project_id": 83101354
+    },
+    "catalogo-db": {
+      "version": 1,
+      "tag": "catalogo-db-v0.0.1",
+      "sha256": "af72a2fd992a5a6274035137dd5421f029683c61e50d0d5936bf7fc264a7555e",
+      "size": 55951414,
+      "original_size": 263843840,
+      "archive": "catalogo.db.gz",
+      "github_repo": "MakaiForge/the-bootstrap",
+      "gitlab_project_id": 83081380
+    },
+    "proton-data-db": {
+      "version": 1,
+      "tag": "proton-data-db-v0.0.1",
+      "sha256": "d53ba0556ad25195441cfd4f8cb7dba1a7e5c4b40dab1715c4d4439b00adb111",
+      "size": 77782443,
+      "original_size": 293851136,
+      "archive": "proton_data.db.gz",
+      "github_repo": "MakaiForge/the-bootstrap",
+      "gitlab_project_id": 83081381
+    },
+    "fork-catalog-data": {
+      "version": 1,
+      "tag": "fork-catalog-data-v0.0.1",
+      "sha256": "f81094489d2cde0aca9850d6f2b3163d444ac31aa1a12d90de9a4d90cb50f40a",
+      "size": 800070,
+      "original_size": 319488,
+      "archive": "fork_catalog.db.gz",
+      "github_repo": "MakaiForge/the-bootstrap",
+      "gitlab_project_id": 83110945
+    },
+    "releases-data": {
+      "version": 1,
+      "tag": "releases-data-v0.0.1",
+      "sha256": "91b6ac8de9455969fab85993e431ee7a203841ec313b107f9ba2443dd163c2b4",
+      "size": 310331,
+      "original_size": 0,
+      "archive": "releases.tar.gz",
+      "github_repo": "MakaiForge/the-bootstrap",
+      "gitlab_project_id": 0
+    }
+  }
+}

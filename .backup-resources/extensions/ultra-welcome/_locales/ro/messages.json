@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Susținut de UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Pentru a profita la maximum de modurile tale, acest browser include UltraSurf. Astfel poți descărca modurile fără restricții și fără identificare facială. Distracție plăcută!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Continuă",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Se închide în",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf ನಿಂದ ಚಾಲಿತ",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "ನಿಮ್ಮ ಮಾಡ್‌ಗಳನ್ನು ಹೆಚ್ಚು ಬಳಸಿಕೊಳ್ಳಲು, ಈ ಬ್ರೌಸರ್ UltraSurf ಅನ್ನು ಒಳಗೊಂಡಿದೆ. ಈ ರೀತಿಯಲ್ಲಿ ನೀವು ನಿರ್ಬಂಧಗಳಿಲ್ಲದೆ ಮತ್ತು ಮುಖ ಗುರುತಿಸುವಿಕೆ ಇಲ್ಲದೆ ನಿಮ್ಮ ಮಾಡ್‌ಗಳನ್ನು ಡೌನ್ಲೋಡ್ ಮಾಡಬಹುದು. ಆನಂದಿಸಿ!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "ಮುಂದುವರಿಸಿ",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "ಮುಚ್ಚಲಿದೆ",
+    "description": "Closing in countdown"
+  }
+}

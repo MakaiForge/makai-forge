@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { GameModule, LinkMode, ScriptExtenderRelease } from "../_shared/types";
 import type { DeploymentResult, ModlistEntry } from "@types";
-import { SKYRIM_CONSTANTS, SKYRIM_SE_EXE_NAMES } from "./skyrim.constants";
+import { SKYRIM_CONSTANTS, SKYRIM_EXE_NAMES } from "./skyrim.constants";
 import { deploySkyrim, restoreSkyrim } from "./deploy";
 export { deploySkyrimVariant, restoreSkyrimVariant } from "./deploy";
 export type { SkyrimConstants } from "./deploy";
@@ -25,7 +25,7 @@ export function createSkyrimModule(): GameModule {
     nexusDomain: SKYRIM_CONSTANTS.nexusDomain,
     lootType: SKYRIM_CONSTANTS.lootType,
     aliases: ["skyrim legendary", "skyrim classic", "skyrimle"],
-    detect: (gp) => SKYRIM_SE_EXE_NAMES.some(e => fs.existsSync(path.join(gp, e))),
+    detect: (gp) => SKYRIM_EXE_NAMES.some(e => fs.existsSync(path.join(gp, e))),
 
     getDeployTarget: (gp) => path.join(gp, "Data"),
     shouldWritePluginsTxt: () => true,

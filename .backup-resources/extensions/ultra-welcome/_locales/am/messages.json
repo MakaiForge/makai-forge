@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "በUltraSurf የተጎላበተ",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "ሞዶችዎን በተሻለ ሁኔታ ለመጠቀም ይህ አሳሽ UltraSurfን ያካትታል። ያለ ገደቦች እና ያለ ፊት መታወቂያ ሞዶችዎን ማውረድ ይችላሉ። ይዝናኑ!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "ቀጥል",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "ይዘጋል በ",
+    "description": "Closing in countdown"
+  }
+}

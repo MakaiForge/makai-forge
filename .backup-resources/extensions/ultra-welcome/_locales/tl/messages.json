@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Pinapatakbo ng UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Upang lubos na mapakinabangan ang iyong mga mod, ang browser na ito ay may kasamang UltraSurf. Sa ganitong paraan maaari mong i-download ang iyong mga mod nang walang paghihigpit at walang pagkilala sa mukha. Magsaya!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Magpatuloy",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Sasara sa",
+    "description": "Closing in countdown"
+  }
+}

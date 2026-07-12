@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Drevet av UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "For å få mest mulig ut av modsene dine, inkluderer denne nettleseren UltraSurf. På denne måten kan du laste ned modsene dine uten begrensninger og uten ansiktsgjenkjenning. Nyt!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Fortsett",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Lukker om",
+    "description": "Closing in countdown"
+  }
+}

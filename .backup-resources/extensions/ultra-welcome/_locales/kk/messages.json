@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf қолдауымен",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Модтарыңыздан барынша пайда алу үшін, бұл браузер UltraSurf-ті қамтиды. Осылайша сіз модтарыңызды шектеусіз және бет идентификациясыз жүктей аласыз. Көңіл көтеріңіз!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Жалғастыру",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Жабылуда",
+    "description": "Closing in countdown"
+  }
+}

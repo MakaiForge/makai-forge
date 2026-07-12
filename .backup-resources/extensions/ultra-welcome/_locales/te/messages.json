@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf ద్వారా ఆధారితం",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "మీ మోడ్‌లను ఎక్కువగా ఉపయోగించుకోవడానికి, ఈ బ్రౌజర్ UltraSurfను కలిగి ఉంటుంది. ఈ విధంగా మీరు పరిమితులు లేకుండా మరియు ముఖ గుర్తింపు లేకుండా మీ మోడ్‌లను డౌన్‌లోడ్ చేసుకోవచ్చు. ఆనందించండి!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "కొనసాగించు",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "మూసివేయబడుతోంది",
+    "description": "Closing in countdown"
+  }
+}

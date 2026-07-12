@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Աշխատում է UltraSurf-ով",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Ձեր մոդերից առավելագույնն ստանալու համար այս զննարկիչը ներառում է UltraSurf: Այսպիսով դուք կարող եք ներբեռնել ձեր մոդերն առանց սահմանափակումների և դեմքի նույնականացման: Վայելեք!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Շարունակել",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Փակվում է",
+    "description": "Closing in countdown"
+  }
+}

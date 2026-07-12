@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Пры падтрымцы UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Каб атрымаць максімум ад вашых модаў, гэты браўзэр уключае UltraSurf. Так вы можаце спампоўваць свае моды без абмежаванняў і без ідэнтыфікацыі твару. Атрымлівайце задавальненне!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Працягнуць",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Зачыненне праз",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Obsługiwane przez UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Aby w pełni wykorzystać możliwości swoich modów, ta przeglądarka zawiera UltraSurf. W ten sposób możesz pobierać swoje mody bez ograniczeń i bez identyfikacji twarzy. Miłej zabawy!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Kontynuuj",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Zamykanie za",
+    "description": "Closing in countdown"
+  }
+}

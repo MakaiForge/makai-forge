@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf මගින් බලගැන්වේ",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "ඔබේ මොඩ් වලින් උපරිම ප්‍රයෝජන ලබා ගැනීමට, මෙම බ්‍රවුසරය UltraSurf ඇතුළත් කරයි. මේ ආකාරයෙන් ඔබට සීමාවකින් තොරව සහ මුහුණු හඳුනාගැනීමකින් තොරව ඔබේ මොඩ් බාගත කළ හැකිය. විනෝද වන්න!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "ඉදිරියට",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "වසා දමයි",
+    "description": "Closing in countdown"
+  }
+}

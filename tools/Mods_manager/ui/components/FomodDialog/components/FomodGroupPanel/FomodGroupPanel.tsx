@@ -14,6 +14,7 @@ const typeLabels: Record<string, string> = {
   SelectAtLeastOne: "Select at least one",
   SelectAtMostOne: "Select at most one",
   SelectExactlyOne: "Select exactly one",
+  SelectAny: "Select any",
 };
 
 export function FomodGroupPanel({ group, stepIndex, groupIndex, onTogglePlugin }: FomodGroupPanelProps) {

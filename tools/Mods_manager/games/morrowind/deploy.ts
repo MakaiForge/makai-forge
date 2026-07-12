@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { ModlistEntry, DeploymentResult } from "@types";
 import { buildFilemap, findPrefixUsername } from "../_shared/filemap";
-import { scanSymlinks, symlinkAll, restoreSymlinks } from "../_shared/symlink";
+import { scanSymlinks, linkAll, restoreSymlinks } from "../_shared/symlink";
 import { moveToCore, restoreCore } from "../_shared/bethesda-deploy-helpers";
 
 export async function deployMorrowind(
@@ -25,7 +25,7 @@ export async function deployMorrowind(
 
   try {
     fs.mkdirSync(dataDir, { recursive: true });
-    const count = symlinkAll(filemap, dataDir);
+    const count = linkAll(filemap, dataDir);
     log.push(`Created ${count} symlinks in Data Files/`);
 
     // Write Morrowind.ini with plugin list

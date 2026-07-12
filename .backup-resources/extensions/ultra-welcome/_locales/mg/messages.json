@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Entanin'ny UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Mba hahazoana tombony betsaka amin'ny mods-nao, ity navigateur ity dia misy UltraSurf. Amin'izany dia afaka misintona ny mods-nao ianao tsy misy fameperana ary tsy misy famantarana ny tarehy. Ankafizo!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Hanohy",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Mihidy ao",
+    "description": "Closing in countdown"
+  }
+}

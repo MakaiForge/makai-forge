@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf tarafından desteklenmektedir",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Modlarınızdan en iyi şekilde yararlanmak için bu tarayıcı UltraSurf'ü içerir. Bu sayede modlarınızı kısıtlama olmadan ve yüz tanıma olmadan indirebilirsiniz. İyi eğlenceler!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Devam",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Kapanıyor",
+    "description": "Closing in countdown"
+  }
+}

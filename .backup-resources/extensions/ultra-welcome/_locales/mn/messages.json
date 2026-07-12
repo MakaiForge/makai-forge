@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf-ээр ажилладаг",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Модуудаа хамгийн сайн ашиглахын тулд энэхүү хөтөч UltraSurf-ийг агуулдаг. Ингэснээр та модуудаа хязгаарлалтгүйгээр болон нүүр царай танихгүйгээр татаж авах боломжтой. Хөгжилдөө!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Үргэлжлүүлэх",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Хаагдах",
+    "description": "Closing in countdown"
+  }
+}

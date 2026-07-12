@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf کے ذریعے تقویت یافتہ",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "اپنے موڈز سے بھرپور فائدہ اٹھانے کے لیے، اس براؤزر میں UltraSurf شامل ہے۔ اس طرح آپ بغیر کسی پابندی اور چہرے کی شناخت کے اپنے موڈز ڈاؤن لوڈ کر سکتے ہیں۔ لطف اٹھائیں!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "جاری رکھیں",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "بند ہو رہا ہے",
+    "description": "Closing in countdown"
+  }
+}

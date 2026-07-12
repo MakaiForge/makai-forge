@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UltraSurf Security, Privacy & Freedom VPN</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup">
+      <button id="openSettings" class="gear-button" type="button" aria-label="Settings" title="Settings" hidden>⚙</button>
+
+      <header class="header">
+        <img class="logo" src="../assets/img/icon/icon_48.png" alt="UltraSurf" />
+        <div>
+          <h1 id="title"></h1>
+          <p id="subtitle"></p>
+        </div>
+      </header>
+
+      <section class="card disclosure-card" id="safeBrowsingDisclosure" hidden>
+        <div class="disclosure-badge">Welcome to UltraSurf</div>
+        <div class="disclosure-title">Start protection with one tap</div>
+        <div class="disclosure-text">
+          <strong>VPN:</strong> Encrypts your traffic, protects your connection, and helps you access the open internet on restricted networks.<br /><br />
+          <strong>Safe Browsing:</strong> Checks website addresses against our security service to help block phishing and malware.<br /><br />
+          <strong>Privacy:</strong> For Safe Browsing checks, we send only the URL and referrer needed to verify safety. You can disable Safe Browsing anytime in Settings.
+        </div>
+        <div class="disclosure-actions">
+          <button id="safeBrowsingDisclosureAccept" class="primary-button" type="button">Got it</button>
+        </div>
+      </section>
+
+      <div id="mainUi" hidden>
+        <section class="card">
+          <div class="row">
+            <div>
+              <div class="label" id="modeLabel"></div>
+              <div class="value" id="stateText"></div>
+            </div>
+            <label class="switch">
+              <input id="enabledToggle" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <p class="message" id="stateMessage"></p>
+        </section>
+
+        <section class="card muted" id="reviewBox" hidden>
+          <div class="review-title" id="reviewTitle"></div>
+          <div class="star-rating" id="stars" role="radiogroup" aria-label="Rate UltraSurf">
+            <button type="button" class="star" data-value="1" aria-label="1 star">☆</button>
+            <button type="button" class="star" data-value="2" aria-label="2 stars">☆</button>
+            <button type="button" class="star" data-value="3" aria-label="3 stars">☆</button>
+            <button type="button" class="star" data-value="4" aria-label="4 stars">☆</button>
+            <button type="button" class="star" data-value="5" aria-label="5 stars">☆</button>
+          </div>
+          <div class="rating-text" id="ratingText"></div>
+          <div class="review-thankyou" id="reviewThankYou" hidden>
+            <div class="review-thankyou-title">Thank you for your feedback!</div>
+            <div class="review-thankyou-text">We appreciate your support.</div>
+          </div>
+        </section>
+
+        <section class="card settings-panel" id="settingsPanel" hidden>
+          <div class="settings-title">Settings</div>
+          <label class="setting-row" for="safeBrowsingToggle">
+            <div>
+              <div class="setting-name">Safe Browsing (Recommended)</div>
+              <div class="setting-desc">Provides an extra layer of security by checking URLs against our threat detection service.</div>
+            </div>
+            <span class="switch setting-switch">
+              <input id="safeBrowsingToggle" type="checkbox" />
+              <span class="slider"></span>
+            </span>
+          </label>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

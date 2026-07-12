@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unsafe Site Warning</title>
+    <link rel="stylesheet" href="warning.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>This site may be unsafe</h1>
+        <p class="subtitle">
+          UltraSurf Safe Browsing blocked this page because it may contain
+          phishing or other dangerous content.
+        </p>
+        <div class="targetBox">
+          <div class="label">Blocked URL</div>
+          <div id="targetUrl" class="targetUrl"></div>
+        </div>
+        <div class="actions">
+          <button id="backBtn" class="secondary">Go Back</button>
+          <button id="continueBtn" class="primary">Continue Anyway</button>
+        </div>
+      </div>
+    </div>
+    <script src="warning.js"></script>
+  </body>
+</html>

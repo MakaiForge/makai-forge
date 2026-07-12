@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "С подкрепа на UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "За да извлечете максимума от вашите модове, този браузър включва UltraSurf. По този начин можете да изтегляте модовете си без ограничения и без разпознаване на лице. Приятно забавление!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Продължи",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Затваряне след",
+    "description": "Closing in countdown"
+  }
+}

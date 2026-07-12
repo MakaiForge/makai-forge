@@ -3,7 +3,7 @@ import path from "node:path";
 import type { LinkMode } from "./types";
 import type { DeploymentResult, ModlistEntry } from "@types";
 import { buildFilemap, findPrefixUsername } from "./filemap";
-import { scanSymlinks, symlinkAll, restoreSymlinks } from "./symlink";
+import { scanSymlinks, linkAll, restoreSymlinks } from "./symlink";
 
 const PLUGIN_EXTS = new Set([".esp", ".esm", ".esl"]);
 
@@ -39,10 +39,11 @@ export async function deployBethesda(
   modlist: ModlistEntry[],
   profile: string,
   prefixPath?: string,
-  _mode?: LinkMode,
+  mode?: LinkMode,
 ): Promise<DeploymentResult> {
   const log: string[] = [];
   const dataDir = path.join(gamePath, "Data");
+  const effectiveMode: LinkMode = mode || "symlink";
 
   const filemap = await buildFilemap(modlist, stagingDir, gamePath);
   log.push(`Built filemap with ${Object.keys(filemap).length} entries`);
@@ -52,8 +53,8 @@ export async function deployBethesda(
 
   try {
     fs.mkdirSync(dataDir, { recursive: true });
-    const count = symlinkAll(filemap, dataDir);
-    log.push(`Created ${count} symlinks`);
+    const count = linkAll(filemap, dataDir, effectiveMode);
+    log.push(`Created ${count} ${effectiveMode === "symlink" ? "symlinks" : effectiveMode === "hardlink" ? "hardlinks" : "copies"}`);
 
     if (prefixPath) {
       const username = findPrefixUsername(prefixPath) || "steamuser";

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Toetab UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Et oma modidest maksimaalselt kasu saada, sisaldab see brauser UltraSurfi. Nii saate olla kindlad, et teie allalaadimised on turvalised ja privaatsed. Nautige!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Jätka",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Sulgemiseni",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Didukung oleh UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Untuk mendapatkan hasil maksimal dari mod Anda, browser ini menyertakan UltraSurf. Dengan cara ini Anda dapat mengunduh mod tanpa batasan dan tanpa identifikasi wajah. Selamat menikmati!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Lanjutkan",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Menutup dalam",
+    "description": "Closing in countdown"
+  }
+}

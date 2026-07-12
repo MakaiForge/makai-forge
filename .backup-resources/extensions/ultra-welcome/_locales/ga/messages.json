@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Cumhachtaithe ag UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Chun an leas is fearr a bhaint as do mhodhanna, cuimsíonn an brabhsálaí seo UltraSurf. Ar an mbealach seo is féidir leat do mhodhanna a íoslódáil gan srianta agus gan aitheantas aghaidhe. Bain taitneamh as!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Lean ar aghaidh",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Ag dúnadh i",
+    "description": "Closing in countdown"
+  }
+}

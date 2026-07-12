@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "د UltraSurf لخوا پرمخ وړل کیږي",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "د خپلو موډونو څخه ډیره ګټه پورته کولو لپاره، دا براوزر UltraSurf لري. په دې توګه تاسو کولی شئ خپل موډونه د محدودیتونو او د مخ پیژندلو پرته ډاونلوډ کړئ. خوند واخلئ!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "دوام",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "بندیدل په",
+    "description": "Closing in countdown"
+  }
+}

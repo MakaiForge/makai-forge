@@ -11,7 +11,7 @@ export interface FomodPlugin {
 
 export interface FomodGroup {
   name: string;
-  type: "SelectAll" | "SelectAtLeastOne" | "SelectAtMostOne" | "SelectExactlyOne";
+  type: "SelectAll" | "SelectAtLeastOne" | "SelectAtMostOne" | "SelectExactlyOne" | "SelectAny";
   plugins: FomodPlugin[];
 }
 

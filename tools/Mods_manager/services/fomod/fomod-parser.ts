@@ -16,6 +16,32 @@ class XmlNode {
   text: string = "";
 }
 
+const KNOWN_GROUP_TYPES = new Set([
+  "SelectAll", "SelectAtLeastOne", "SelectAtMostOne", "SelectExactlyOne", "SelectAny",
+]);
+
+function normalizeGroupType(raw: string): FomodGroup["type"] {
+  if (KNOWN_GROUP_TYPES.has(raw)) return raw as FomodGroup["type"];
+  if (raw.toLowerCase().includes("any")) return "SelectAtLeastOne";
+  if (raw.toLowerCase().includes("all")) return "SelectAll";
+  if (raw.toLowerCase().includes("exactly")) return "SelectExactlyOne";
+  if (raw.toLowerCase().includes("atmost")) return "SelectAtMostOne";
+  return "SelectAtLeastOne";
+}
+
+function readFileWithFallback(xmlPath: string): string {
+  const buf = fs.readFileSync(xmlPath);
+  const head = buf.slice(0, 4);
+  if (head[0] === 0xFF && head[1] === 0xFE) return buf.toString("utf-16le");
+  if (head[0] === 0xFE && head[1] === 0xFF) return buf.toString("utf-16le");
+  if (buf.includes(0)) {
+    try { return buf.toString("utf-16le"); } catch { /* fallthrough */ }
+  }
+  let text = buf.toString("utf-8");
+  text = text.replace(/xmlns[^=]*="[^"]*"/g, "");
+  return text;
+}
+
 function lexXml(text: string): string[] {
   const tokens: string[] = [];
   const re = /<[^>]*>|[^<]+/g;
@@ -226,7 +252,7 @@ function parseGroup(groupNode: XmlNode, fallbackPlugins: XmlNode[]): FomodGroup 
   }
   return {
     name: groupNode.attrs["name"] || "Group",
-    type: (parseTypeDescriptor(groupNode) as FomodGroup["type"]) || "SelectExactlyOne",
+    type: normalizeGroupType(parseTypeDescriptor(groupNode)),
     plugins,
   };
 }
@@ -264,7 +290,7 @@ function parseGroupsInStep(stepNode: XmlNode): FomodGroup[] {
 
 export function parseFomodXml(xmlPath: string): FomodConfig | null {
   if (!fs.existsSync(xmlPath)) return null;
-  const text = fs.readFileSync(xmlPath, "utf-8");
+  const text = readFileWithFallback(xmlPath);
   const root = parseXml(text);
 
   const config = findChild(root, "config") || findChild(root, "module") || findChild(root, "fomod");

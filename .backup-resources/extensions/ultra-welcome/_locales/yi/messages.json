@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "אונטערגעשטיצט דורך UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "צו באַקומען די מערסט פון דיין מאָדס, דעם בלעטערער כולל UltraSurf. אויף דעם וועג איר קענען אָפּלאָדירן דיין מאָדס אָן ריסטריקשאַנז און אָן פּנים ידענטיפיקאַציע. הנאה!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "פאָרזעצן",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "פאַרמאַכן אין",
+    "description": "Closing in countdown"
+  }
+}

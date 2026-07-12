@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf tarapyndan goldanýar",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Modlaryňyzdan iň gowy peýdalanmak üçin, bu brauzer UltraSurf-i öz içine alýar. Şeýlelikde, modlaryňyzy çäklendirmeler we ýüz tanamazdan göçürip alyp bilersiňiz. Lezzet alyň!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Dowam et",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Ýapylýar",
+    "description": "Closing in countdown"
+  }
+}

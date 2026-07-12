@@ -3,7 +3,7 @@ import path from "node:path";
 import type { ModlistEntry, DeploymentResult } from "@types";
 import type { CustomRule, LinkMode } from "../_shared/types";
 import { buildFilemap, findPrefixUsername } from "../_shared/filemap";
-import { scanSymlinks, symlinkAll, restoreSymlinks } from "../_shared/symlink";
+import { scanSymlinks, linkAll, restoreSymlinks } from "../_shared/symlink";
 import { pluginsTxtPath, collectPlugins } from "./bethesda-plugins";
 
 export function moveToCore(dataDir: string, log?: (msg: string) => void): void {
@@ -159,10 +159,11 @@ export async function deployFilemap(
   modlist: ModlistEntry[],
   gamePath: string,
   customRules?: CustomRule[],
-  _mode?: LinkMode,
+  mode?: LinkMode,
   prefixPath?: string,
   log?: (msg: string) => void,
 ): Promise<DeploymentResult> {
+  const effectiveMode: LinkMode = mode || "symlink";
   const filemap = await buildFilemap(modlist, stagingDir, gamePath);
 
   const preExistingData = fs.existsSync(dataDir) ? scanSymlinks(dataDir) : {};
@@ -170,12 +171,12 @@ export async function deployFilemap(
 
   try {
     fs.mkdirSync(dataDir, { recursive: true });
-    const count = symlinkAll(filemap, dataDir);
-    log?.(`  Created ${count} symlinks in Data/`);
+    const count = linkAll(filemap, dataDir, effectiveMode);
+    log?.(`  Created ${count} ${effectiveMode === "symlink" ? "symlinks" : effectiveMode === "hardlink" ? "hardlinks" : "copies"} in Data/`);
 
     if (customRules) {
       for (const rule of customRules) {
-        await applyCustomRule(rule, filemap, modlist, stagingDir, gamePath, log, prefixPath);
+        await applyCustomRule(rule, filemap, modlist, stagingDir, gamePath, log, prefixPath, path.basename(dataDir));
       }
     }
 
@@ -204,6 +205,7 @@ async function applyCustomRule(
   gamePath: string,
   log?: (msg: string) => void,
   prefixPath?: string,
+  cleanupDir?: string,
 ): Promise<void> {
   const { dest, filenames, extensions, folders, flatten, looseOnly, toPrefix } = rule;
   const baseDir = toPrefix && prefixPath ? prefixPath : gamePath;
@@ -254,19 +256,23 @@ async function applyCustomRule(
   for (const { relPath, sourcePath } of matches) {
     delete filemap[relPath];
 
-    // Remove old symlink from Data/
-    const oldTarget = path.join(gamePath, "Data", relPath);
+    // Remove old link from deploy target directory
+    const cleanupBase = cleanupDir || "Data";
+    const oldTarget = path.join(gamePath, cleanupBase, relPath);
     try {
       if (fs.existsSync(oldTarget) && fs.lstatSync(oldTarget).isSymbolicLink()) {
         fs.unlinkSync(oldTarget);
       }
     } catch { /* */ }
 
-    // Create symlink at correct target
+    // Create link at correct target
     const destRelPath = flatten ? path.basename(relPath) : relPath;
     const targetPath = path.join(baseDir, dest, destRelPath);
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    try { fs.symlinkSync(sourcePath, targetPath); } catch { /* */ }
+    try {
+      // Use symlink for custom-routed files (hardlink/copy less useful here)
+      fs.symlinkSync(sourcePath, targetPath);
+    } catch { /* */ }
     log?.(`  Routed ${relPath} → ${path.join(dest, destRelPath)}`);
   }
 }

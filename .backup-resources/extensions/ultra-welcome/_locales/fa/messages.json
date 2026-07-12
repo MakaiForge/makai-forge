@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "تقویت شده توسط UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "برای استفاده بیشتر از مادهای خود، این مرورگر شامل UltraSurf است. به این ترتیب می‌توانید مادهای خود را بدون محدودیت و بدون شناسایی چهره دانلود کنید. لذت ببرید!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "ادامه",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "بسته شدن در",
+    "description": "Closing in countdown"
+  }
+}

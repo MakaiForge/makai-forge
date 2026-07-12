@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "由 UltraSurf 提供支持",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "为了更好地享受您的 mod，此浏览器包含 UltraSurf。这样您就可以无限制、无面部识别地下载您的 mod。玩得开心！",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "继续",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "关闭在",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf kwadoro ya",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Iji nweta uru kachasi na mods gi, ihe nchoghari a gunyere UltraSurf. N'uzo di otu a, i nwere ike ibudata mods gi na enweghi mmachi na enweghi njirimara ihu. Nwee anuri!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Gaa n'ihu",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Mmechi na",
+    "description": "Closing in countdown"
+  }
+}

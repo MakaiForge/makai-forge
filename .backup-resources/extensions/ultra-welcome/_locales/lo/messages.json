@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "ຂັບເຄື່ອນໂດຍ UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "ເພື່ອໃຫ້ໄດ້ປະໂຫຍດສູງສຸດຈາກ mod ຂອງທ່ານ, ຕົວທ່ອງເວັບນີ້ປະກອບມີ UltraSurf. ດ້ວຍວິທີນີ້ທ່ານສາມາດດາວໂຫລດ mod ຂອງທ່ານໂດຍບໍ່ມີຂໍ້ຈໍາກັດແລະບໍ່ມີການກໍານົດໃບຫນ້າ. ມ່ວນ!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "ສືບຕໍ່",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "ປິດໃນ",
+    "description": "Closing in countdown"
+  }
+}

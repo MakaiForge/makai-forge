@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "באמצעות UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "כדי להפיק את המרב מהמודים שלך, הדפדפן הזה כולל את UltraSurf. כך תוכל להוריד את המודים שלך ללא הגבלות וללא זיהוי פנים. תהנה!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "המשך",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "נסגר בעוד",
+    "description": "Closing in countdown"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Με την υποστήριξη του UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Για να αξιοποιήσετε στο έπακρο τα mods σας, αυτό το πρόγραμμα περιήγησης περιλαμβάνει το UltraSurf. Έτσι μπορείτε να κατεβάσετε τα mods σας χωρίς περιορισμούς και χωρίς αναγνώριση προσώπου. Απολαύστε!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Συνέχεια",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Κλείσιμο σε",
+    "description": "Closing in countdown"
+  }
+}

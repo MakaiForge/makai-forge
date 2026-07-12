@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Aangedryf deur UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Om die beste uit jou mods te kry, sluit hierdie webblaaier UltraSurf in. Sodoende kan jy jou mods aflaai sonder beperkings en sonder gesigsidentifikasie. Geniet dit!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Gaan voort",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Sluit oor",
+    "description": "Closing in countdown"
+  }
+}

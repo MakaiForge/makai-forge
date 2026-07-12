@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Waxaa ka shaqeeya UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Si aad uga faa'iideysato mods-yadaaga, browser-kan waxaa ku jira UltraSurf. Sidan ayaad u soo dejisan kartaa mods-yadaaga xaddid la'aan iyo aqoonsi weji la'aan. Ku raaxayso!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Sii wad",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Xidhaya",
+    "description": "Closing in countdown"
+  }
+}

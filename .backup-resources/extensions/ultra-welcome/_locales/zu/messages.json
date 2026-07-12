@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Inikezwe amandla yi-UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Ukuze uthole okuningi kumamodi akho, lesi siphequluli sihlanganisa i-UltraSurf. Ngale ndlela ungawalanda amamodi akho ngaphandle kwemingcele futhi ngaphandle kokuhlonzwa kobuso. Jabulela!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Qhubeka",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Kuvala ngaphakathi",
+    "description": "Closing in countdown"
+  }
+}

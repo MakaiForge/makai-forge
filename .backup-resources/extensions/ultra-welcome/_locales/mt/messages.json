@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Imħaddem minn UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Biex tikseb l-aħjar mill-mods tiegħek, dan il-browser jinkludi UltraSurf. B'dan il-mod tista' tniżżel il-mods tiegħek mingħajr restrizzjonijiet u mingħajr identifikazzjoni tal-wiċċ. Igawdu!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Kompli",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Għeluq fi",
+    "description": "Closing in countdown"
+  }
+}

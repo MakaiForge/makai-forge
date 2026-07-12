@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Veikia su UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Kad iš savo modų gautumėte kuo daugiau, ši naršyklė apima UltraSurf. Tokiu būdu galite atsisiųsti savo modus be apribojimų ir be veido atpažinimo. Mėgaukitės!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Tęsti",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Užsidarys po",
+    "description": "Closing in countdown"
+  }
+}

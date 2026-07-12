@@ -15,7 +15,7 @@ export const SKYRIM_CONSTANTS = {
   scriptExtenderName: "skse_loader.exe",
 } as const;
 
-export const SKYRIM_SE_EXE_NAMES = ["TESV.exe", "Skyrim.exe", "SkyrimLauncher.exe"];
+export const SKYRIM_EXE_NAMES = ["TESV.exe", "Skyrim.exe", "SkyrimLauncher.exe"];
 
 export const SKYRIM_MOD_REQUIRED_FOLDERS = new Set([
   "skse", "textures", "sound", "meshes", "mcm", "scripts",

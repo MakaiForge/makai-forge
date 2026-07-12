@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Poháňané UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Aby ste zo svojich modov vyťažili maximum, tento prehliadač obsahuje UltraSurf. Týmto spôsobom si môžete sťahovať mody bez obmedzení a bez identifikácie tváre. Užite si to!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Pokračovať",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Zatváranie za",
+    "description": "Closing in countdown"
+  }
+}

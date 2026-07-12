@@ -6,8 +6,9 @@ import { detectGame } from "./steps/01-detect";
 import { ensureProton } from "./steps/02-proton";
 import { ensurePrefix } from "./steps/03-prefix";
 import { applyGameConfigs } from "./steps/04-configs";
-import { ensureSkse } from "./steps/05-skse";
-import { launchGame } from "./steps/06-launch";
+import { ensureGameFrameworks } from "./steps/05-frameworks";
+import { ensureSkse } from "./steps/06-skse";
+import { launchGame } from "./steps/07-launch";
 import type { SendProgress, PlayResult } from "./types";
 import type { DetectResult } from "./steps/01-detect";
 import { logPlay } from "./logger";
@@ -80,7 +81,18 @@ export async function playGame(
     logStep(gameId, "configs", "Configurações aplicadas", "done", { duration_ms: Date.now() - _s4 });
     logPlay(gameId, "configs_applied", { resolvedPrefix, protonPath });
 
-    // ── Step 5: SKSE (antes do deploy para o swap do launcher funcionar) ──
+    // ── Step 5: Frameworks (BepInEx, SMAPI, CET, etc.) ──
+    logStep(gameId, "frameworks", "Verificando frameworks...", "working");
+    const _s5f = Date.now();
+    const frameworksResult = await ensureGameFrameworks(gameId, gamePath, send);
+    logStep(gameId, "frameworks", `Frameworks: ${frameworksResult.installed.length} instalados, ${frameworksResult.skipped.length} existentes`, "done", { duration_ms: Date.now() - _s5f });
+    logPlay(gameId, "frameworks", {
+      installed: frameworksResult.installed.join(", "),
+      skipped: frameworksResult.skipped.join(", "),
+      failed: frameworksResult.failed.join(", "),
+    });
+
+    // ── Step 6: SKSE (antes do deploy para o swap do launcher funcionar) ──
     logStep(gameId, "skse", "Verificando Script Extender...", "working");
     const _s5 = Date.now();
     const { hasSkse, sksePath } = await ensureSkse(gameId, gamePath, send);
@@ -90,7 +102,7 @@ export async function playGame(
     });
     logPlay(gameId, "skse", { hasSkse: String(hasSkse), sksePath: sksePath || "" });
 
-    // ── Step 6: Deploy mods ──
+    // ── Step 7: Deploy mods ──
     logStep(gameId, "deploy", "Implantando mods...", "working");
     const _s6 = Date.now();
     try {
@@ -124,7 +136,7 @@ export async function playGame(
       throw new Error(`Falha no deploy: ${msg}`);
     }
 
-    // ── Step 7: Launch ──
+    // ── Step 8: Launch ──
     logStep(gameId, "launch", "Iniciando jogo...", "working");
     const _s7 = Date.now();
     const launchResult = await launchGame(

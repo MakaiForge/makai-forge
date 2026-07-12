@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "ขับเคลื่อนโดย UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "เพื่อให้ได้รับประโยชน์สูงสุดจากโมดของคุณ เบราว์เซอร์นี้มี UltraSurf ในตัว ด้วยวิธีนี้คุณสามารถดาวน์โหลดโมดของคุณได้โดยไม่มีข้อจำกัดและไม่ต้องระบุใบหน้า สนุกไปกับมัน!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "ดำเนินการต่อ",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "กำลังปิดใน",
+    "description": "Closing in countdown"
+  }
+}

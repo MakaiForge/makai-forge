@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf ne ke yi aiki",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Don samun mafi kyawu daga mods ɗinku, wannan browser ya haɗa da UltraSurf. Ta wannan hanya za ku iya sauke mods ɗinku ba tare da ƙuntatawa ba kuma ba tare da tantance fuska ba. Ji daɗi!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Ci gaba",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Rufewa cikin",
+    "description": "Closing in countdown"
+  }
+}

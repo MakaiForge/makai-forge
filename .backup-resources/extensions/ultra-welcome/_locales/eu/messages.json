@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "UltraSurf-ek bultzatua",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Zure modei etekinik handiena ateratzeko, nabigatzaile honek UltraSurf barne hartzen du. Horrela, zure modeak murrizketarik gabe eta aurpegi identifikaziorik gabe deskargatu ditzakezu. Ondo pasa!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Jarraitu",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Ixteko",
+    "description": "Closing in countdown"
+  }
+}

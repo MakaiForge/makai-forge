@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a2a4a"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+  </defs>
+  <rect width="80" height="80" rx="10" fill="url(#bg)"/>
+  <circle cx="40" cy="30" r="20" fill="#f5a623"/>
+  <circle cx="40" cy="30" r="16" fill="#e8920e"/>
+  <ellipse cx="40" cy="30" rx="8" ry="6" fill="#1a1a2e"/>
+  <circle cx="40" cy="30" r="3" fill="#f5a623"/>
+  <polygon points="26,16 30,6 34,16" fill="#f5a623"/>
+  <polygon points="54,16 50,6 46,16" fill="#f5a623"/>
+  <circle cx="34" cy="26" r="2" fill="#fff"/>
+  <circle cx="46" cy="26" r="2" fill="#fff"/>
+  <circle cx="40" cy="32" r="1.5" fill="#e74c3c"/>
+  <path d="M34 36 Q40 42 46 36" stroke="#1a1a2e" stroke-width="1.5" fill="none"/>
+  <rect x="10" y="56" width="60" height="3" rx="1.5" fill="#4a4a7a"/>
+  <rect x="14" y="62" width="52" height="12" rx="3" fill="#2a2a4a" stroke="#4a4a7a" stroke-width="1"/>
+  <rect x="16" y="64" width="48" height="8" rx="2" fill="#1a1a2e"/>
+  <rect x="20" y="66" width="8" height="4" rx="1" fill="#4a4a7a"/>
+  <rect x="32" y="66" width="16" height="4" rx="1" fill="#4a4a7a"/>
+  <rect x="52" y="66" width="8" height="4" rx="1" fill="#4a4a7a"/>
+</svg>

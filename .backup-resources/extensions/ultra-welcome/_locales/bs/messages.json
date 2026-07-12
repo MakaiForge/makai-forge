@@ -1,0 +1,22 @@
+{
+  "appName": {
+    "message": "UltraWelcome",
+    "description": "App name"
+  },
+  "subtitle": {
+    "message": "Pokreće UltraSurf",
+    "description": "Powered by UltraSurf"
+  },
+  "message": {
+    "message": "Da biste izvukli maksimum iz svojih modova, ovaj pretraživač uključuje UltraSurf. Na ovaj način možete preuzimati svoje modove bez ograničenja i bez identifikacije lica. Uživajte!",
+    "description": "Welcome message about UltraSurf"
+  },
+  "btn": {
+    "message": "Nastavi",
+    "description": "Continue button"
+  },
+  "closeIn": {
+    "message": "Zatvaranje za",
+    "description": "Closing in countdown"
+  }
+}
