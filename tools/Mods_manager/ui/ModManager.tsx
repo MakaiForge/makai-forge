@@ -146,7 +146,16 @@ export default function ModManager() {
     }
     (async () => {
       try {
-        const components = await window.electron.modsStore.get(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`);
+        let components = await window.electron.modsStore.get(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`);
+        // Retroactive capture: if no components saved yet, parse FOMOD and build from existing files
+        if ((!components || !Array.isArray(components) || components.length === 0) && selectedMod.stagingDir) {
+          const captured = await window.electron.captureFomodComponents(selectedMod.stagingDir);
+          if (captured && captured.length > 0) {
+            components = captured;
+            await window.electron.modsStore.put(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`, captured);
+            addLog(`Captured ${captured.length} FOMOD component(s) for ${selectedMod.name}`);
+          }
+        }
         setFomodComponents(Array.isArray(components) ? components : []);
       } catch {
         setFomodComponents([]);
@@ -471,9 +480,12 @@ export default function ModManager() {
     const component = fomodComponents.find(c => c.name === componentName);
     if (!component) return;
 
+    const wasEnabled = component.enabled;
+    const newEnabled = !wasEnabled;
+
     // Toggle the component
     const newComponents = fomodComponents.map(c =>
-      c.name === componentName ? { ...c, enabled: !c.enabled } : c
+      c.name === componentName ? { ...c, enabled: newEnabled } : c
     );
     setFomodComponents(newComponents);
 
@@ -483,8 +495,13 @@ export default function ModManager() {
     // Toggle files in staging
     if (selectedMod.stagingDir) {
       try {
-        await window.electron.toggleFomodComponent(selectedMod.stagingDir, component.files, component.enabled);
-        addLog(`${component.enabled ? "Disabled" : "Enabled"} FOMOD component: ${componentName}`);
+        await window.electron.toggleFomodComponent(
+          selectedMod.stagingDir,
+          component.files,
+          newEnabled,
+          newEnabled ? component.sourceFiles : undefined,
+        );
+        addLog(`${newEnabled ? "Enabled" : "Disabled"} FOMOD component: ${componentName}`);
       } catch (err) {
         addLog(`Failed to toggle ${componentName}: ${err}`);
       }

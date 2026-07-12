@@ -1076,8 +1076,11 @@ contextBridge.exposeInMainWorld("electron", {
   installFomodWithComponents: (stagingDir: string, targetDir: string, selections: Record<string, string[]>) =>
     ipcRenderer.invoke("installFomodWithComponents", stagingDir, targetDir, selections),
 
-  toggleFomodComponent: (stagingDir: string, files: string[], enable: boolean) =>
-    ipcRenderer.invoke("toggleFomodComponent", stagingDir, files, enable),
+  toggleFomodComponent: (stagingDir: string, files: string[], enable: boolean, sourceFiles?: { source: string; destination: string }[]) =>
+    ipcRenderer.invoke("toggleFomodComponent", stagingDir, files, enable, sourceFiles),
+
+  captureFomodComponents: (stagingDir: string) =>
+    ipcRenderer.invoke("captureFomodComponents", stagingDir),
 
   deployMods: (gameId: string, profile: string) =>
     ipcRenderer.invoke("deployMods", gameId, profile),

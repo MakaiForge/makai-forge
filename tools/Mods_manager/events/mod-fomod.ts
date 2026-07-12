@@ -13,19 +13,15 @@ registerEvent("installFomodWithComponents", async (_event, stagingDir: string, t
   return FomodService.installWithComponents(stagingDir, targetDir, selections, true);
 });
 
-registerEvent("toggleFomodComponent", async (_event, stagingDir: string, files: string[], enable: boolean) => {
+registerEvent("toggleFomodComponent", async (_event, stagingDir: string, files: string[], enable: boolean, sourceFiles?: { source: string; destination: string }[]) => {
   const fs = await import("node:fs");
   const path = await import("node:path");
   let count = 0;
-  for (const relPath of files) {
-    const fullPath = path.join(stagingDir, relPath);
-    if (enable) {
-      // Re-parse FOMOD to find source, copy back
-      // Files should still exist in staging (we don't delete on toggle-off anymore)
-      // If they were deleted, we need the FOMOD source
-      // For now, just skip if not found
-    } else {
-      // Disable: remove the file
+
+  if (!enable) {
+    // Disable: remove files from staging root
+    for (const relPath of files) {
+      const fullPath = path.join(stagingDir, relPath);
       try {
         if (fs.existsSync(fullPath)) {
           const stat = fs.statSync(fullPath);
@@ -38,6 +34,44 @@ registerEvent("toggleFomodComponent", async (_event, stagingDir: string, files: 
         }
       } catch { /* skip */ }
     }
+  } else if (sourceFiles && sourceFiles.length > 0) {
+    // Enable: copy files from FOMOD source back to staging root
+    for (const sf of sourceFiles) {
+      const srcPath = path.join(stagingDir, sf.source);
+      const destPath = path.join(stagingDir, sf.destination);
+      if (!fs.existsSync(srcPath)) continue;
+
+      try {
+        if (fs.statSync(srcPath).isDirectory()) {
+          // Copy directory recursively
+          const copyDir = (src: string, dest: string) => {
+            fs.mkdirSync(dest, { recursive: true });
+            for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+              const s = path.join(src, entry.name);
+              const d = path.join(dest, entry.name);
+              if (entry.isDirectory()) {
+                copyDir(s, d);
+              } else {
+                if (fs.existsSync(d)) fs.unlinkSync(d);
+                fs.copyFileSync(s, d);
+                count++;
+              }
+            }
+          };
+          copyDir(srcPath, destPath);
+        } else {
+          fs.mkdirSync(path.dirname(destPath), { recursive: true });
+          if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+          fs.copyFileSync(srcPath, destPath);
+          count++;
+        }
+      } catch { /* skip */ }
+    }
   }
+
   return { toggled: count, enable };
+});
+
+registerEvent("captureFomodComponents", async (_event, stagingDir: string) => {
+  return FomodService.captureComponentsRetroactive(stagingDir);
 });

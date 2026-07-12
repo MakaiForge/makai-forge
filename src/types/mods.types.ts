@@ -25,6 +25,7 @@ export interface FomodComponent {
   description: string;
   enabled: boolean;
   files: string[];
+  sourceFiles?: { source: string; destination: string }[];
 }
 
 export interface ModlistEntry {

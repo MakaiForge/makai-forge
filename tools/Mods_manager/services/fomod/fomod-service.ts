@@ -5,14 +5,39 @@ import type { FomodConfig } from "./fomod-types";
 import type { FomodComponent } from "@types";
 
 export class FomodService {
-  /** Find the ModuleConfig.xml in a mod's staging directory. */
+  /** Find the ModuleConfig.xml in a mod's staging directory.
+   *  Searches root, then first-level subdirectories (for mods with nested FOMOD). */
   static findConfig(stagingDir: string): string | null {
-    let fomodDir = path.join(stagingDir, "fomod");
-    if (!fs.existsSync(fomodDir)) {
-      fomodDir = path.join(stagingDir, "Fomod");
-      if (!fs.existsSync(fomodDir)) return null;
+    const candidates = ["fomod", "Fomod", "FOMOD"];
+
+    // Check root level first
+    for (const name of candidates) {
+      const fomodDir = path.join(stagingDir, name);
+      if (fs.existsSync(fomodDir)) {
+        const xml = this.findXmlInDir(fomodDir);
+        if (xml) return xml;
+      }
     }
 
+    // Check first-level subdirectories (e.g., "Bijin Wairmaidens NeverNude CBBE/Fomod/")
+    try {
+      const entries = fs.readdirSync(stagingDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        for (const name of candidates) {
+          const fomodDir = path.join(stagingDir, entry.name, name);
+          if (fs.existsSync(fomodDir)) {
+            const xml = this.findXmlInDir(fomodDir);
+            if (xml) return xml;
+          }
+        }
+      }
+    } catch { /* ignore */ }
+
+    return null;
+  }
+
+  private static findXmlInDir(fomodDir: string): string | null {
     const candidates = [
       path.join(fomodDir, "ModuleConfig.xml"),
       path.join(fomodDir, "moduleconfig.xml"),
@@ -147,10 +172,10 @@ export class FomodService {
         for (const plugin of group.plugins) {
           if (!plugin.files || plugin.files.length === 0) continue;
           const files: string[] = [];
+          const sourceFiles: { source: string; destination: string }[] = [];
           for (const f of plugin.files) {
             const effectiveDest = f.destination || f.source;
-            const destPath = path.join(targetDir, effectiveDest);
-            // Walk directory if source is a directory
+            sourceFiles.push({ source: f.source, destination: effectiveDest });
             const srcPath = path.join(stagingDir, f.source);
             if (fs.existsSync(srcPath) && fs.statSync(srcPath).isDirectory()) {
               this.walkDir(srcPath, (rel) => {
@@ -165,6 +190,7 @@ export class FomodService {
             description: plugin.description || "",
             enabled: stepSelections.includes(plugin.name),
             files,
+            sourceFiles,
           });
         }
       }
@@ -215,6 +241,59 @@ export class FomodService {
     }
 
     return removed;
+  }
+
+  /**
+   * Retroactively capture FOMOD component data for an already-installed mod.
+   * Parses the FOMOD config, then matches existing files in stagingDir to plugins.
+   * Returns the component map (or empty array if no FOMOD found).
+   */
+  static captureComponentsRetroactive(stagingDir: string): FomodComponent[] {
+    const config = this.parse(stagingDir);
+    if (!config) return [];
+
+    const components: FomodComponent[] = [];
+
+    for (const step of config.steps) {
+      for (const group of step.groups) {
+        for (const plugin of group.plugins) {
+          if (!plugin.files || plugin.files.length === 0) continue;
+
+          const files: string[] = [];
+          const sourceFiles: { source: string; destination: string }[] = [];
+          let existsCount = 0;
+
+          for (const f of plugin.files) {
+            const srcPath = path.join(stagingDir, f.source);
+            const effectiveDest = f.destination || f.source;
+            sourceFiles.push({ source: f.source, destination: effectiveDest });
+
+            if (fs.existsSync(srcPath)) {
+              existsCount++;
+              if (fs.statSync(srcPath).isDirectory()) {
+                this.walkDir(srcPath, (rel) => {
+                  files.push(path.join(effectiveDest, rel));
+                });
+              } else {
+                files.push(effectiveDest);
+              }
+            }
+          }
+
+          if (existsCount > 0) {
+            components.push({
+              name: plugin.name,
+              description: plugin.description || "",
+              enabled: true,
+              files,
+              sourceFiles,
+            });
+          }
+        }
+      }
+    }
+
+    return components;
   }
 
   private static copyRecursive(src: string, dest: string, copied: string[]): void {
