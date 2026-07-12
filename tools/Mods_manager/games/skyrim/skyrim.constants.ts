@@ -30,12 +30,13 @@ export const SKYRIM_WINE_DLL_OVERRIDES: Record<string, string> = {
   "winmm": "native,builtin",
   "version": "native,builtin",
   "d3dcompiler_47": "native",
-  "dsound": "native,builtin",
-  "mmdevapi": "native,builtin",
 };
 
-// xaudio2: REMOVIDO — Proton usa FAudio (reimplementação nativa Linux)
-// que funciona melhor que qualquer DLL nativa/builtin do Wine para vozes.
+// dsound e mmdevapi: REMOVIDOS — forçar DLLs nativas do Wine para
+// dsound/mmdevapi interfere com o pipeline de áudio do Proton.
+// Proton gerencia dsound, mmdevapi e xaudio2 (FAudio) nativamente.
+// xaudio2 NÃO deve ser sobreposto — Proton usa FAudio (reimplementação
+// nativa Linux) que funciona melhor que qualquer DLL nativa do Wine.
 // x3daudio mantido como native,builtin para positional audio.
 for (let n = 0; n < 8; n++) {
   SKYRIM_WINE_DLL_OVERRIDES[`x3daudio1_${n}`] = "native,builtin";

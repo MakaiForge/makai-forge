@@ -4,7 +4,6 @@ import type { LinkMode } from "./types";
 import type { DeploymentResult, ModlistEntry } from "@types";
 import { buildFilemap, findPrefixUsername } from "./filemap";
 import { scanSymlinks, symlinkAll, restoreSymlinks } from "./symlink";
-import { applyWineDllOverrides, BETHESDA_COMMON_DLL_OVERRIDES } from "./prefix";
 
 const PLUGIN_EXTS = new Set([".esp", ".esm", ".esl"]);
 
@@ -78,8 +77,6 @@ export async function deployBethesda(
         log.push(`Wrote plugins.txt with ${entries.length} entries`);
         ModStorageService.put(pluginsKey, entries);
       }
-
-      applyWineDllOverrides(prefixPath, BETHESDA_COMMON_DLL_OVERRIDES);
     } else {
       log.push("No prefix path — skipped plugins.txt");
     }
