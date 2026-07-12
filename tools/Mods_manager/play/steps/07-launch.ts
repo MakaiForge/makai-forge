@@ -116,6 +116,7 @@ export async function launchGame(
     logger.info(`[Launch] SteamGameId: ${launchEnv.SteamGameId}`);
     logger.info(`[Launch] GAMEID: ${launchEnv.GAMEID}`);
     logger.info(`[Launch] PROTONPATH: ${launchEnv.PROTONPATH}`);
+    logger.info(`[Launch] PROTON_LOG: ${path.join(os.homedir(), `steam-${steamAppId || "0"}.log`)}`);
     logger.info(`[Launch] protonExe exists: ${fs.existsSync(protonExe)}`);
     logger.info(`[Launch] launchExe exists: ${fs.existsSync(launchExe)}`);
     logger.info(`[Launch] gameDir: ${gameDir}`);
@@ -213,6 +214,11 @@ export async function launchGame(
           logger.info(`[Launch] umu-run exit code: ${code}`);
           if (stdoutOut) logger.info(`[Launch] umu-run stdout:\n${stdoutOut}`);
           if (stderrOut) logger.warn(`[Launch] umu-run stderr:\n${stderrOut}`);
+          if (stderrOut.includes("0xc0000005") || stderrOut.includes("Unhandled exception") || stderrOut.includes("page fault")) {
+            send("launch", `❌ Jogo crashou (exit ${code}). Verifique o console F12 para detalhes.`, "error");
+          } else if (code !== 0 && code !== null) {
+            send("launch", `⚠️ Jogo encerrou com código ${code}`, "warning");
+          }
         });
         child.unref();
         send("launch", `✅ ${info?.name || gameId} iniciado via umu-run!`, "done");
