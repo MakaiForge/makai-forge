@@ -101,6 +101,35 @@
   color: #666;
 }
 
+.mod-manager__fomod-component--conflict {
+  background: #2a1515;
+  border-color: #8a3333;
+
+  &:hover {
+    background: #3a1a1a;
+  }
+}
+
+.mod-manager__fomod-conflict-badge {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #8a3333;
+  color: #faa;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mod-manager__fomod-conflict-banner {
+  padding: 8px 12px;
+  background: #3a1a1a;
+  border-bottom: 1px solid #8a3333;
+  color: #faa;
+  font-size: 11px;
+  text-align: center;
+}
+
 .mod-manager__fomod-summary {
   padding: 8px 12px;
   font-size: 11px;

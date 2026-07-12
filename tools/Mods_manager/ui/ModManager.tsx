@@ -147,17 +147,23 @@ export default function ModManager() {
     (async () => {
       try {
         let components = await window.electron.modsStore.get(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`);
-        // Retroactive capture: if no components saved yet, parse FOMOD and build from existing files
-        if ((!components || !Array.isArray(components) || components.length === 0) && selectedMod.stagingDir) {
+        if (Array.isArray(components) && components.length > 0) {
+          setFomodComponents(components);
+          return;
+        }
+        // Auto-capture retroactively
+        if (selectedMod.stagingDir) {
           const captured = await window.electron.captureFomodComponents(selectedMod.stagingDir);
           if (captured && captured.length > 0) {
-            components = captured;
             await window.electron.modsStore.put(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`, captured);
+            setFomodComponents(captured);
             addLog(`Captured ${captured.length} FOMOD component(s) for ${selectedMod.name}`);
+            return;
           }
         }
-        setFomodComponents(Array.isArray(components) ? components : []);
-      } catch {
+        setFomodComponents([]);
+      } catch (err) {
+        console.error("[FOMOD] capture error:", err);
         setFomodComponents([]);
       }
     })();
@@ -473,6 +479,25 @@ export default function ModManager() {
     detectAndShowConflicts(mods.filter(m => m.enabled && !m.isSeparator).map((m, i) => ({ name: m.name, priority: m.priority ?? i })));
   }, [mods, detectAndShowConflicts]);
 
+  // Compute FOMOD component conflicts
+  const fomodConflicts = useMemo(() => {
+    if (!selectedMod || fomodComponents.length === 0 || allConflicts?.conflicts?.length === 0) return [];
+    const result: { modName: string; files: string[] }[] = [];
+    const modConflicts = allConflicts?.conflicts?.filter(c =>
+      c.mods.some(m => m.name === selectedMod.name)
+    ) || [];
+    for (const conflict of modConflicts) {
+      const otherMod = conflict.mods.find(m => m.name !== selectedMod.name);
+      if (otherMod) {
+        result.push({
+          modName: otherMod.name,
+          files: [conflict.relativePath],
+        });
+      }
+    }
+    return result;
+  }, [selectedMod, fomodComponents, allConflicts]);
+
   const { onDividerMouseDown } = useSplitPane(containerRef);
 
   const handleToggleFomodComponent = useCallback(async (componentName: string) => {
@@ -657,6 +682,7 @@ export default function ModManager() {
                 fomodComponents={fomodComponents}
                 onToggleFomodComponent={handleToggleFomodComponent}
                 onReconfigureFomod={handleReconfigureFomod}
+                fomodConflicts={fomodConflicts}
               />
             </div>
           </div>

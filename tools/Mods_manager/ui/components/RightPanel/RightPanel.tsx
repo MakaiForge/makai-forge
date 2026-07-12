@@ -26,6 +26,7 @@ interface RightPanelProps {
   fomodComponents: FomodComponent[];
   onToggleFomodComponent: (componentName: string) => void;
   onReconfigureFomod: () => void;
+  fomodConflicts?: { modName: string; files: string[] }[];
 }
 
 const tabs: { id: RightTab; label: string }[] = [
@@ -41,8 +42,9 @@ export function RightPanel({
   onTogglePlugin, onToggleExclude,
   onIniSelect, onIniChange,
   fomodComponents, onToggleFomodComponent, onReconfigureFomod,
+  fomodConflicts,
 }: RightPanelProps) {
-  const hasFomod = fomodComponents.length > 0;
+  const hasFomod = selectedMod?.hasFomod || fomodComponents.length > 0;
   const rightTabs = hasFomod
     ? [...tabs, { id: "fomod" as RightTab, label: "FOMOD" }]
     : tabs;
@@ -96,6 +98,7 @@ export function RightPanel({
             components={fomodComponents}
             onToggle={onToggleFomodComponent}
             onReconfigure={onReconfigureFomod}
+            conflicts={fomodConflicts}
           />
         )}
       </div>
