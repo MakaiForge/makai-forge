@@ -88,6 +88,14 @@ export async function launchGame(
     const launchEnv = { ...process.env, ...env, PROTON_LOG: "1" };
     const protonExe = path.join(protonPath, "proton");
 
+    // When running as root (via sudo), Wine/Proton can't connect to the
+    // user's Xwayland display. Detect SUDO_USER and spawn as that user.
+    const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
+    const realUser = isRoot ? (process.env.SUDO_USER || process.env.LOGNAME || null) : null;
+    if (realUser) {
+      logger.info(`[Launch] Running as root, will spawn as user: ${realUser}`);
+    }
+
     logger.info(`[Launch] === LAUNCH DEBUG ===`);
     logger.info(`[Launch] gameId: ${gameId}`);
     logger.info(`[Launch] gamePath: ${gamePath}`);
@@ -136,10 +144,31 @@ export async function launchGame(
     if (umuRunPath) {
       send("launch", `🚀 Iniciando ${path.basename(launchExe)} via umu-run...`, "working");
       logger.info(`[Launch] Using umu-run: ${umuRunPath}`);
+
+      // When running as root, Wine can't connect to the user's Xwayland display.
+      // Wrap in `su - <user> -c` with env vars inline so Wine runs as the real user.
+      const wineEnvVars = [
+        `WINEPREFIX="${launchEnv.WINEPREFIX}"`,
+        `STEAM_COMPAT_DATA_PATH="${launchEnv.STEAM_COMPAT_DATA_PATH}"`,
+        `STEAM_COMPAT_INSTALL_PATH="${launchEnv.STEAM_COMPAT_INSTALL_PATH}"`,
+        `STEAM_COMPAT_CLIENT_INSTALL_PATH="${launchEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH}"`,
+        `SteamAppId="${launchEnv.SteamAppId}"`,
+        `GAMEID="${launchEnv.GAMEID}"`,
+        `PROTON_LOG=1`,
+      ].join(" ");
+      const umuCmd = `${wineEnvVars} ${umuRunPath} "${launchExe}" ${launchArgs.join(" ")}`;
+
+      const spawnBin = realUser ? "su" : umuRunPath;
+      const spawnArgs = realUser
+        ? ["-", realUser, "-c", umuCmd]
+        : [launchExe, ...launchArgs];
+
+      logger.info(`[Launch] spawn: ${realUser ? `su - ${realUser} -c "..."` : umuRunPath}`);
+
       return new Promise<PlayResult>((resolve) => {
-        const child = spawn(umuRunPath, [launchExe, ...launchArgs], {
+        const child = spawn(spawnBin, spawnArgs, {
           cwd: gameDir,
-          env: launchEnv,
+          env: realUser ? { HOME: `/home/${realUser}`, PATH: process.env.PATH } : launchEnv,
           stdio: ["ignore", "pipe", "pipe"],
           detached: true,
         });
@@ -167,10 +196,16 @@ export async function launchGame(
 
     send("launch", `🚀 Iniciando ${path.basename(launchExe)} com ${path.basename(protonPath)}...`, "working");
 
+    const protonCmd = `${wineEnvVars} "${protonExe}" run "${launchExe}" ${launchArgs.join(" ")}`;
+    const protonBin = realUser ? "su" : protonExe;
+    const protonArgs = realUser
+      ? ["-", realUser, "-c", protonCmd]
+      : ["run", launchExe, ...launchArgs];
+
     return new Promise<PlayResult>((resolve) => {
-      const child = spawn(protonExe, ["run", launchExe, ...launchArgs], {
+      const child = spawn(protonBin, protonArgs, {
         cwd: gameDir,
-        env: launchEnv,
+        env: realUser ? { HOME: `/home/${realUser}`, PATH: process.env.PATH } : launchEnv,
         stdio: ["ignore", "pipe", "pipe"],
         detached: true,
       });
