@@ -1,4 +1,5 @@
 import os from "node:os";
+import path from "node:path";
 import { ModStorageService, logger } from "@main/services";
 import { getDeployFunction } from "@games/registry";
 import { getStagingDir } from "@games/_shared/filemap";
@@ -9,6 +10,7 @@ import { applyGameConfigs } from "./steps/04-configs";
 import { ensureGameFrameworks } from "./steps/05-frameworks";
 import { ensureSkse } from "./steps/06-skse";
 import { launchGame } from "./steps/07-launch";
+import { bridgePrefixToSteam } from "@mods/services/steam-prefix-bridge";
 import type { SendProgress, PlayResult } from "./types";
 import type { DetectResult } from "./steps/01-detect";
 import { logPlay } from "./logger";
@@ -73,6 +75,23 @@ export async function playGame(
     );
     logStep(gameId, "prefix", `Prefixo: ${resolvedPrefix}`, "done", { duration_ms: Date.now() - _s3 });
     logPlay(gameId, "prefix_resolved", { resolvedPrefix: resolvedPrefix || "" });
+
+    // ── Step 3b: Bridge prefix to Steam (symlink compatdata + config.vdf) ──
+    if (steamAppId && resolvedPrefix) {
+      logStep(gameId, "bridge", "Conectando prefixo ao Steam...", "working");
+      const _s3b = Date.now();
+      try {
+        const protonName = protonPath ? path.basename(protonPath) : undefined;
+        const bridgeResult = await bridgePrefixToSteam(gameId, resolvedPrefix, steamAppId, protonName);
+        if (bridgeResult.success) {
+          logStep(gameId, "bridge", "Prefixo conectado ao Steam", "done", { duration_ms: Date.now() - _s3b });
+        } else {
+          logStep(gameId, "bridge", `Bridge: ${bridgeResult.error || "parcial"}`, "done", { duration_ms: Date.now() - _s3b });
+        }
+      } catch (bridgeErr) {
+        logStep(gameId, "bridge", `Bridge ignorado: ${String(bridgeErr).slice(0, 100)}`, "done", { duration_ms: Date.now() - _s3b });
+      }
+    }
 
     // ── Step 4: Configs (DLL overrides + winetricks + registry) ──
     logStep(gameId, "configs", "Aplicando configurações do jogo...", "working");

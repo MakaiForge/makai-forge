@@ -37,6 +37,27 @@ function _ensureTrackedFiles(compatDataPath: string) {
   }
 }
 
+function getProtonVersionFile(pfxPath: string): string {
+  return path.join(pfxPath, ".makai-proton-version");
+}
+
+function getStoredProtonVersion(pfxPath: string): string | null {
+  const marker = getProtonVersionFile(pfxPath);
+  if (!fs.existsSync(marker)) return null;
+  try {
+    return fs.readFileSync(marker, "utf-8").trim();
+  } catch {
+    return null;
+  }
+}
+
+function setProtonVersion(pfxPath: string, protonPath: string): void {
+  const version = path.basename(protonPath);
+  try {
+    fs.writeFileSync(getProtonVersionFile(pfxPath), version, "utf-8");
+  } catch {}
+}
+
 export async function ensurePrefix(
   gameId: string,
   prefixPath: string,
@@ -67,9 +88,23 @@ export async function ensurePrefix(
   // Check if configured prefix already exists and is valid
   const configuredPfx = resolvePrefixDir(prefixPath);
   if (configuredPfx && isValidPrefix(configuredPfx)) {
-    _ensureTrackedFiles(compatDataPath);
-    send("prefix", `✅ Prefixo configurado válido: ${configuredPfx}`, "done");
-    return { prefixPath: configuredPfx, created: false };
+    // Check if Proton version matches — if not, the prefix is corrupted
+    const storedVersion = getStoredProtonVersion(configuredPfx);
+    const currentVersion = path.basename(protonPath);
+    if (storedVersion && storedVersion !== currentVersion) {
+      logger.warn(`[Prefix] Proton version mismatch: stored="${storedVersion}" current="${currentVersion}" — recreating prefix`);
+      send("prefix", `⚠️ Proton mudou (${storedVersion} → ${currentVersion}). Recriando prefixo...`, "working");
+      try {
+        fs.rmSync(configuredPfx, { recursive: true, force: true });
+      } catch (err) {
+        logger.error(`[Prefix] Failed to remove old prefix: ${err}`);
+      }
+      // Fall through to creation below
+    } else {
+      _ensureTrackedFiles(compatDataPath);
+      send("prefix", `✅ Prefixo configurado válido: ${configuredPfx}`, "done");
+      return { prefixPath: configuredPfx, created: false };
+    }
   }
 
   // Configured prefix exists but is incomplete, or doesn't exist yet — create/complete it.
@@ -94,6 +129,7 @@ export async function ensurePrefix(
 
   if (result.success) {
     _ensureTrackedFiles(compatDataPath);
+    setProtonVersion(prefixPath, protonPath);
     send("prefix", "✅ Prefixo criado/validado com sucesso via Python", "done");
     return { prefixPath, created: true };
   }
@@ -109,6 +145,7 @@ export async function ensurePrefix(
   }
 
   _ensureTrackedFiles(compatDataPath);
+  setProtonVersion(pfx, protonPath);
   send("prefix", "✅ Prefixo criado (fallback)", "done");
   return { prefixPath, created: true };
 }

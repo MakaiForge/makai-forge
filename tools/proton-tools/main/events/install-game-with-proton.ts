@@ -25,7 +25,7 @@ function sendInstallLog(line: string) {
 function findReleaseByFork(
   releases: ProtonRelease[],
   fork: ProtonFork
-) {
+): ProtonRelease | null {
   if (fork.version.toLowerCase() === "latest") {
     return releases[0];
   }
@@ -35,8 +35,20 @@ function findReleaseByFork(
     return tag === version || tag.endsWith(version) || tag.includes(version) || version.includes(tag);
   });
   if (match) return match;
-  logger.warn(`[findReleaseByFork] versão "${fork.version}" não encontrada, usando latest (${releases[0]?.tag_name})`);
-  return releases[0];
+  logger.warn(`[findReleaseByFork] versão "${fork.version}" não encontrada entre ${releases.length} releases`);
+  logger.warn(`[findReleaseByFork] tags disponíveis: ${releases.slice(0, 10).map(r => r.tag_name).join(", ")}`);
+  return null;
+}
+
+function sendDownloadProgress(toolId: string, version: string, percent: number) {
+  if (WindowManager.mainWindow) {
+    WindowManager.mainWindow.webContents.send("on-proton-download-progress", {
+      toolId,
+      version,
+      percent,
+      speed: "",
+    });
+  }
 }
 
 const downloadProton = async (
@@ -75,6 +87,7 @@ const downloadProton = async (
     sendInstallLog(`Baixando ${release.tag_name}...`);
 
     const toolPath = await downloadTool({ toolId, release, onProgress: (percent, _speed) => {
+      sendDownloadProgress(toolId, release.tag_name, percent);
       let stage = "download";
       if (percent >= 60 && percent < 80) stage = "extraindo";
       else if (percent >= 80 && percent < 90) stage = "instalando";

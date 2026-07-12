@@ -16,6 +16,7 @@ export function useProtonConfig() {
   const [installedTools, setInstalledTools] = useState<InstalledProtonTool[]>([]);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const busyRef = useRef(false);
 
@@ -126,10 +127,15 @@ export function useProtonConfig() {
 
   const handleDownloadFork = useCallback(async (fork: ProtonFork) => {
     setIsDownloading(true);
+    setDownloadProgress(0);
     setDownloadError(null);
+    const cleanup = window.electron.onProtonDownloadProgress?.((progress) => {
+      if (progress) setDownloadProgress(progress.percent);
+    });
     try {
       const protonPath = await (window.electron as any).downloadProton(fork);
       if (protonPath) {
+        setDownloadProgress(100);
         setSelectedProtonPath(protonPath);
         setSelectedFork(null);
         const tools = await window.electron.getInstalledProtonTools();
@@ -140,6 +146,7 @@ export function useProtonConfig() {
     } catch (err: any) {
       setDownloadError(err?.message || "Falha ao baixar Proton");
     } finally {
+      cleanup?.();
       setIsDownloading(false);
     }
   }, []);
@@ -163,6 +170,7 @@ export function useProtonConfig() {
     expandedTools,
     setExpandedTools,
     isDownloading,
+    downloadProgress,
     downloadError,
     protonToolsInstalled,
     manualGroups,
