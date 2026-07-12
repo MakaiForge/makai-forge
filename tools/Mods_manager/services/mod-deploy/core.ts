@@ -3,6 +3,7 @@ import fs from "node:fs";
 import type { ModlistEntry, DeploymentResult, ModInventory } from "@types";
 import { ModConflictService } from "../mod-conflict-service";
 import { ModStorageService } from "../mod-storage-service";
+import { expandHome } from "../path-utils";
 import { getDeployTarget, shouldWritePluginsTxt } from "./rules";
 import { getStagingDir, findPrefixUsername, buildPluginFilemap, stripDataPrefix } from "../../games/_shared/filemap";
 
@@ -129,10 +130,11 @@ async function writePluginsTxt(
   config: any,
   log: string[]
 ): Promise<void> {
-  const username = config.protonPrefix ? findPrefixUsername(config.protonPrefix) : null;
+  const prefixPath = config.protonPrefix ? expandHome(config.protonPrefix) : "";
+  const username = prefixPath ? findPrefixUsername(prefixPath) : null;
   const pluginsTxtPath = username
-    ? path.join(config.protonPrefix, "drive_c", "users", username, "AppData", "Local", getGameLocalDir(gameId), "plugins.txt")
-    : path.join(config.protonPrefix || "", "drive_c", "users", "steamuser", "AppData", "Local", getGameLocalDir(gameId), "plugins.txt");
+    ? path.join(prefixPath, "drive_c", "users", username, "AppData", "Local", getGameLocalDir(gameId), "plugins.txt")
+    : path.join(prefixPath, "drive_c", "users", "steamuser", "AppData", "Local", getGameLocalDir(gameId), "plugins.txt");
 
   const pluginExts = new Set([".esp", ".esm", ".esl"]);
   const pluginNames: string[] = [];
@@ -188,7 +190,7 @@ export async function undeployMod(
   gamePath: string
 ): Promise<void> {
   const config = ModStorageService.get<any>(`game:${gameId}:config`);
-  const stagingDir = config?.stagingDir || getStagingDir(gameId);
+  const stagingDir = config?.stagingDir ? expandHome(config.stagingDir) : getStagingDir(gameId);
   const modStaging = path.join(stagingDir, modName);
   if (!fs.existsSync(modStaging)) return;
 
@@ -236,8 +238,8 @@ export async function deploy(
     return { success: false, log: [...log, "Game not configured"], filemap: {} };
   }
 
-  const stagingDir = config.stagingDir || getStagingDir(gameId);
-  const gamePath = config.gamePath;
+  const stagingDir = config.stagingDir ? expandHome(config.stagingDir) : getStagingDir(gameId);
+  const gamePath = config.gamePath ? expandHome(config.gamePath) : "";
 
   if (!gamePath || !fs.existsSync(gamePath)) {
     return { success: false, log: [...log, "Game path not found"], filemap: {} };

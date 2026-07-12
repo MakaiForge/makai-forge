@@ -10,6 +10,7 @@ import { detectGame } from "@mods/services/detection";
 import { defaultStagingDir, defaultPrefixDir } from "@mods/services/steam-library";
 import { checkPrefixHealth, autoFixPrefix } from "@mods/services/health-check";
 import { setBridgeContext, getBridgeContext, clearBridgeContext } from "@mods/services/bridge-context";
+import { expandHome } from "@mods/services/path-utils";
 import { logPlay } from "@mods/play/logger";
 import fs from "node:fs";
 import path from "node:path";
@@ -17,12 +18,18 @@ import path from "node:path";
 const mkMlKey = (g: string, p: string) => `game:${g}:profile:${p}:modlist`;
 
 registerEvent("saveGameConfig", async (_event, gameName: string, config: { gamePath: string; stagingDir: string; protonPrefix: string; protonVersion?: string }) => {
-  ModStorageService.put(`game:${gameName}:config`, config);
-  logPlay(gameName, "saveGameConfig", {
-    gamePath: config.gamePath,
-    stagingDir: config.stagingDir,
-    protonPrefix: config.protonPrefix,
+  const safeConfig = {
+    gamePath: expandHome(config.gamePath),
+    stagingDir: expandHome(config.stagingDir),
+    protonPrefix: expandHome(config.protonPrefix),
     protonVersion: config.protonVersion || "",
+  };
+  ModStorageService.put(`game:${gameName}:config`, safeConfig);
+  logPlay(gameName, "saveGameConfig", {
+    gamePath: safeConfig.gamePath,
+    stagingDir: safeConfig.stagingDir,
+    protonPrefix: safeConfig.protonPrefix,
+    protonVersion: safeConfig.protonVersion,
   });
   return { ok: true };
 });
@@ -40,7 +47,7 @@ registerEvent("removeMod", async (_event, gameId: string, profile: string, modNa
   ModStorageService.put(modlistKey, updated);
 
   const config = ModStorageService.get<any>(`game:${gameId}:config`);
-  const gamePath = config?.gamePath;
+  const gamePath = config?.gamePath ? expandHome(config.gamePath) : undefined;
   if (gamePath) {
     await undeployMod(gameId, modName, gamePath);
   }
@@ -54,13 +61,13 @@ registerEvent("deleteMod", async (_event, gameId: string, profile: string, modNa
   ModStorageService.put(modlistKey, updated);
 
   const config = ModStorageService.get<any>(`game:${gameId}:config`);
-  const gamePath = config?.gamePath;
+  const gamePath = config?.gamePath ? expandHome(config.gamePath) : undefined;
   if (gamePath) {
     await undeployMod(gameId, modName, gamePath);
   }
 
   // Also delete staging files
-  const stagingDir = config?.stagingDir || getStagingDir(gameId);
+  const stagingDir = config?.stagingDir ? expandHome(config.stagingDir) : getStagingDir(gameId);
   const modStaging = findStagingDir(stagingDir, modName);
   if (modStaging && fs.existsSync(modStaging)) {
     fs.rmSync(modStaging, { recursive: true, force: true });
@@ -97,9 +104,9 @@ registerEvent("detectGameManual", async (_event, gameId: string, selectedPath: s
   const staging = defaultStagingDir(gameId);
   const prefix = defaultPrefixDir(gameId);
   ModStorageService.put(`game:${gameId}:config`, {
-    gamePath: selectedPath,
-    stagingDir: staging,
-    protonPrefix: prefix,
+    gamePath: expandHome(selectedPath),
+    stagingDir: expandHome(staging),
+    protonPrefix: expandHome(prefix),
     protonVersion: "",
   });
 

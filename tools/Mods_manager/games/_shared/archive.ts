@@ -1,6 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import { ModStorageService } from "@mods/services/mod-storage-service";
+import { expandHome } from "@mods/services/path-utils";
 import { getStagingDir } from "./filemap";
 
 const KNOWN_GAME_DIRS = new Set(["data"]);
@@ -48,7 +49,7 @@ export async function extractArchive(
   password?: string,
 ): Promise<string> {
   const config = ModStorageService.get<any>(`game:${gameId}:config`);
-  const baseDir = config?.stagingDir || getStagingDir(gameId);
+  const baseDir = config?.stagingDir ? expandHome(config.stagingDir) : getStagingDir(gameId);
   const stagingDir = path.join(baseDir, modName);
 
   if (fs.existsSync(stagingDir)) {

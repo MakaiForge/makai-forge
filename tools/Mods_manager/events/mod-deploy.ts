@@ -5,6 +5,7 @@ import { getStagingDir } from "@games/_shared/filemap";
 import { applyWineDllOverrides } from "@games/_shared/prefix";
 import { detectModType, inventoryMod } from "@mods/services/mod-deploy/inventory";
 import { InstallOrchestrator } from "@mods/services/install/install-orchestrator";
+import { expandHome } from "@mods/services/path-utils";
 import { mkInvKey, mkMlKey } from "@mods/services/storage-keys";
 import type { InstallConfig, InstallProgress, InstallStage } from "@types/install.types";
 import path from "node:path";
@@ -23,16 +24,13 @@ registerEvent("deployMods", async (_event, gameId: string, profile: string) => {
   const config = ModStorageService.get<any>(`game:${gameId}:config`);
   if (!config) return { success: false, log: ["Game not configured"], filemap: {} };
 
-  // Guard: validate gamePath is usable
-  const gamePath = config.gamePath;
+  // Expand ~ and resolve all paths defensively
+  const gamePath = config.gamePath ? expandHome(config.gamePath) : "";
   if (!gamePath || typeof gamePath !== "string") {
     return { success: false, log: ["Game path not configured — set the game path first"], filemap: {} };
   }
   if (gamePath === "." || gamePath === "./" || gamePath === ".." || gamePath === "../") {
     return { success: false, log: [`Game path cannot be relative ("${gamePath}") — set the actual game directory`], filemap: {} };
-  }
-  if (gamePath.includes("~")) {
-    return { success: false, log: [`Game path contains unexpanded "~" — use the full path (e.g. /home/cas/Games/...)`], filemap: {} };
   }
   if (!path.isAbsolute(gamePath)) {
     return { success: false, log: [`Game path must be absolute ("${gamePath}")`], filemap: {} };
@@ -41,19 +39,19 @@ registerEvent("deployMods", async (_event, gameId: string, profile: string) => {
     return { success: false, log: [`Game path does not exist: ${gamePath}`], filemap: {} };
   }
 
-  const stagingDir = config.stagingDir || getStagingDir(gameId);
+  const stagingDir = config.stagingDir ? expandHome(config.stagingDir) : getStagingDir(gameId);
   const modlistKey = mkMlKey(gameId, profile);
   const modlist: any[] = ModStorageService.get(modlistKey) || [];
 
   // Use the user-configured prefix — never resolve to Steam compatdata
-  const resolvedPrefix = config.protonPrefix;
+  const resolvedPrefix = config.protonPrefix ? expandHome(config.protonPrefix) : "";
 
   // Resolve link mode: user config > game module default > "symlink"
-  const mod = getGameModule(gameId, config.gamePath);
+  const mod = getGameModule(gameId, gamePath);
   const linkMode = config.deployMode || mod.defaultLinkMode || "symlink";
 
   const deployFn = getDeployFunction(gameId);
-  const result = await deployFn(gameId, config.gamePath, stagingDir, modlist, profile, resolvedPrefix, linkMode);
+  const result = await deployFn(gameId, gamePath, stagingDir, modlist, profile, resolvedPrefix, linkMode);
 
   if (resolvedPrefix) {
     const overrides = mod.getWineDllOverrides?.();
@@ -67,7 +65,7 @@ registerEvent("deployMods", async (_event, gameId: string, profile: string) => {
 
 registerEvent("rescanStaging", async (_event, gameId: string, profileName: string) => {
   const config = ModStorageService.get<any>(`game:${gameId}:config`);
-  const stagingDir = config?.stagingDir || getStagingDir(gameId);
+  const stagingDir = config?.stagingDir ? expandHome(config.stagingDir) : getStagingDir(gameId);
 
   if (!fs.existsSync(stagingDir)) {
     return { newMods: [], deadMods: [], stagingDir };

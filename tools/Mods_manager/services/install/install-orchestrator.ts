@@ -12,6 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import { ModStorageService } from "@main/services";
 import { getStagingDir } from "@games/_shared/filemap";
+import { expandHome } from "../path-utils";
 import { readArchiveInfo } from "./archive-reader";
 import { extractWithProgress } from "./archive-extractor";
 import { verifyExtractedFiles } from "./integrity-checker";
@@ -181,7 +182,7 @@ export class InstallOrchestrator {
       await this.transitionTo("copying");
       this.updateProgress(80, `Copiando ${installPlan.filesToInstall.length} arquivos...`);
 
-      const gamePath = config.gamePath ?? "";
+      const gamePath = config.gamePath ? expandHome(config.gamePath) : "";
       const targetDir = config.getDeployTarget?.(gamePath) ?? gamePath;
       const copyResult = await copyFiles(
         installPlan.filesToInstall,

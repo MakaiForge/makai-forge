@@ -2,6 +2,7 @@ import { ModStorageService } from "@main/services";
 import { getGameInfo, getGameModule } from "@games/registry";
 import { findAllSteamLibraries } from "@prefix/core/steam-paths";
 import { findGogGamePath, isGogGame } from "@mods/services/gog-detection";
+import { expandHome } from "@mods/services/path-utils";
 import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
@@ -56,7 +57,7 @@ export async function detectGame(
   send("detect", "🔍 Detectando jogo nas bibliotecas Steam...", "working");
 
   let config = ModStorageService.get<any>(`game:${gameId}:config`);
-  let gamePath = config?.gamePath;
+  let gamePath = config?.gamePath ? expandHome(config.gamePath) : undefined;
   const info = getGameInfo(gameId);
   const mod = getGameModule(gameId);
 
@@ -132,7 +133,7 @@ export async function detectGame(
   }
 
   const rawPrefix = config?.protonPrefix || defaultPrefixDir(gameId);
-  const prefixPath = rawPrefix.startsWith("~") ? rawPrefix.replace("~", os.homedir()) : rawPrefix;
+  const prefixPath = expandHome(rawPrefix);
   const steamAppId = info?.steamAppId;
 
   // Derive libraryPath from gamePath (e.g. /.../steamapps/common/Skyrim → /.../steamapps)
