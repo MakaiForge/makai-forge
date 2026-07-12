@@ -1,10 +1,11 @@
 /**
  * Install Orchestrator — Orquestra instalação completa de mods.
  *
- * Fluxo: reading_archive → extracting → verifying → resolving → copying → saving → ready
+ * Fluxo: reading_archive → extracting → verifying → resolving → saving → ready
  *
  * Cada stage tem seu próprio timeout e tratamento de erros.
  * Suporta abort via AbortController.
+ * NOTA: Arquivos ficam no staging — o deploy engine cria symlinks para o jogo.
  */
 
 import fs from "node:fs";
@@ -12,12 +13,10 @@ import os from "node:os";
 import path from "node:path";
 import { ModStorageService } from "@main/services";
 import { getStagingDir } from "@games/_shared/filemap";
-import { expandHome } from "../path-utils";
 import { readArchiveInfo } from "./archive-reader";
 import { extractWithProgress } from "./archive-extractor";
 import { verifyExtractedFiles } from "./integrity-checker";
 import { resolveInstallPlan } from "./install-resolver";
-import { copyFiles } from "./file-copier";
 import { detectModType, inventoryMod } from "../mod-deploy/inventory";
 import { parseFomodXml, resolveFomodFiles } from "../fomod/fomod-parser";
 import { mkInvKey, mkMlKey } from "../storage-keys";
@@ -29,7 +28,6 @@ import type {
   ArchiveInfo,
   ExtractedFile,
   InstallPlan,
-  CopyResult,
 } from "../../types/install.types";
 import type { ModlistEntry } from "../../types/install.types";
 
@@ -178,27 +176,7 @@ export class InstallOrchestrator {
         }
       }
 
-      // ── Stage 5: Copy ──
-      await this.transitionTo("copying");
-      this.updateProgress(80, `Copiando ${installPlan.filesToInstall.length} arquivos...`);
-
-      const gamePath = config.gamePath ? expandHome(config.gamePath) : "";
-      const targetDir = config.getDeployTarget?.(gamePath) ?? gamePath;
-      const copyResult = await copyFiles(
-        installPlan.filesToInstall,
-        this.targetDir,
-        targetDir,
-        (current, total, currentFile) => {
-          const percent = Math.round((current / total) * 15) + 80; // 80-95%
-          this.updateProgress(percent, `Copiando ${current}/${total}: ${path.basename(currentFile)}`);
-        },
-      );
-
-      if (!copyResult.success) {
-        console.warn("[ORCHESTRATOR] Some files failed to copy:", copyResult.errors);
-      }
-
-      // ── Stage 6: Save ──
+      // ── Stage 6: Save (files stay in staging — deploy engine handles symlinks) ──
       await this.transitionTo("saving");
       this.updateProgress(95, "Salvando no modlist...");
 
@@ -235,7 +213,7 @@ export class InstallOrchestrator {
       await this.transitionTo("ready");
       this.updateProgress(100, "Instalação concluída");
 
-      return this.buildResult(archiveInfo, extractedFiles, modType, inventory, installPlan, copyResult);
+      return this.buildResult(archiveInfo, extractedFiles, modType, inventory, installPlan);
 
     } catch (error) {
       console.error("[ORCHESTRATOR] install failed:", error);
@@ -376,7 +354,6 @@ export class InstallOrchestrator {
     modType: ReturnType<typeof detectModType>,
     inventory: ReturnType<typeof inventoryMod>,
     installPlan?: InstallPlan,
-    copyResult?: CopyResult,
   ): InstallResult {
     return {
       success: true,
@@ -391,7 +368,6 @@ export class InstallOrchestrator {
       category: "unknown",
       durationMs: Date.now() - this.progress.startTime,
       installPlan,
-      copyResult,
     };
   }
 }

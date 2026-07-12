@@ -42,6 +42,7 @@ export default function ModManager() {
 
   const [showDetectionWizard, setShowDetectionWizard] = useState(false);
   const [healthBanner, setHealthBanner] = useState<{ status: "loading" | "valid" | "issues" | "error"; message: string } | null>(null);
+  const [healthReport, setHealthReport] = useState<{ depsMissing: string[] } | null>(null);
   const [originalProtonPath, setOriginalProtonPath] = useState<string>("");
 
   const { log, addLog } = useModLog();
@@ -280,6 +281,7 @@ export default function ModManager() {
         const result = await window.electron.prefixHealthCheck(selectedGame);
         if (cancelled) return;
         if (result.ok && result.data) {
+          setHealthReport({ depsMissing: result.data.depsMissing || [] });
           if (result.data.valid) {
             setHealthBanner({ status: "valid", message: "Prefixo configurado corretamente" });
           } else if (result.data.errors.length > 0) {
@@ -634,6 +636,7 @@ export default function ModManager() {
               launching={isLaunching}
               hasGame={!!selectedGame}
               selectedModIdx={selectedModIdx}
+              depsMissing={healthReport?.depsMissing || []}
               t={t}
               onInstallMod={() => pickAndOrchInstall()}
               onDeploy={handleDeployClick}

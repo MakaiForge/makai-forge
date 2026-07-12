@@ -7,6 +7,7 @@ interface ModManagerTopBarProps {
   installing: boolean;
   launching: boolean;
   hasGame: boolean;
+  depsMissing: string[];
   t: (key: string) => string;
   onInstallMod: () => void;
   onDeploy: () => void;
@@ -18,7 +19,7 @@ interface ModManagerTopBarProps {
 }
 
 export function ModManagerTopBar({
-  deploying, installing, launching, hasGame, selectedModIdx,
+  deploying, installing, launching, hasGame, selectedModIdx, depsMissing,
   t, onInstallMod, onDeploy, onLaunchGame, onProtonConfig, onRefresh, onRemoveMod,
 }: ModManagerTopBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -35,8 +36,14 @@ export function ModManagerTopBar({
     <div className="mod-manager__topbar-scroll">
       <button className="mod-manager__scroll-arrow" onClick={scrollLeft}><ChevronLeftIcon /></button>
       <div className="mod-manager__topbar-actions" ref={scrollRef}>
-        <Button onClick={onLaunchGame} disabled={launching || !hasGame} theme="primary">
+        <Button
+          onClick={onLaunchGame}
+          disabled={launching || !hasGame}
+          theme="primary"
+          title={depsMissing.length > 0 ? `Faltando: ${depsMissing.join(", ")}` : undefined}
+        >
           {launching ? "Iniciando..." : "▶ Iniciar Jogo"}
+          {depsMissing.length > 0 && !launching && <span style={{ marginLeft: 6, opacity: 0.8 }}>⚠️</span>}
         </Button>
         <Button theme="primary" onClick={onInstallMod} disabled={installing}>
           <PlusIcon /> {installing ? "Instalando..." : t("install_mod")}
