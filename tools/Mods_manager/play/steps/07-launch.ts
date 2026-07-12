@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { app } from "electron";
@@ -9,35 +8,39 @@ import { findSteamClientPath } from "@prefix/core/steam-paths";
 import { logger } from "@main/services";
 import type { PlayResult, SendProgress } from "../types";
 
-function getSteamLaunchEnv(
+/**
+ * Returns true if the prefix is inside Steam's compatdata directory
+ * (e.g. steamapps/compatdata/72850/pfx). Custom prefixes like
+ * ~/Games/Prefix/skyrim/ return false.
+ */
+function isSteamCompatPrefix(prefixPath: string): boolean {
+  return prefixPath.includes(path.sep + "compatdata" + path.sep);
+}
+
+function buildLaunchEnv(
   steamAppId: string | undefined,
   gamePath: string,
   prefixPath: string,
+  protonPath: string,
   _libraryPath?: string,
 ): Record<string, string> {
   const env: Record<string, string> = {
     WINEPREFIX: prefixPath,
+    PROTONPATH: protonPath,
   };
 
-  // Detect if the prefix is inside a Steam compatdata directory
-  const isSteamCompatPrefix = prefixPath.includes(path.sep + "compatdata" + path.sep);
-
-  if (isSteamCompatPrefix) {
-    // Standard Steam prefix: derive STEAM_COMPAT_DATA_PATH from the pfx path
-    let compatData: string | null = null;
+  // STEAM_COMPAT_DATA_PATH: for Steam compatdata, use the parent of pfx/.
+  // For custom prefixes, do NOT set this — Proton overrides WINEPREFIX when
+  // STEAM_COMPAT_DATA_PATH is set, computing prefix_dir = value + "/pfx/",
+  // which would break our custom prefix layout (files at root, not in pfx/).
+  if (isSteamCompatPrefix(prefixPath)) {
     if (path.basename(prefixPath) === "pfx") {
-      compatData = path.dirname(prefixPath);
+      env.STEAM_COMPAT_DATA_PATH = path.dirname(prefixPath);
     } else {
-      compatData = prefixPath;
+      env.STEAM_COMPAT_DATA_PATH = prefixPath;
     }
-    if (compatData) env.STEAM_COMPAT_DATA_PATH = compatData;
-  } else {
-    // Custom prefix: Proton ALWAYS overrides WINEPREFIX with
-    // $STEAM_COMPAT_DATA_PATH/pfx/. The custom prefix dir contains
-    // a 'pfx' symlink, so setting STEAM_COMPAT_DATA_PATH to the
-    // prefix path itself makes Proton resolve correctly.
-    env.STEAM_COMPAT_DATA_PATH = prefixPath;
   }
+
   if (gamePath) env.STEAM_COMPAT_INSTALL_PATH = gamePath;
   env.STEAM_COMPAT_CLIENT_INSTALL_PATH = findSteamClientPath();
 
@@ -48,6 +51,208 @@ function getSteamLaunchEnv(
   }
 
   return env;
+}
+
+/**
+ * Ensure steam_appid.txt exists in the game directory.
+ * Proton/Wine games need this for Steam API stubs to identify the game.
+ */
+function ensureSteamAppIdFile(gamePath: string, steamAppId: string): void {
+  if (!steamAppId || !gamePath) return;
+  const appIdFile = path.join(gamePath, "steam_appid.txt");
+  if (!fs.existsSync(appIdFile)) {
+    try { fs.writeFileSync(appIdFile, steamAppId, "utf-8"); } catch { /* ignore */ }
+  }
+}
+
+/**
+ * Kill any stale wineserver to avoid prefix lock conflicts.
+ */
+function killStaleWineserver(): void {
+  try { spawnSync("pkill", ["-9", "wineserver"], { stdio: "pipe" }); } catch {}
+  try { spawnSync("killall", ["-9", "wineserver"], { stdio: "pipe" }); } catch {}
+}
+
+/**
+ * Find umu-run binary (system or bundled).
+ */
+function findUmuRun(): string | null {
+  const systemUmu = spawnSync("which", ["umu-run"], { stdio: "pipe" }).status === 0
+    ? "umu-run"
+    : null;
+  if (systemUmu) return systemUmu;
+
+  const bundled = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
+  if (fs.existsSync(bundled)) return bundled;
+  return null;
+}
+
+/**
+ * Find proton binary in a Proton directory.
+ */
+function findProtonBin(protonPath: string): string | null {
+  const candidate = path.join(protonPath, "proton");
+  return fs.existsSync(candidate) ? candidate : null;
+}
+
+/**
+ * Ensure the Proton tool is symlinked into Steam's compatibilitytools.d
+ * so that Proton can find it at runtime.
+ */
+function ensureProtonSymlink(protonPath: string): void {
+  const protonDirName = path.basename(protonPath);
+  const steamCompatDir = path.join(
+    path.dirname(path.dirname(path.dirname(protonPath))),
+    "Steam", "compatibilitytools.d",
+  );
+  const steamCompatLink = path.join(steamCompatDir, protonDirName);
+  if (!fs.existsSync(steamCompatLink) && fs.existsSync(protonPath)) {
+    try {
+      fs.mkdirSync(steamCompatDir, { recursive: true });
+      fs.symlinkSync(protonPath, steamCompatLink);
+    } catch { /* ignore */ }
+  }
+}
+
+/**
+ * Launch via steam://rungameid — only for games using Steam's own compatdata prefix.
+ * For custom prefixes, use launchCustomPrefix() instead.
+ */
+async function launchViaSteam(
+  steamAppId: string,
+  send: SendProgress,
+): Promise<PlayResult> {
+  const info = getGameInfo(undefined);
+  logger.info(`[Launch] Launching via Steam: steam://rungameid/${steamAppId}`);
+  send("launch", "Iniciando via Steam...", "working");
+
+  spawn("steam", [`steam://rungameid/${steamAppId}`], {
+    stdio: "ignore",
+    detached: true,
+  }).unref();
+
+  send("launch", `${info?.name || steamAppId} iniciado via Steam!`, "done");
+  return { success: true, method: "steam" };
+}
+
+/**
+ * Launch a game with a CUSTOM prefix via proton run or umu-run directly.
+ *
+ * This is the key fix for the Skyrim prefix issue: when the user has a custom
+ * prefix (e.g. ~/Games/Prefix/skyrim/), we MUST launch via proton run with
+ * WINEPREFIX set to the custom prefix, because steam://rungameid/ would ignore
+ * our prefix and use Steam's own compatdata instead — losing all DLL overrides,
+ * registry entries, and mod deployments we applied.
+ *
+ * SKSE works fine via proton run because Proton provides steam_api.dll stubs
+ * that SKSE's skse_steam_loader.dll hooks into.
+ */
+async function launchCustomPrefix(
+  gameId: string,
+  gamePath: string,
+  prefixPath: string,
+  steamAppId: string | undefined,
+  protonPath: string,
+  launchExe: string,
+  launchArgs: string[],
+  send: SendProgress,
+): Promise<PlayResult> {
+  const info = getGameInfo(gameId);
+  const gameDir = path.dirname(launchExe);
+  const env = buildLaunchEnv(steamAppId, gamePath, prefixPath, protonPath);
+
+  // Get game-specific env (e.g. Skyrim sets __CV0NDEBUG etc.)
+  const mod = getGameModule(gameId, gamePath);
+  const customEnv = mod.getLaunchEnv?.(gamePath, prefixPath, protonPath);
+  if (customEnv) Object.assign(env, customEnv);
+
+  logger.info(`[Launch] === CUSTOM PREFIX LAUNCH ===`);
+  logger.info(`[Launch] gameId: ${gameId}`);
+  logger.info(`[Launch] launchExe: ${launchExe}`);
+  logger.info(`[Launch] WINEPREFIX: ${env.WINEPREFIX}`);
+  logger.info(`[Launch] STEAM_COMPAT_DATA_PATH: ${env.STEAM_COMPAT_DATA_PATH}`);
+  logger.info(`[Launch] PROTONPATH: ${env.PROTONPATH}`);
+  if (steamAppId) logger.info(`[Launch] SteamAppId: ${steamAppId}`);
+
+  killStaleWineserver();
+  ensureProtonSymlink(protonPath);
+  if (steamAppId) ensureSteamAppIdFile(gamePath, steamAppId);
+
+  const protonExe = findProtonBin(protonPath);
+  const umuRunPath = findUmuRun();
+
+  if (!umuRunPath && !protonExe) {
+    const msg = `Proton não encontrado em: ${protonPath}`;
+    logger.error(`[Launch] ${msg}`);
+    send("launch", msg, "error");
+    return { success: false, error: msg };
+  }
+
+  // Try umu-run first (simpler, fewer deps), then proton run
+  if (umuRunPath) {
+    send("launch", `Iniciando ${path.basename(launchExe)} via umu-run (prefixo customizado)...`, "working");
+    logger.info(`[Launch] Using umu-run: ${umuRunPath}`);
+
+    return new Promise<PlayResult>((resolve) => {
+      const launchEnv = { ...process.env, ...env };
+      const child = spawn(umuRunPath, [launchExe, ...launchArgs], {
+        cwd: gameDir,
+        env: launchEnv,
+        stdio: ["ignore", "pipe", "pipe"],
+        detached: true,
+      });
+      const stderrChunks: Buffer[] = [];
+      child.stdout!.on("data", (chunk: Buffer) => { /* drain */ });
+      child.stderr!.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+      child.on("error", (err) => {
+        logger.error(`[Launch] umu-run error: ${err.message}`);
+        send("launch", `Erro: ${err.message}`, "error");
+        resolve({ success: false, method: "proton-direct", error: err.message });
+      });
+      child.on("close", (code) => {
+        const stderrOut = Buffer.concat(stderrChunks).toString("utf-8").trim();
+        logger.info(`[Launch] umu-run exit code: ${code}`);
+        if (stderrOut) logger.warn(`[Launch] umu-run stderr:\n${stderrOut}`);
+      });
+      child.unref();
+      send("launch", `${info?.name || gameId} iniciado via umu-run!`, "done");
+      resolve({ success: true, method: "proton-direct" });
+    });
+  }
+
+  // Fallback: proton run
+  send("launch", `Iniciando ${path.basename(launchExe)} com ${path.basename(protonPath)} (prefixo customizado)...`, "working");
+
+  return new Promise<PlayResult>((resolve) => {
+    const launchEnv = { ...process.env, ...env };
+    const child = spawn(protonExe!, ["run", launchExe, ...launchArgs], {
+      cwd: gameDir,
+      env: launchEnv,
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
+    });
+
+    const stderrChunks: Buffer[] = [];
+    child.stdout!.on("data", () => { /* drain */ });
+    child.stderr!.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+
+    child.on("error", (err) => {
+      logger.error(`[Launch] proton run error: ${err.message}`);
+      send("launch", `Erro ao iniciar: ${err.message}`, "error");
+      resolve({ success: false, method: "proton-direct", error: err.message });
+    });
+
+    child.on("close", (code) => {
+      const stderrOut = Buffer.concat(stderrChunks).toString("utf-8").trim();
+      logger.info(`[Launch] === PROCESS EXIT ===`);
+      logger.info(`[Launch] exit code: ${code}`);
+      if (stderrOut) logger.warn(`[Launch] stderr:\n${stderrOut}`);
+    });
+
+    child.unref();
+    send("launch", `${info?.name || gameId} iniciado!`, "done");
+    resolve({ success: true, method: "proton-direct" });
+  });
 }
 
 export async function launchGame(
@@ -63,15 +268,6 @@ export async function launchGame(
 ): Promise<PlayResult> {
   const info = getGameInfo(gameId);
   const mod = getGameModule(gameId, gamePath);
-  const env = getSteamLaunchEnv(steamAppId, gamePath, prefixPath, libraryPath);
-
-  const customEnv = mod.getLaunchEnv?.(gamePath, prefixPath, protonPath);
-  if (customEnv) Object.assign(env, customEnv);
-
-  // Game modules (e.g. Skyrim) call getSteamLaunchEnv from _shared/launch.ts
-  // which sets STEAM_COMPAT_DATA_PATH to the Steam compatdata. Override it back
-  // so Proton uses the user-configured prefix, not Steam's.
-  env.STEAM_COMPAT_DATA_PATH = prefixPath;
 
   const launchExe = mod.getLaunchExe?.(gamePath, hasSkse, sksePath || undefined)
     || (hasSkse && sksePath ? sksePath : null)
@@ -80,232 +276,118 @@ export async function launchGame(
   const isSkseLaunch = hasSkse && sksePath != null;
   const launchArgs = isSkseLaunch ? [] : (mod.getLaunchArgs?.() || []);
 
-  // Skyrim LE: RaceMenu crasha com bFull Screen=1 + DXVK.
-  // Solução permanente: bBorderless=1 no SkyrimPrefs.ini (sem device reset).
-  // PROTON_USE_WINED3D não funciona — WineD3D é muito lento em NVIDIA.
-
-  // Ensure steam_appid.txt exists in game dir (SKSE and some games need it)
-  if (steamAppId && launchExe) {
-    const appIdFile = path.join(path.dirname(launchExe), "steam_appid.txt");
-    if (!fs.existsSync(appIdFile)) {
-      try { fs.writeFileSync(appIdFile, steamAppId, "utf-8"); } catch { /* ignore */ }
-    }
+  // ── Custom prefix: launch via proton run directly ──
+  // When the user has a custom prefix (not inside Steam's compatdata),
+  // we MUST launch via proton run with WINEPREFIX set to the custom prefix.
+  // steam://rungameid/ would ignore our prefix and use Steam's own compatdata,
+  // losing all DLL overrides, registry entries, and mod deployments.
+  const customPrefix = !isSteamCompatPrefix(prefixPath);
+  if (customPrefix && launchExe && fs.existsSync(launchExe)) {
+    logger.info(`[Launch] Custom prefix detected: ${prefixPath}`);
+    logger.info(`[Launch] Launching via proton run to use custom prefix`);
+    return launchCustomPrefix(
+      gameId, gamePath, prefixPath, steamAppId, protonPath,
+      launchExe, launchArgs, send,
+    );
   }
 
+  // ── Steam compatdata prefix: launch via steam://rungameid/ ──
+  // When the prefix IS inside Steam's compatdata, use steam://rungameid/
+  // so Steam manages the Proton runtime and prefix.
+  if (steamAppId) {
+    ensureSteamAppIdFile(gamePath, steamAppId);
+    return launchViaSteam(steamAppId, send);
+  }
+
+  // ── Fallback: Direct Proton/umu-run (non-Steam games without prefix) ──
   if (launchExe && fs.existsSync(launchExe)) {
     const gameDir = path.dirname(launchExe);
-    const launchEnv = { ...process.env, ...env, PROTON_LOG: "1" };
-    const protonExe = path.join(protonPath, "proton");
+    const env = buildLaunchEnv(steamAppId, gamePath, prefixPath, protonPath);
+    const customEnv = mod.getLaunchEnv?.(gamePath, prefixPath, protonPath);
+    if (customEnv) Object.assign(env, customEnv);
+    const launchEnv = { ...process.env, ...env };
+    const protonExe = findProtonBin(protonPath);
 
-    // When running as root (via sudo), Wine/Proton can't connect to the
-    // user's Xwayland display. Detect SUDO_USER and spawn as that user.
-    const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
-    const realUser = isRoot ? (process.env.SUDO_USER || process.env.LOGNAME || null) : null;
-    if (realUser) {
-      logger.info(`[Launch] Running as root, will spawn as user: ${realUser}`);
-    }
-
-    logger.info(`[Launch] === LAUNCH DEBUG ===`);
+    logger.info(`[Launch] === DIRECT LAUNCH (no Steam AppId) ===`);
     logger.info(`[Launch] gameId: ${gameId}`);
-    logger.info(`[Launch] gamePath: ${gamePath}`);
-    logger.info(`[Launch] prefixPath: ${prefixPath}`);
-    logger.info(`[Launch] steamAppId: ${steamAppId}`);
-    logger.info(`[Launch] libraryPath: ${libraryPath}`);
-    logger.info(`[Launch] protonPath: ${protonPath}`);
-    logger.info(`[Launch] protonExe: ${protonExe}`);
     logger.info(`[Launch] launchExe: ${launchExe}`);
-    logger.info(`[Launch] launchArgs: ${JSON.stringify(launchArgs)}`);
-    logger.info(`[Launch] hasSkse: ${hasSkse}, sksePath: ${sksePath}`);
     logger.info(`[Launch] WINEPREFIX: ${launchEnv.WINEPREFIX}`);
-    logger.info(`[Launch] STEAM_COMPAT_DATA_PATH: ${launchEnv.STEAM_COMPAT_DATA_PATH}`);
-    logger.info(`[Launch] STEAM_COMPAT_INSTALL_PATH: ${launchEnv.STEAM_COMPAT_INSTALL_PATH}`);
-    logger.info(`[Launch] STEAM_COMPAT_CLIENT_INSTALL_PATH: ${launchEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH}`);
-    logger.info(`[Launch] SteamAppId: ${launchEnv.SteamAppId}`);
-    logger.info(`[Launch] SteamGameId: ${launchEnv.SteamGameId}`);
-    logger.info(`[Launch] GAMEID: ${launchEnv.GAMEID}`);
-    logger.info(`[Launch] PROTONPATH: ${launchEnv.PROTONPATH}`);
-    logger.info(`[Launch] PROTON_LOG: ${path.join(os.homedir(), `steam-${steamAppId || "0"}.log`)}`);
-    logger.info(`[Launch] protonExe exists: ${fs.existsSync(protonExe)}`);
-    logger.info(`[Launch] launchExe exists: ${fs.existsSync(launchExe)}`);
-    logger.info(`[Launch] gameDir: ${gameDir}`);
-    logger.info(`[Launch] cwd: ${process.cwd()}`);
 
-    // Prefer umu-run — it provides the Steam Runtime container needed for
-    // audio (character voices). Proton run alone lacks PulseAudio/Pipewire
-    // routing, so voices are silent. Fallback to proton run if umu-run isn't
-    // available.
-    let useUmuRun = true;
-    let umuRunPath: string | null = null;
+    killStaleWineserver();
+    ensureProtonSymlink(protonPath);
 
-    umuRunPath = spawnSync("which", ["umu-run"], { stdio: "pipe" }).status === 0
-      ? "umu-run"
-      : null;
-    if (!umuRunPath) {
-      const bundled = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
-      if (fs.existsSync(bundled)) umuRunPath = bundled;
-    }
+    const umuRunPath = findUmuRun();
 
-    if (!umuRunPath) {
-      useUmuRun = false;
-      logger.info(`[Launch] umu-run not found, falling back to proton run`);
-    }
-
-    if (!useUmuRun && !fs.existsSync(protonExe)) {
-      const msg = `Proton não encontrado em: ${protonExe}`;
+    if (!umuRunPath && !protonExe) {
+      const msg = `Proton não encontrado em: ${protonPath}`;
       logger.error(`[Launch] ${msg}`);
-      send("launch", `❌ ${msg}`, "error");
+      send("launch", msg, "error");
       return { success: false, error: msg };
     }
 
-    logger.info(`[Launch] Using: ${useUmuRun ? "umu-run" : "proton run"}`);
-
-    // Kill any stale wineserver
-    const killResult = spawnSync("pkill", ["-9", "wineserver"], { stdio: "pipe" });
-    logger.info(`[Launch] pkill wineserver: status=${killResult.status}, stdout=${killResult.stdout.toString().trim()}, stderr=${killResult.stderr.toString().trim()}`);
-    // Also try killall as fallback
-    const killallResult = spawnSync("killall", ["-9", "wineserver"], { stdio: "pipe" });
-    logger.info(`[Launch] killall wineserver: status=${killallResult.status}`);
-
-    // umu-run resolves PROTONPATH as a dir name under ~/.local/share/Steam/compatibilitytools.d/
-    // Extract the directory name and ensure a symlink exists there.
-    const protonDirName = path.basename(protonPath);
-    const steamCompatDir = path.join(os.homedir(), ".local", "share", "Steam", "compatibilitytools.d");
-    const steamCompatLink = path.join(steamCompatDir, protonDirName);
-    if (!fs.existsSync(steamCompatLink) && fs.existsSync(protonPath)) {
-      try {
-        fs.mkdirSync(steamCompatDir, { recursive: true });
-        fs.symlinkSync(protonPath, steamCompatLink);
-        logger.info(`[Launch] Created symlink: ${steamCompatLink} → ${protonPath}`);
-      } catch (err) {
-        logger.warn(`[Launch] Failed to create Proton symlink: ${err}`);
-      }
-    }
-
-    // wineEnvVars: used by `su` (root) path AND the proton fallback path
-    const wineEnvVars = [
-      `WINEPREFIX="${launchEnv.WINEPREFIX}"`,
-      `STEAM_COMPAT_DATA_PATH="${launchEnv.STEAM_COMPAT_DATA_PATH}"`,
-      `STEAM_COMPAT_INSTALL_PATH="${launchEnv.STEAM_COMPAT_INSTALL_PATH}"`,
-      `STEAM_COMPAT_CLIENT_INSTALL_PATH="${launchEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH}"`,
-      `SteamAppId="${launchEnv.SteamAppId}"`,
-      `SteamGameId="${launchEnv.SteamGameId}"`,
-      `GAMEID="${launchEnv.GAMEID}"`,
-      `PROTONPATH="${protonDirName}"`,
-      `PROTON_LOG=1`,
-    ].join(" ");
-
     if (umuRunPath) {
-      send("launch", `🚀 Iniciando ${path.basename(launchExe)} via umu-run...`, "working");
+      send("launch", `Iniciando ${path.basename(launchExe)} via umu-run...`, "working");
       logger.info(`[Launch] Using umu-run: ${umuRunPath}`);
-      logger.info(`[Launch] PROTONPATH (dir name): ${protonDirName}`);
-
-      // When running as root, Wine can't connect to the user's Xwayland display.
-      // Wrap in `su - <user> -c` with env vars inline so Wine runs as the real user.
-      const umuCmd = `${wineEnvVars} ${umuRunPath} "${launchExe}" ${launchArgs.join(" ")}`;
-
-      const spawnBin = realUser ? "su" : umuRunPath;
-      const spawnArgs = realUser
-        ? ["-", realUser, "-c", umuCmd]
-        : [launchExe, ...launchArgs];
-
-      logger.info(`[Launch] spawn: ${realUser ? `su - ${realUser} -c "..."` : umuRunPath}`);
-
-      // For umu-run non-root: ensure PROTONPATH is the dir name, not absolute path
-      const umuLaunchEnv = { ...launchEnv, PROTONPATH: protonDirName };
 
       return new Promise<PlayResult>((resolve) => {
-        const child = spawn(spawnBin, spawnArgs, {
+        const child = spawn(umuRunPath, [launchExe, ...launchArgs], {
           cwd: gameDir,
-          env: realUser ? { HOME: `/home/${realUser}`, PATH: process.env.PATH } : umuLaunchEnv,
+          env: launchEnv,
           stdio: ["ignore", "pipe", "pipe"],
           detached: true,
         });
         const stderrChunks: Buffer[] = [];
-        const stdoutChunks: Buffer[] = [];
-        child.stdout!.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
+        child.stdout!.on("data", () => { /* drain */ });
         child.stderr!.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
         child.on("error", (err) => {
           logger.error(`[Launch] umu-run error: ${err.message}`);
-          send("launch", `❌ Erro: ${err.message}`, "error");
-          resolve({ success: false, method: hasSkse ? "skse" : "direct", error: err.message });
+          send("launch", `Erro: ${err.message}`, "error");
+          resolve({ success: false, method: "direct", error: err.message });
         });
         child.on("close", (code) => {
           const stderrOut = Buffer.concat(stderrChunks).toString("utf-8").trim();
-          const stdoutOut = Buffer.concat(stdoutChunks).toString("utf-8").trim();
           logger.info(`[Launch] umu-run exit code: ${code}`);
-          if (stdoutOut) logger.info(`[Launch] umu-run stdout:\n${stdoutOut}`);
           if (stderrOut) logger.warn(`[Launch] umu-run stderr:\n${stderrOut}`);
-          if (stderrOut.includes("0xc0000005") || stderrOut.includes("Unhandled exception") || stderrOut.includes("page fault")) {
-            send("launch", `❌ Jogo crashou (exit ${code}). Verifique o console F12 para detalhes.`, "error");
-          } else if (code !== 0 && code !== null) {
-            send("launch", `⚠️ Jogo encerrou com código ${code}`, "warning");
-          }
         });
         child.unref();
-        send("launch", `✅ ${info?.name || gameId} iniciado via umu-run!`, "done");
-        resolve({ success: true, method: hasSkse ? "skse" : "direct" });
+        send("launch", `${info?.name || gameId} iniciado via umu-run!`, "done");
+        resolve({ success: true, method: "direct" });
       });
     }
 
-    send("launch", `🚀 Iniciando ${path.basename(launchExe)} com ${path.basename(protonPath)}...`, "working");
-
-    const protonCmd = `${wineEnvVars} "${protonExe}" run "${launchExe}" ${launchArgs.join(" ")}`;
-    const protonBin = realUser ? "su" : protonExe;
-    const protonArgs = realUser
-      ? ["-", realUser, "-c", protonCmd]
-      : ["run", launchExe, ...launchArgs];
+    send("launch", `Iniciando ${path.basename(launchExe)} com ${path.basename(protonPath)}...`, "working");
 
     return new Promise<PlayResult>((resolve) => {
-      const child = spawn(protonBin, protonArgs, {
+      const child = spawn(protonExe!, ["run", launchExe, ...launchArgs], {
         cwd: gameDir,
-        env: realUser ? { HOME: `/home/${realUser}`, PATH: process.env.PATH } : launchEnv,
+        env: launchEnv,
         stdio: ["ignore", "pipe", "pipe"],
         detached: true,
       });
 
       const stderrChunks: Buffer[] = [];
-      const stdoutChunks: Buffer[] = [];
-
-      child.stdout!.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
+      child.stdout!.on("data", () => { /* drain */ });
       child.stderr!.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
 
       child.on("error", (err) => {
         logger.error(`[Launch] spawn error: ${err.message}`);
-        send("launch", `❌ Erro ao iniciar: ${err.message}`, "error");
-        resolve({ success: false, method: hasSkse ? "skse" : "direct", error: err.message });
+        send("launch", `Erro ao iniciar: ${err.message}`, "error");
+        resolve({ success: false, method: "direct", error: err.message });
       });
 
       child.on("close", (code) => {
         const stderrOut = Buffer.concat(stderrChunks).toString("utf-8").trim();
-        const stdoutOut = Buffer.concat(stdoutChunks).toString("utf-8").trim();
         logger.info(`[Launch] === PROCESS EXIT ===`);
         logger.info(`[Launch] exit code: ${code}`);
-        if (stdoutOut) logger.info(`[Launch] stdout:\n${stdoutOut}`);
         if (stderrOut) logger.warn(`[Launch] stderr:\n${stderrOut}`);
-        if (stderrOut.includes("0xc0000005") || stderrOut.includes("Unhandled exception") || stderrOut.includes("page fault")) {
-          send("launch", `❌ Jogo crashou (exit ${code}). Verifique o console F12 para detalhes.`, "error");
-        } else if (code !== 0 && code !== null) {
-          send("launch", `⚠️ Jogo encerrou com código ${code}`, "warning");
-        }
       });
 
       child.unref();
-
-      send("launch", `✅ ${info?.name || gameId} iniciado!`, "done");
-      resolve({ success: true, method: hasSkse ? "skse" : "direct" });
+      send("launch", `${info?.name || gameId} iniciado!`, "done");
+      resolve({ success: true, method: "direct" });
     });
   }
 
-  if (steamAppId) {
-    send("launch", "🚀 Iniciando via Steam...", "working");
-    spawn("steam", [`steam://rungameid/${steamAppId}`], {
-      stdio: "ignore",
-      detached: true,
-    }).unref();
-    send("launch", `✅ ${info?.name || gameId} iniciado via Steam!`, "done");
-    return { success: true, method: "steam" };
-  }
-
-  send("launch", "❌ Nenhum executável encontrado", "error");
+  send("launch", "Nenhum executável encontrado", "error");
   return { success: false, error: "Nenhum executável encontrado" };
 }

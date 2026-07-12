@@ -1,64 +1,38 @@
 // Re-export from centralized prefix module
 export {
   applyWineDllOverrides,
+  verifyDllOverrides,
   BETHESDA_COMMON_DLL_OVERRIDES,
   MODERN_DIRECTX_DEPS,
   type DllOverridesMap,
+  type VerifyDllResult,
 } from "@prefix/core/dll-overrides";
 
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { findSteamClientPath } from "@prefix/core/steam-paths";
 
-function buildProtonEnv(
-  prefixPath: string,
-  gamePath: string,
-  steamAppId?: string,
-  libraryPath?: string,
-): Record<string, string> {
-  const env: Record<string, string> = {
-    ...process.env,
-    WINEPREFIX: prefixPath,
-  };
-
-  let compatData: string | null = null;
-  if (libraryPath && steamAppId) {
-    compatData = path.join(libraryPath, "compatdata", steamAppId);
-  } else if (path.basename(prefixPath) === "pfx") {
-    compatData = path.dirname(prefixPath);
-  } else {
-    compatData = prefixPath;
-  }
-
-  if (compatData) env.STEAM_COMPAT_DATA_PATH = compatData;
-  if (gamePath) env.STEAM_COMPAT_INSTALL_PATH = gamePath;
-  env.STEAM_COMPAT_CLIENT_INSTALL_PATH = findSteamClientPath();
-
-  if (steamAppId) {
-    env.SteamAppId = steamAppId;
-    env.SteamGameId = steamAppId;
-    env.GAMEID = steamAppId;
-  }
-
-  return env;
+function posixToWinePath(p: string): string {
+  return "Z:" + p.replace(/\//g, "\\");
 }
 
 /**
- * Semeia o registro Bethesda via `proton run reg add` com as env vars
- * necessárias para o GE-Proton funcionar (STEAM_COMPAT_DATA_PATH etc.).
+ * Semeia o registro Bethesda diretamente no system.reg (sem usar proton run reg add).
+ *
+ * A abordagem anterior usava `proton run reg add` que:
+ *  1. Injetava aspas extras no valor ("\"Z:\\...\"")
+ *  2. Sobrescrevia o Wow6432Node com o drive mapping do Proton ("S:\\common\\...")
+ *
+ * Agora escrevemos direto no system.reg, que é mais confiável e rápido.
  */
 export function seedBethesdaRegistryWithProton(
   prefixPath: string,
   gamePath: string,
-  protonPath: string,
+  _protonPath: string,
   registryName: string,
-  steamAppId?: string,
-  libraryPath?: string,
+  _steamAppId?: string,
+  _libraryPath?: string,
 ): boolean {
-  const winePath = "Z:" + gamePath.replace(/\//g, "\\");
-  const key = `HKLM\\Software\\Bethesda Softworks\\${registryName}`;
-  const key32 = `HKLM\\Software\\Wow6432Node\\Bethesda Softworks\\${registryName}`;
+  const winePath = posixToWinePath(gamePath);
   const marker = path.join(prefixPath, ".bethesda_registry_seeded");
 
   if (fs.existsSync(marker)) {
@@ -66,28 +40,62 @@ export function seedBethesdaRegistryWithProton(
     return true;
   }
 
-  const env = buildProtonEnv(prefixPath, gamePath, steamAppId, libraryPath);
-  console.log(`Configurando registro Bethesda: ${key} = ${winePath}`);
-
-  try { spawnSync("pkill", ["-9", "wineserver"], { stdio: "pipe" }); } catch {}
-  try { spawnSync("killall", ["-9", "wineserver"], { stdio: "pipe" }); } catch {}
-
-  for (const k of [key, key32]) {
-    const result = spawnSync(
-      path.join(protonPath, "proton"),
-      ["run", "reg", "add", k, "/v", "Installed Path", "/t", "REG_SZ", "/d", `"${winePath}"`, "/f"],
-      { env, stdio: "pipe", timeout: 30000 },
-    );
-    if (result.status !== 0) {
-      const stdout = result.stdout?.toString() || "";
-      const stderr = result.stderr?.toString() || "";
-      console.error(`Falha ao adicionar registro: ${k}`, `status=${result.status}`, `stdout=${stdout}`, `stderr=${stderr}`);
+  // Resolve the actual prefix directory (may have pfx/ subpath)
+  let pfxDir = prefixPath;
+  if (!fs.existsSync(path.join(prefixPath, "user.reg"))) {
+    if (fs.existsSync(path.join(prefixPath, "pfx", "user.reg"))) {
+      pfxDir = path.join(prefixPath, "pfx");
+    } else {
+      console.error(`seedBethesdaRegistryWithProton: user.reg não encontrado em ${prefixPath}`);
       return false;
     }
-    console.log(`Registro adicionado com sucesso: ${k}`);
   }
 
+  const systemRegPath = path.join(pfxDir, "system.reg");
+  if (!fs.existsSync(systemRegPath)) {
+    fs.writeFileSync(systemRegPath, "WINE REGISTRY Version 2\n", "utf-8");
+  }
+
+  const sections = [
+    `Software\\Bethesda Softworks\\${registryName}`,
+    `Software\\Wow6432Node\\Bethesda Softworks\\${registryName}`,
+  ];
+
+  let content = fs.readFileSync(systemRegPath, "utf-8");
+
+  for (const section of sections) {
+    const sectionEscaped = section.replace(/\\/g, "\\\\");
+    const header = `[${sectionEscaped}]`;
+    const valueLine = `"Installed Path"="${winePath}"`;
+
+    const headerIdx = content.indexOf(header);
+
+    if (headerIdx >= 0) {
+      const sectionEnd = content.indexOf("\n[", headerIdx + 1);
+      const sectionBody = sectionEnd >= 0
+        ? content.slice(headerIdx, sectionEnd)
+        : content.slice(headerIdx);
+
+      if (sectionBody.includes(`"Installed Path"="${winePath}"`)) {
+        continue;
+      }
+
+      const before = content.slice(0, headerIdx);
+      const after = sectionEnd >= 0 ? content.slice(sectionEnd) : "";
+      const updatedLines = sectionBody
+        .split("\n")
+        .filter(line => !line.startsWith('"Installed Path"='))
+        .join("\n");
+      content = before + updatedLines + "\n" + valueLine + "\n" + after;
+    } else {
+      if (!content.endsWith("\n")) content += "\n";
+      content += header + "\n" + valueLine + "\n";
+    }
+  }
+
+  fs.writeFileSync(systemRegPath, content, "utf-8");
+
   try { fs.writeFileSync(marker, ""); } catch {}
-  console.log(`Marcador de registro criado para ${registryName}`);
+  console.log(`Registro Bethesda (${registryName}) configurado: ${winePath}`);
   return true;
 }
