@@ -54,8 +54,9 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
     return { ok: false, error: "Jogo não configurado." };
   }
 
-  const oldProtonPath = config.protonVersion || "";
-  const prefixPath = config.protonPrefix || "";
+  const oldProtonPath = (config.protonVersion || "").replace(/\/+$/, "");
+  const prefixPath = (config.protonPrefix || "").replace(/\/+$/, "");
+  newProtonPath = newProtonPath.replace(/\/+$/, "");
 
   if (!prefixPath) {
     return { ok: false, error: "Prefixo não configurado. Configure o jogo primeiro." };
@@ -76,8 +77,12 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
   });
 
   // 1. Validar que o novo Proton existe
-  if (!fs.existsSync(path.join(newProtonPath, "proton"))) {
+  const protonBin = path.join(newProtonPath, "proton");
+  if (!fs.existsSync(protonBin)) {
     return { ok: false, error: `Proton não encontrado em: ${newProtonPath}` };
+  }
+  if (!fs.statSync(protonBin).isFile()) {
+    return { ok: false, error: `O caminho não é um Proton válido (proton não é arquivo): ${newProtonPath}` };
   }
 
   // 2. Verificar se o jogo não está rodando (wineserver ativo)
@@ -92,49 +97,74 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
     return { ok: false, error: "Feche o jogo antes de trocar o Proton. (wineserver detectado)" };
   }
 
-  // 3. Listar saves no prefixo atual
-  let saves: string[] = [];
+  // 3. Limpar backups anteriores deste jogo
   try {
-    const savesResult = await ProtonForgeRPC.call<{ saves: string[] }>(
-      "get_prefix_saves",
-      { prefix_path: prefixPath, game_id: gameId },
-    );
-    saves = savesResult.saves || [];
-    logPlay(gameId, "modSwitchProton_saves", { saves: saves.join(",") });
-  } catch (err) {
-    logPlay(gameId, "modSwitchProton_saves_error", { error: String(err) });
+    const oldBackups = fs.readdirSync("/tmp").filter(f => f.startsWith(`makai-forge-backup-${gameId}-`));
+    for (const old of oldBackups) {
+      try { execSync(`rm -rf "/tmp/${old}"`, { stdio: "pipe" }); } catch { /* ignore */ }
+    }
+  } catch { /* ignore */ }
+
+  // 4. Listar saves no prefixo atual
+  let saves: string[] = [];
+  const prefixExists = fs.existsSync(prefixPath);
+
+  if (!prefixExists) {
+    logPlay(gameId, "modSwitchProton_no_prefix", { prefixPath });
+  } else {
+    try {
+      const savesResult = await ProtonForgeRPC.call<{ saves: string[] }>(
+        "get_prefix_saves",
+        { prefix_path: prefixPath, game_id: gameId },
+      );
+      saves = savesResult.saves || [];
+      logPlay(gameId, "modSwitchProton_saves", { saves: saves.join(",") });
+    } catch (err) {
+      logPlay(gameId, "modSwitchProton_saves_error", { error: String(err) });
+    }
   }
 
-  // 4. Backup dos saves em /tmp
+  // 6. Backup dos saves em /tmp
   const tmpBackup = `/tmp/makai-forge-backup-${gameId}-${Date.now()}`;
   let backupSuccess = false;
 
   if (saves.length > 0) {
     try {
-      for (const save of saves) {
-        const src = path.join(prefixPath, save);
-        const dst = path.join(tmpBackup, save);
-        execSync(`mkdir -p "${path.dirname(dst)}" && cp -a "${src}" "${dst}"`, { stdio: "pipe" });
+      // Verificar espaço disponível em /tmp
+      const dfOut = execSync("df --output=avail /tmp | tail -1", { encoding: "utf-8" }).trim();
+      const availKB = parseInt(dfOut, 10);
+      if (isNaN(availKB) || availKB < 102400) {
+        logPlay(gameId, "modSwitchProton_backup_no_space", { availKB: String(availKB) });
+      } else {
+        for (const save of saves) {
+          const src = path.join(prefixPath, save);
+          const dst = path.join(tmpBackup, save);
+          execSync(`mkdir -p "${path.dirname(dst)}" && cp -a "${src}" "${dst}"`, { stdio: "pipe" });
+        }
+        backupSuccess = true;
+        logPlay(gameId, "modSwitchProton_backup", { backupPath: tmpBackup, saves: saves.join(",") });
       }
-      backupSuccess = true;
-      logPlay(gameId, "modSwitchProton_backup", { backupPath: tmpBackup, saves: saves.join(",") });
     } catch (err) {
       logPlay(gameId, "modSwitchProton_backup_failed", { error: String(err) });
     }
   }
 
   // 5. Deletar prefixo antigo
-  try {
-    const deleteResult = await ProtonForgeRPC.call<{ success: boolean }>(
-      "delete_prefix",
-      { prefix_path: prefixPath },
-    );
-    if (!deleteResult.success) {
-      return { ok: false, error: "Falha ao deletar prefixo antigo." };
+  if (prefixExists) {
+    try {
+      const deleteResult = await ProtonForgeRPC.call<{ success: boolean }>(
+        "delete_prefix",
+        { prefix_path: prefixPath },
+      );
+      if (!deleteResult.success) {
+        return { ok: false, error: "Falha ao deletar prefixo antigo." };
+      }
+      logPlay(gameId, "modSwitchProton_deleted", { prefixPath });
+    } catch (err) {
+      return { ok: false, error: `Erro ao deletar prefixo: ${String(err).slice(0, 200)}` };
     }
-    logPlay(gameId, "modSwitchProton_deleted", { prefixPath });
-  } catch (err) {
-    return { ok: false, error: `Erro ao deletar prefixo: ${String(err).slice(0, 200)}` };
+  } else {
+    logPlay(gameId, "modSwitchProton_skip_delete", { prefixPath });
   }
 
   // 6. Criar prefixo novo com o novo Proton
@@ -169,13 +199,15 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
     return { ok: false, error: `Erro ao criar prefixo: ${String(err).slice(0, 200)}` };
   }
 
-  // 7. Restaurar saves
+  // 8. Restaurar saves
+  let restoredCount = 0;
   if (backupSuccess && saves.length > 0) {
     try {
       const restoreResult = await ProtonForgeRPC.call<{ restored: string[]; errors: string[] }>(
         "restore_saves",
         { prefix_path: prefixPath, saves_backup: saves, backup_source: tmpBackup },
       );
+      restoredCount = (restoreResult.restored || []).length;
       logPlay(gameId, "modSwitchProton_restore", {
         restored: (restoreResult.restored || []).join(","),
         errors: (restoreResult.errors || []).join(","),
@@ -200,6 +232,7 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
     newProton: newProtonPath,
     prefixPath,
     savesCount: String(saves.length),
+    restoredCount: String(restoredCount),
   });
 
   return {
@@ -207,7 +240,7 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
     data: {
       newProtonPath,
       prefixPath,
-      savesRestored: saves.length,
+      savesRestored: restoredCount,
       dllsInstalled: createResult?.dlls_installed || [],
     },
   };
