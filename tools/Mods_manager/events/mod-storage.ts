@@ -9,3 +9,8 @@ registerEvent("modsStorePut", async (_event, key: string, value: any) => {
   ModStorageService.put(key, value);
   return true;
 });
+
+registerEvent("modsStoreDel", async (_event, key: string) => {
+  ModStorageService.delete(key);
+  return true;
+});

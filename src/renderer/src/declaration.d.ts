@@ -755,6 +755,7 @@ declare global {
     modsStore: {
       get: (key: string) => Promise<unknown>;
       put: (key: string, value: unknown) => Promise<boolean>;
+      del: (key: string) => Promise<boolean>;
       values: (prefix?: string) => Promise<unknown[]>;
     };
 

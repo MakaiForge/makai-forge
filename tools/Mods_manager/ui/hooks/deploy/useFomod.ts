@@ -211,7 +211,7 @@ export function useFomod(
     // Delete saved selections from storage
     if (modName && gameId) {
       try {
-        await window.electron.modsStore.put(fomodSelectionsKey(modName), null);
+        await window.electron.modsStore.del(fomodSelectionsKey(modName));
         addLog(`Reset FOMOD selections for ${modName}`);
       } catch { /* ignore */ }
     }

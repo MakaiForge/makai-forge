@@ -954,6 +954,7 @@ contextBridge.exposeInMainWorld("electron", {
   modsStore: {
     get: (key: string) => ipcRenderer.invoke("modsStoreGet", key),
     put: (key: string, value: unknown) => ipcRenderer.invoke("modsStorePut", key, value),
+    del: (key: string) => ipcRenderer.invoke("modsStoreDel", key),
   },
 
   //UPDATEDD
