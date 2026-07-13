@@ -180,6 +180,11 @@ export async function ensureProton(
   }
 }
 
+function normalizeProtonVersion(s: string): string {
+  const matches = s.match(/\d+(?:\.\d+)*/g);
+  return matches ? matches.join(".") : s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function pickRelease(
   releases: { tag_name: string }[],
   version: string,
@@ -187,9 +192,14 @@ function pickRelease(
 ): { tag_name: string } | null {
   if (version === "latest") return releases[0] || null;
   const v = version.toLowerCase().replace(/^v/, "");
+  const vNums = normalizeProtonVersion(version);
   return releases.find(r => {
     const t = r.tag_name.toLowerCase().replace(/^v/, "");
-    return t.includes(v) || v.includes(t);
+    const tNums = normalizeProtonVersion(r.tag_name);
+    if (t.includes(v) || v.includes(t)) return true;
+    if (tNums === vNums) return true;
+    if (tNums.includes(vNums) || vNums.includes(tNums)) return true;
+    return false;
   }) || null;
 }
 

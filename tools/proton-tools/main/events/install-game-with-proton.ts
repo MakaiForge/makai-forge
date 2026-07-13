@@ -22,6 +22,11 @@ function sendInstallLog(line: string) {
   }
 }
 
+function normalizeProtonVersion(s: string): string {
+  const matches = s.match(/\d+(?:\.\d+)*/g);
+  return matches ? matches.join(".") : s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function findReleaseByFork(
   releases: ProtonRelease[],
   fork: ProtonFork
@@ -30,12 +35,17 @@ function findReleaseByFork(
     return releases[0];
   }
   const version = fork.version.toLowerCase().replace(/^v/, "").replace(/[-\s]/g, "");
+  const versionNums = normalizeProtonVersion(fork.version);
   const match = releases.find((release) => {
     const tag = release.tag_name.toLowerCase().replace(/^v/, "").replace(/[-\s]/g, "");
-    return tag === version || tag.endsWith(version) || tag.includes(version) || version.includes(tag);
+    const tagNums = normalizeProtonVersion(release.tag_name);
+    if (tag === version || tagNums === versionNums) return true;
+    if (tag.endsWith(version) || tag.includes(version) || version.includes(tag)) return true;
+    if (tagNums.includes(versionNums) || versionNums.includes(tagNums)) return true;
+    return false;
   });
   if (match) return match;
-  logger.warn(`[findReleaseByFork] versão "${fork.version}" não encontrada entre ${releases.length} releases`);
+  logger.warn(`[findReleaseByFork] versão "${fork.version}" (norm="${versionNums}") não encontrada entre ${releases.length} releases`);
   logger.warn(`[findReleaseByFork] tags disponíveis: ${releases.slice(0, 10).map(r => r.tag_name).join(", ")}`);
   return null;
 }
