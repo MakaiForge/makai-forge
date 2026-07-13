@@ -185,7 +185,7 @@ export function verifyGameReady(gameId: string): CheckResult {
       id: "proton",
       label: "Proton",
       ok: false,
-      message: "Proton não configurado. Configure em 'Configurar Jogo'.",
+      message: "Proton não configurado. Clique em 'Preparar Prefixo' para configurar.",
       action: "install_proton",
     });
   } else {

@@ -208,7 +208,7 @@ export default function ModManager() {
           {sortWarnings.length > 0 && <div className="mod-manager__sort-warnings">{sortWarnings.map((w, i) => <p key={i} className="mod-manager__sort-warning">{w}</p>)}</div>}
 
           <OverwriteModal open={orchPendingOverwrite !== null} modName={orchPendingOverwrite?.modName} onConfirm={orchConfirmOverwrite} onCancel={orchCancelOverwrite} />
-          <GameReadinessModal open={gameReadinessResult !== null && !gameReadinessResult?.ok} result={gameReadinessResult} gameId={selectedGame} onClose={dismissGameReadiness} onRetry={reVerifyGameReadiness} onConfigure={() => { proton.setOriginalProtonPath(configProtonPath); setShowGameConfig(true); }} />
+          <GameReadinessModal open={gameReadinessResult !== null && !gameReadinessResult?.ok} result={gameReadinessResult} gameId={selectedGame} onClose={dismissGameReadiness} onRetry={reVerifyGameReadiness} onConfigure={() => { proton.setOriginalProtonPath(configProtonPath); setShowGameConfig(true); }} onPreparePrefix={() => { handleProtonConfigOpen("install"); }} />
           <DeployResultModal open={deployResult !== null} result={deployResult} onClose={() => setDeployResult(null)} />
 
           <Modal visible={showGameConfig} title={t("configure_game_title", { name: currentGame?.name || selectedGame })} onClose={async () => { setShowGameConfig(false); if (gameReadinessResult) await reVerifyGameReadiness(); }}>

@@ -23,6 +23,7 @@ interface GameReadinessModalProps {
   onClose: () => void;
   onRetry: () => Promise<void>;
   onConfigure?: () => void;
+  onPreparePrefix?: () => void;
 }
 
 export function GameReadinessModal({
@@ -32,6 +33,7 @@ export function GameReadinessModal({
   onClose,
   onRetry,
   onConfigure,
+  onPreparePrefix,
 }: GameReadinessModalProps) {
   const { t } = useTranslation("mod_manager");
   const [creatingPrefix, setCreatingPrefix] = useState(false);
@@ -67,7 +69,8 @@ export function GameReadinessModal({
 
   const failedChecks = result.checks.filter(c => !c.ok);
   const hasPrefixIssue = failedChecks.some(c => c.action === "create_prefix");
-  const hasConfigIssue = failedChecks.some(c => c.action === "configure" || c.action === "install_proton");
+  const hasConfigureIssue = failedChecks.some(c => c.action === "configure");
+  const hasProtonIssue = failedChecks.some(c => c.action === "install_proton");
   const allOk = result.ok;
 
   return (
@@ -110,9 +113,15 @@ export function GameReadinessModal({
         )}
 
         <div className="game-readiness__modal-actions">
-          {hasConfigIssue && onConfigure && (
+          {hasConfigureIssue && onConfigure && (
             <Button theme="primary" onClick={onConfigure}>
               {t("game_readiness_configure", "Configurar Jogo")}
+            </Button>
+          )}
+
+          {hasProtonIssue && onPreparePrefix && (
+            <Button theme="primary" onClick={onPreparePrefix}>
+              {t("game_readiness_prepare_prefix", "Preparar Prefixo")}
             </Button>
           )}
 
