@@ -113,7 +113,7 @@ export function GameReadinessModal({
         )}
 
         <div className="game-readiness__modal-actions">
-          {hasConfigureIssue && onConfigure && (
+          {onConfigure && (
             <Button theme="primary" onClick={onConfigure}>
               {t("game_readiness_configure", "Configurar Jogo")}
             </Button>
