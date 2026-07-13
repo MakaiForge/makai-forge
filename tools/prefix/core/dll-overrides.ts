@@ -94,3 +94,61 @@ export function applyGameDllOverrides(
     applyWineDllOverrides(prefixPath, overrides);
   }
 }
+
+export interface VerifyDllResult {
+  ok: boolean
+  userRegPath: string
+  found: string[]
+  missing: string[]
+}
+
+/**
+ * Verify that DLL overrides were correctly written to user.reg.
+ * Reads the [Software\\Wine\\DllOverrides] section and checks each expected entry.
+ */
+export function verifyDllOverrides(
+  prefixPath: string,
+  overrides: DllOverridesMap,
+): VerifyDllResult {
+  const empty: VerifyDllResult = { ok: false, userRegPath: "", found: [], missing: [] };
+  prefixPath = normalizePrefixPath(prefixPath);
+  if (!prefixPath || Object.keys(overrides).length === 0) return { ...empty, ok: true };
+
+  const rootUserReg = path.join(prefixPath, "user.reg");
+  const pfxUserReg = path.join(prefixPath, "pfx", "user.reg");
+
+  let userRegPath: string;
+  if (fs.existsSync(rootUserReg)) {
+    userRegPath = rootUserReg;
+  } else if (fs.existsSync(pfxUserReg)) {
+    userRegPath = pfxUserReg;
+  } else {
+    return { ...empty, missing: Object.keys(overrides) };
+  }
+
+  const content = fs.readFileSync(userRegPath, "utf-8");
+  const sectionHeader = "[Software\\\\Wine\\\\DllOverrides]";
+  const sectionIdx = content.indexOf(sectionHeader);
+
+  if (sectionIdx === -1) {
+    return { ok: false, userRegPath, found: [], missing: Object.keys(overrides) };
+  }
+
+  const rest = content.slice(sectionIdx + sectionHeader.length);
+  const nextBracket = rest.indexOf("\n[");
+  const sectionBody = nextBracket >= 0 ? rest.slice(0, nextBracket) : rest;
+
+  const found: string[] = [];
+  const missing: string[] = [];
+
+  for (const [dll, mode] of Object.entries(overrides)) {
+    const entry = `"${dll.toLowerCase()}"="${mode}"`;
+    if (sectionBody.includes(entry)) {
+      found.push(dll);
+    } else {
+      missing.push(dll);
+    }
+  }
+
+  return { ok: missing.length === 0, userRegPath, found, missing };
+}

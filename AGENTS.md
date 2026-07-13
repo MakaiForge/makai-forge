@@ -61,10 +61,53 @@ Skyrim, SE, VR, Enderal, Enderal SE, Oblivion, Fallout 3/NV/4/4VR, Starfield
 ### Jogos non-Bethesda (22) — NÃO afetados
 Usam deployGeneric (sem plugins.txt). Witcher 3, Cyberpunk, BG3, etc.
 
+## Skyrim Prefix + Steam Launch Issue (12/07/2026) — EM ANÁLISE
+- **Problema**: Skyrim (AppID 72850) não reconhece prefixo customizado `~/Games/Prefix/skyrim/` ao abrir via Steam
+- **Infraestrutura**: Symlink compatdata OK, config.vdf OK, Proton tool OK, DLL overrides OK
+- **Hipótese principal**: Steam não recarrega config.vdf quando já está aberto (timing issue)
+- **Doc**: `docs/referencia/redmine/023-skyrim-prefix-steam-launch.md`
+- **Testes**: Fechar Steam → reabrir → Play; OU bypass com umu-run direto
+
+### Arquitetura de Bridge
+```
+bridgePrefixToSteam()
+  1. Symlink: compatdata/72850/pfx → ~/Games/Prefix/skyrim
+  2. config.vdf: CompatToolMapping[72850] = GE-Proton9-12
+  3. Steam lê symlink + config.vdf ao lançar jogo
+```
+
+### Fluxo de Launch (Option B — CORRIGIDO 12/07/2026)
+```
+detectGame → prefixPath = config.protonPrefix = ~/Games/Prefix/skyrim
+  ↓
+bridgePrefixToSteam → symlink + config.vdf (mantido para Steam compatdata)
+  ↓
+applyGameConfigs → DLL overrides + registry no prefixo customizado
+  ↓
+launchGame → detecta prefixo customizado → proton run com WINEPREFIX=prefixo customizado
+  → WINEPREFIX=~/Games/Prefix/skyrim, PROTONPATH=GE-Proton9-12
+  → steam_appid.txt criado (72850)
+  → umu-run ou proton run skse_loader.exe
+  → Jogo usa nosso prefixo com DLL overrides + registry + mods
+```
+
+### Fix: 07-launch.ts
+- **Antes**: `steamAppId existe? → steam://rungameid/` (ignora prefixo customizado)
+- **Depois**: `prefixo customizado? → proton run com WINEPREFIX` / `Steam compatdata? → steam://rungameid/`
+- SKSE funciona via proton run porque Proton fornece steam_api.dll stubs
+
+### Chaves de Storage
+```
+game:skyrim:config → { gamePath, stagingDir, protonPrefix, protonVersion }
+game:skyrim:profile:Default:modlist → ModlistEntry[]
+proton_binary → ~/.config/makai-forger/compat-tools/compatibilitytools.d/GE-Proton11-1
+```
+
 ## Known Issues
 - jet40 requer WINEARCH=win32 (não funciona em win64)
 - Push requer repo limpo (node_modules/etc incham muito o histórico)
 - npp (404), winrar (interativo), autohotkey (path mismatch)
+- ~~Skyrim não reconhece prefixo customizado~~ — RESOLVIDO (Option B: proton run para prefixos customizados)
 
 ## Config
 - Token GitHub: configurado via AutoStartOpenCode.sh

@@ -2,10 +2,19 @@ import fs from "node:fs";
 import path from "node:path";
 import { getGameModule, getGameInfo } from "@games/registry";
 import { findPrefixUsername } from "@games/_shared/filemap";
-import { applyWineDllOverrides } from "@prefix/core/dll-overrides";
+import { applyWineDllOverrides, verifyDllOverrides } from "@prefix/core/dll-overrides";
+import { verifyBethesdaRegistry } from "@prefix/core/bethesda-registry";
 import { findAllSteamLibraries } from "@prefix/core/steam-paths";
 import { runPythonCommand } from "../python";
 import type { SendProgress } from "../types";
+
+export interface ConfigsResult {
+  ok: boolean
+  dllOk: boolean
+  registryOk: boolean
+  skseOk: boolean
+  errors: string[]
+}
 
 export async function applyGameConfigs(
   gameId: string,
@@ -15,20 +24,32 @@ export async function applyGameConfigs(
   send: SendProgress,
   steamAppId?: string,
   libraryPath?: string,
-): Promise<void> {
+): Promise<ConfigsResult> {
+  const result: ConfigsResult = { ok: true, dllOk: true, registryOk: true, skseOk: true, errors: [] };
   const mod = getGameModule(gameId, gamePath);
   const info = getGameInfo(gameId);
 
   // ── DLL Overrides ──
-  send("dll", "📦 Verificando DLL Overrides...", "working");
+  send("dll", "Verificando DLL Overrides...", "working");
   const overrides = mod.getWineDllOverrides?.();
 
   if (overrides && Object.keys(overrides).length > 0) {
     const dllList = Object.keys(overrides);
+
+    // Apply
     applyWineDllOverrides(prefixPath, overrides);
-    send("dll", `✅ ${dllList.length} DLL overrides aplicados: ${dllList.join(", ")}`, "done");
+
+    // Verify
+    const verify = verifyDllOverrides(prefixPath, overrides);
+    if (verify.ok) {
+      send("dll", `${dllList.length} DLL overrides OK: ${dllList.join(", ")}`, "done");
+    } else {
+      result.dllOk = false;
+      result.errors.push(`DLL overrides falhou: faltando ${verify.missing.join(", ")}`);
+      send("dll", `FALHA DLL overrides: ${verify.missing.length} nao encontrados em ${verify.userRegPath}: ${verify.missing.join(", ")}`, "error");
+    }
   } else {
-    send("dll", "✅ Nenhum DLL override necessário", "done");
+    send("dll", "Nenhum DLL override necessario", "done");
   }
 
   // ── Auto Install Deps (via Python Makaitricks) ──
@@ -36,50 +57,61 @@ export async function applyGameConfigs(
   const makaitricksVerbs = mod.getWinetricksComponents?.();
 
   if (deps && deps.length > 0) {
-    send("dll", `📥 Instalando dependências: ${deps.join(", ")}...`, "working");
-    const result = await runPythonCommand(
+    send("dll", `Instalando dependencias: ${deps.join(", ")}...`, "working");
+    const resultCmd = await runPythonCommand(
       "install-makaitricks",
       [prefixPath, protonPath, ...deps],
     );
-    if (result.success) {
-      send("dll", `✅ Dependências instaladas: ${deps.join(", ")}`, "done");
+    if (resultCmd.success) {
+      send("dll", `Dependencias instaladas: ${deps.join(", ")}`, "done");
     } else {
-      send("dll", `⚠️ Falha ao instalar algumas dependências: ${result.stderr.slice(0, 100)}`, "done");
+      send("dll", `Falha ao instalar algumas dependencias: ${resultCmd.stderr.slice(0, 100)}`, "done");
     }
   }
 
   if (makaitricksVerbs && makaitricksVerbs.length > 0) {
-    send("dll", `📥 Instalando componentes wine: ${makaitricksVerbs.join(", ")}...`, "working");
-    const result = await runPythonCommand(
+    send("dll", `Instalando componentes wine: ${makaitricksVerbs.join(", ")}...`, "working");
+    const resultCmd = await runPythonCommand(
       "install-makaitricks",
       [prefixPath, protonPath, ...makaitricksVerbs],
     );
-    if (result.success) {
-      send("dll", `✅ Componentes wine instalados: ${makaitricksVerbs.join(", ")}`, "done");
+    if (resultCmd.success) {
+      send("dll", `Componentes wine instalados: ${makaitricksVerbs.join(", ")}`, "done");
     } else {
-      send("dll", `⚠️ Falha ao instalar alguns componentes: ${result.stderr.slice(0, 100)}`, "done");
+      send("dll", `Falha ao instalar alguns componentes: ${resultCmd.stderr.slice(0, 100)}`, "done");
     }
   }
 
   // ── Bethesda Registry ──
-  send("registry", "🏛️ Verificando registro Bethesda...", "working");
+  send("registry", "Verificando registro Bethesda...", "working");
 
   if (mod.seedRegistry) {
-    const ok = mod.seedRegistry(prefixPath, gamePath, protonPath, steamAppId, libraryPath);
-    send("registry",
-      ok
-        ? `✅ Registro Bethesda configurado via proton run reg add`
-        : `⚠️ Falha ao configurar registro Bethesda`,
-      "done",
-    );
+    const seedOk = mod.seedRegistry(prefixPath, gamePath, protonPath, steamAppId, libraryPath);
+
+    // Verify registry content in system.reg
+    const regName = info?.id === "skyrim" ? "Skyrim" : info?.id || gameId;
+    const verifyReg = verifyBethesdaRegistry(prefixPath, regName, gamePath);
+
+    if (seedOk && verifyReg) {
+      result.registryOk = true;
+      send("registry", "Registro Bethesda OK (verificado em system.reg)", "done");
+    } else if (!seedOk) {
+      result.registryOk = false;
+      result.errors.push("Registro Bethesda: falha ao gravar via proton run reg add");
+      send("registry", "FALHA Registro Bethesda: proton run reg add retornou erro", "error");
+    } else {
+      result.registryOk = false;
+      result.errors.push(`Registro Bethesda: system.reg nao contem entrada para ${regName}`);
+      send("registry", `FALHA Registro Bethesda: entrada nao encontrada em system.reg para ${regName}`, "error");
+    }
   } else {
-    send("registry", "⏭️ Jogo não-Bethesda, pulando registro", "done");
+    send("registry", "Jogo nao-Bethesda, pulando registro", "done");
   }
 
   // ── DXVK config (prevents black screen on old D3D9 games) ──
   const dxvkPath = path.join(gamePath, "dxvk.conf");
   if (!fs.existsSync(dxvkPath)) {
-    send("dxvk", "🎮 Gerando dxvk.conf...", "working");
+    send("dxvk", "Gerando dxvk.conf...", "working");
     const dxvkContent = [
       "# Gerado pelo Makai-Forge",
       "d3d9.maxAvailableMemory = 4096",
@@ -88,9 +120,9 @@ export async function applyGameConfigs(
       "dxvk.numCompilerThreads = 2",
     ].join("\n");
     fs.writeFileSync(dxvkPath, dxvkContent, "utf-8");
-    send("dxvk", "✅ dxvk.conf criado (GPL desligado para D3D9 antigo)", "done");
+    send("dxvk", "dxvk.conf criado (GPL desligado para D3D9 antigo)", "done");
   } else {
-    send("dxvk", "✅ dxvk.conf já existe", "done");
+    send("dxvk", "dxvk.conf ja existe", "done");
   }
 
   // ── My Games (INI/saves directory for Bethesda games) ──
@@ -101,9 +133,9 @@ export async function applyGameConfigs(
       prefixPath, "drive_c", "users", username, "Documents", "My Games", gameSubpath,
     );
     if (!fs.existsSync(myGamesTarget)) {
-      send("registry", "📁 Criando diretório My Games no prefixo...", "working");
+      send("registry", "Criando diretorio My Games no prefixo...", "working");
       fs.mkdirSync(myGamesTarget, { recursive: true });
-      send("registry", `✅ My Games\\${gameSubpath} criado em ${myGamesTarget}`, "done");
+      send("registry", `My Games\\${gameSubpath} criado em ${myGamesTarget}`, "done");
 
       // Try to copy INI files from Steam prefix if available
       const steamAppId = info?.steamAppId;
@@ -115,14 +147,14 @@ export async function applyGameConfigs(
             if (!fs.existsSync(dst)) {
               try {
                 fs.copyFileSync(srcPath, dst);
-                send("registry", `📄 Copiado ${name} do prefixo Steam`, "done");
+                send("registry", `Copiado ${name} do prefixo Steam`, "done");
               } catch {}
             }
           }
         }
       }
     } else {
-      send("registry", `✅ My Games\\${gameSubpath} já existe`, "done");
+      send("registry", `My Games\\${gameSubpath} ja existe`, "done");
     }
 
     // ── Skyrim LE: borderless fix (bFull Screen=1 + DXVK → crash) ──
@@ -141,11 +173,14 @@ export async function applyGameConfigs(
         }
         if (changed) {
           fs.writeFileSync(prefsIni, content, "utf-8");
-          send("ini", "✅ SkyrimPrefs.ini: borderless ativado (previne crash com DXVK)", "done");
+          send("ini", "SkyrimPrefs.ini: borderless ativado (previne crash com DXVK)", "done");
         }
       }
     }
   }
+
+  result.ok = result.dllOk && result.registryOk && result.errors.length === 0;
+  return result;
 }
 
 function findSteamMyGamesInis(
