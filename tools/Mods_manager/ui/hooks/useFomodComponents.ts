@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import type { FomodComponent } from "@types";
 import type { ModlistEntry } from "../../types/mod.types";
-import type { ConflictDetails } from "../mods/useConflictBadges";
-import { normalizeToDeployPath } from "../mods/useConflictBadges";
+import type { ConflictDetails } from "./mods/useConflictBadges";
+import { normalizeToDeployPath } from "./mods/useConflictBadges";
 
 interface UseFomodComponentsOpts {
   selectedMod: ModlistEntry | null;
@@ -125,13 +125,6 @@ export function useFomodComponents({
     }
   }, [selectedMod, selectedGame, fomodComponents, addLog]);
 
-  const handleReconfigureFomod = useCallback(async () => {
-    if (!selectedMod?.stagingDir || !selectedMod.hasFomod) return;
-    const { openFomod } = await import("../deploy/useFomod");
-    // Can't call openFomod here directly — just signal via log
-    addLog(`Reconfigure FOMOD for ${selectedMod.name}`);
-  }, [selectedMod, addLog]);
-
   const handleDetectFomodComponents = useCallback(async () => {
     if (!selectedMod?.stagingDir || !selectedGame) return;
     try {
@@ -154,7 +147,6 @@ export function useFomodComponents({
     setFomodComponents,
     fomodConflicts,
     handleToggleFomodComponent,
-    handleReconfigureFomod,
     handleDetectFomodComponents,
   };
 }

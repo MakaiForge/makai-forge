@@ -1,6 +1,6 @@
 # Memoria de Investigacao - Mods_manager
 
-> Data: 2026-07-12 | Status: Em investigacao
+> Data: 2026-07-13 | Status: Atualizado com analise completa
 
 ---
 
@@ -13,323 +13,336 @@
 
 Gerenciador de mods para jogos Windows rodando no Linux via Proton. Suporta 36+ jogos incluindo Skyrim, Fallout, Witcher 3, Cyberpunk 2077, Factorio, etc.
 
+**Comparacao:** Amethyst Mod Manager (referencia) esta em `/home/cas/Desktop/Amethyst-Mod-Manager-1.3.12`
+
 ---
 
-## 2. Arquitetura (3 Camadas)
+## 2. Registro (Registry) - CRITICO
+
+### O que e
+O registro Windows e essencial para jogos Bethesda. Sem ele, o jogo nao encontra seus proprios arquivos. E como o Windows sabe onde o Skyrim esta instalado.
+
+### Onde esta implementado
+
+**12 jogos Bethesda TEM seedRegistry:**
+- skyrim, skyrim-se, skyrim-vr
+- fallout3, falloutnv, fallout4, fallout4-vr
+- oblivion, morrowind, starfield
+- enderal, enderal-se
+
+**24 jogos NAO-Bethesda NAO precisam de registro** (nao usam Bethesda Softworks registry).
+
+### Como funciona
+
+O registro e escrito DIRETAMENTE no `system.reg` do prefixo Wine/Proton:
 
 ```
-┌─────────────────────────────────────────────┐
-│  UI (React)  - ui/ModManager.tsx            │
-│  11 hooks, 36 componentes                   │
-├─────────────────────────────────────────────┤
-│  IPC Events  - events/*.ts                  │
-│  14+ handlers (bridge para Python)          │
-├─────────────────────────────────────────────┤
-│  Python CLI  - core/ (server.py, cli.py)    │
-│  Deploy, FOMOD, ProtonTricks, BSA, etc      │
-└─────────────────────────────────────────────┘
+[Software\\Bethesda Softworks\\Skyrim]
+"Installed Path"="Z:\\home\\cas\\Games\\skyrim"
+
+[Software\\Wow6432Node\\Bethesda Softworks\\Skyrim]
+"Installed Path"="Z:\\home\\cas\\Games\\skyrim"
 ```
 
----
-
-## 3. Estrutura de Diretorios
+### Fluxo no Play (Step 4: 04-configs.ts)
 
 ```
-Mods_manager/
-├── core/                  # Python backend (APENAS __pycache__!)
-├── data/                  # game-dlls.json (catalogo de DLLs)
-├── docs/                  # Documentacao (conflict-resolution)
-├── events/                # Handlers IPC (15 arquivos .ts)
-├── games/                 # Config per-game (36 jogos + shared)
-├── play/                  # Pipeline de execucao do jogo (8 steps)
-│   ├── steps/             # 01-detect → 07-launch
-│   ├── activity.log       # Log JSON-lines (estruturado)
-│   └── play.log           # Log texto plano
-├── presets/               # Perfis de configuracao
-├── services/              # Servicos compartilhados
-├── types/                 # Tipos TypeScript
-└── ui/                    # Interface React
-    ├── components/        # Componentes (36+)
-    ├── hooks/             # Hooks React (11)
-    ├── utils/             # Helpers
-    ├── _layout/           # SCSS (10 arquivos)
-    └── types/             # Tipos UI
+1. Verifica DLL Overrides (user.reg)
+2. Instala dependencias (vcredist, d3dcompiler_47 via winetricks)
+3. Chama mod.seedRegistry() → escreve no system.reg
+4. Verifica se o registro foi gravado (verifyBethesdaRegistry)
+5. Cria dxvk.conf se nao existe
+6. Cria diretorio My Games no prefixo
+7. Copia INIs do prefixo Steam se existirem
 ```
 
+### Arquivos de implementacao
+
+| Arquivo | Funcao |
+|---------|--------|
+| `games/_shared/prefix.ts:27-101` | `seedBethesdaRegistryWithProton()` - escreve direto no system.reg |
+| `prefix/core/bethesda-registry.ts:19-101` | `seedBethesdaRegistry()` + `verifyBethesdaRegistry()` |
+| `play/steps/04-configs.ts:85-117` | Chama seedRegistry e verifica resultado |
+| `games/skyrim/prefix.ts:21-29` | `seedSkyrimRegistry()` - delega para shared |
+
+### O que o Amethyst faz diferente
+
+O Amethyst usa `reg add` via subprocess (proton run reg add):
+- `src/Utils/bethesda_registry.py`
+- Escreve em `HKCU\Software\WOW6432Node\...` E `HKCU\Software\...`
+- Usa marker file `.v2.done` pra evitar reescrita
+- **Nosso projeto escreve direto no system.r** - mais rapido e confiavel
+
+### Jogos SEM registro (nao precisam)
+
+Todos os 24 jogos nao-Bethesda (witcher3, cyberpunk2077, valheim, stardewvalley, etc.) nao precisam de seedRegistry pois nao usam a estrutura de registro Bethesda Softworks.
+
 ---
 
-## 4. Pipeline de Execucao (play/)
+## 3. Prefixo Wine/Proton
 
-O fluxo principal esta em `play/play-game.ts` (217 linhas):
+### O que e
+O prefixo e a "simulacao" de um diretorio Windows dentro do Linux. Contem:
+- `user.reg` - registro do usuario
+- `system.reg` - registro do sistema (onde fica o registro Bethesda)
+- `drive_c/` - disco C: simulado
+- `drive_c/windows/system32/` - sistema Windows
+
+### Onde esta implementado
+
+| Componente | Caminho | Funcao |
+|------------|---------|--------|
+| Criacao do prefixo | `prefix/python/prefix/core.py:112-244` | `create_prefix()` - 4 estrategias de criacao |
+| Validacao | `events/mod-config.ts` | `prefixHealthCheck` - verifica se e valido |
+| Auto-fix | `events/mod-config.ts` | `prefixAutoFix` - corrige problemas |
+| Bridge p/ Steam | `services/steam-prefix-bridge.ts` | Symlink compatdata + config.vdf |
+
+### Estrategias de criacao (prefix/core.py)
+
+1. `system wineboot -u` (mais confiavel)
+2. `umu-run wineboot -u` (se disponivel)
+3. `proton wineboot -u` (direto do Proton)
+4. `proton run wineboot -u` (fallback)
+
+### O que o Amethyst faz
+
+- 3 modos: Isolated (1 prefixo por jogo), Shared (varios jogos), Game (dentro do jogo)
+- Usa `setup proton` do proprio Steam
+- Salva `launch_env.json` com ambiente resolvido
+- Auto-instala VC++ runtime e d3dcompiler_47
+
+---
+
+## 4. Deteccao de Jogos
+
+### Steam (funciona bem)
+- `services/detection/index.ts:20-31` → busca em TODAS as libs Steam
+- Le `libraryfolders.vdf` pra achar todas as pastas
+- Para cada lib, procura `appmanifest_{appId}.acf`
+- Le "installdir" do manifesto
+
+### GOG (funciona, sem Heroic)
+- `services/gog-detection.ts` → scan em `~/GOG Games/`, `~/GOG/`, `~/Games/`
+- Scan profundo em `/mnt`, `/media` (2 niveis)
+- Para cada dir, procura o `detectExe` do jogo
+
+### Manual/Pirata
+- Usuario seleciona pasta do jogo manualmente
+- App verifica se o exe existe (`detectGameManual`)
+- Salva config com gamePath
+
+### O que o Amethyst faz
+- Steam: mesmo metodo (libraryfolders.vdf)
+- GOG: usa Heroic Games Launcher (que nos NAO usamos)
+- Custom: JSON definition em `~/.config/AmethystModManager/custom_games/`
+- 3 deploy types: standard, root, ue5
+
+---
+
+## 5. Instalacao de Mod
+
+### Fluxo completo
 
 ```
-Step 1: detectGame    → Localiza o jogo (Steam/GOG/manual)
-Step 2: ensureProton  → Encontra/instala versao Proton compativel
-Step 3: ensurePrefix  → Valida/cria prefixo Wine
-Step 3b: bridgePrefix → Symlink compatdata + config.vdf
-Step 4: applyGameConfigs → DLL overrides + winetricks + registro
-Step 5: ensureFrameworks → BepInEx, SMAPI, CET, etc
-Step 5.5: ensureExternalTools → LOOT, xEdit, etc
-Step 6: ensureSkse    → Script Extender (SKSE, F4SE, etc)
-Step 7: deployMods    → Deploy dos mods no staging
-Step 8: launchGame    → Inicia via umu-run/proton/steam
+1. Usuario clica "Instalar Mod"
+   → showOpenDialog seleciona .zip/.7z/.rar
+
+2. InstallOrchestrator (install-orchestrator.ts)
+   → Extrai pra ~/Games/Mods/{slug}/staging/{modName}/
+   → Analisa tipo (plugins, FOMOD, SKSE)
+   → Salva no modlist (StorageService)
+
+3. Arquivos ficam NO STAGING (nao no jogo)
+
+4. Usuario clica "Play"
+   → Step 7: Deploy cria symlinks staging → gamePath
 ```
 
----
+### Deploy (criacao de symlinks)
 
-## 5. Fluxo de Deteccao de Origem do Jogo
+| Tipo de Jogo | Deploy Function | Destino |
+|--------------|-----------------|---------|
+| Bethesda | `deploySkyrim()` etc | `gamePath/Data/` |
+| BepInEx | `deployGeneric()` | `gamePath/BepInEx/plugins/` |
+| Root | `deployGeneric()` | `gamePath/` (raiz) |
 
-### Como o projeto sabe se e Steam, GOG ou pirata?
+### O que o Amethyst faz
 
-O projeto NAO detecta automaticamente a origem. A decisao segue esta cascata:
-
-```
-detectGame() em play/steps/01-detect.ts
-│
-├─ 1. Le config salva: ModStorageService.get(`game:${gameId}:config`)
-│     → Se gamePath ja existe e valido, USA DIRETO (sem perguntar origem)
-│
-├─ 2. SE NAO tem config salva, tenta detectar automaticamente:
-│     │
-│     ├─ Tenta STEAM primeiro:
-│     │   → getGameInfo(gameId).steamAppId (hardcoded no registry)
-│     │   → findAllSteamLibraries() busca TODAS libs Steam no sistema
-│     │   → Para cada lib, procura appmanifest_{appId}.acf
-│     │   → Le "installdir" do manifesto
-│     │   → Verifica se o diretorio existe
-│     │   → SE ACHOU: salva config e retorna com steamAppId
-│     │
-│     ├─ Tenta GOG (Heroic Launcher):
-│     │   → detectThroughHeroic() le ~/.config/heroic/gog_store/installed.json
-│     │   → Busca por match de titulo do jogo
-│     │   → SE ACHOU: salva config sem steamAppId
-│     │
-│     ├─ Tenta GOG (caminhos comuns):
-│     │   → detectCommonPaths() busca ~/GOG Games/, ~/GOG/, ~/Games/
-│     │   → hardcoded para Skyrim (ERRO: so detecta Skyrim!)
-│     │
-│     └─ SE NENHUM: retorna erro "Jogo nao encontrado no Steam nem GOG"
-│
-└─ 3. SE TEM CONFIG (gamePath salvo):
-      → Verifica se o diretorio existe
-      → Chama mod.detect(gamePath) - checa se os EXEs do jogo existem
-      → USA O CAMINHO INDEPENDENTE da origem
-```
-
-### Onde fica a informacao de origem?
-
-| Dado | Onde esta | Exemplo |
-|------|-----------|---------|
-| Steam App ID | `games/registry.ts` hardcoded | `"72850"` para Skyrim |
-| GameModule detect() | `games/skyrim/index.ts` | Checa `SkyrimLauncher.exe` |
-| Config salva | `ModStorageService` (JSON) | `game:skyrim:config` |
-| Heroic/GOG | `~/.config/heroic/gog_store/installed.json` | Lista de jogos GOG |
-
-### O QUE FALTA (problemas):
-
-1. **Nao existe deteccao de jogo "pirata"/customizado**
-   - Se o jogo nao esta no Steam nem no Heroic, so funciona com caminho manual
-   - Nao ha scan de diretorios comuns (`~/Games/`, `~/Downloads/`, etc.)
-
-2. **GOG hardcoded para Skyrim**
-   - `detectCommonPaths()` so procura Skyrim SE em ~/GOG Games/
-   - Para outros jogos GOG, so funciona via Heroic
-
-3. **Steam e a unica fonte com scan robusto**
-   - Usa `findAllSteamLibraries()` que le `libraryfolders.vdf`
-   - Scan automatico funciona bem so para Steam
-
-4. **Apos primeira config, a origem e ignorada**
-   - Uma vez salvo `gamePath`, o sistema usa sempre esse caminho
-   - Nao re-verifica se o jogo continua la
+- **Data/ Core**: backup → hardlink/symlink → core fill → plugins.txt → INIs → saves → archive invalidation
+- **Root Folder**: arquivos direto na raiz (Cyberpunk, Witcher 3)
+- **UE5 Manifest**: para Oblivion Remastered e jogos UE5
+- LinkMode: hardlink (default), symlink, copy
 
 ---
 
-## 6. Analise: Fluxo de Deteccao vs Implementacao Real
+## 6. Lanca
 
-### O que voce descreveu vs o que existe:
+### Caminhos de lancamento (07-launch.ts)
 
-| Etapa do fluxo | Status | Onde |
-|----------------|--------|------|
-| 1. Usuario seleciona jogo e clica Play | ✅ Existe | `play/play-game.ts` |
-| 2. Busca Steam (todas as libs) | ✅ Existe | `services/detection/index.ts:20-31` |
-| 3. Nao achou Steam → busca GOG | ✅ Existe | `services/detection/index.ts:42-47` |
-| 4. Achou GOG → configura path | ✅ Existe | `services/detection/index.ts:44-46` |
-| 5. Mods em ~/Games/Mods/{gameId}/ | ✅ Existe | `services/steam-library.ts:6-9` |
-| 6. Botao "Detectar jogos" | ✅ Existe | `GameDetectionWizard.tsx` |
-| 7. Popup "biblioteca alternativa" | ❌ NAO EXISTE | So mostra erro generico |
-| 8. Heroic NAO deve ser usado | ❌ Ainda usa | `gog-detection.ts` le Heroic |
-| 9. Config manual (browse) | ✅ Existe | `GameConfigPanel.tsx:112-123` |
+| Cenario | Prefixo | SteamAppId | Metodo |
+|---------|---------|------------|--------|
+| Steam + prefix Steam | `compatdata/` | Sim | `steam steam://rungameid/{id}` |
+| Steam/GOG + prefix custom | Qualquer | Sim ou Nao | `umu-run` ou `proton run` |
+| Pirata/ manual | Qualquer | Nao | `umu-run` ou `proton run` |
 
-### PROBLEMAS ENCONTRADOS:
-
-#### PROB-1: Heroic ainda e usado na deteccao GOG
-- `services/gog-detection.ts:24-49` → `detectThroughHeroic()` le `~/.config/heroic/gog_store/installed.json`
-- `services/gog-detection.ts:11-22` → `heroicConfigPath()` busca 3 paths do Heroic
-- **User disse:** "Heroic a gente nao mexe, nosso aplicativo e o Heroic melhorado"
-- **Acao:** Remover toda referencia ao Heroic, usar scan direto de diretorios GOG
-
-#### PROB-2: detectCommonPaths() hardcoded para Skyrim
-- `services/gog-detection.ts:51-65` → So procura Skyrim SE em `~/GOG Games/`
-- Para outros jogos GOG, so funciona via Heroic (que sera removido)
-- **Acao:** Tornar generico - scanear `~/GOG Games/`, `~/GOG/`, `~/Games/` para QUALQUER jogo
-
-#### PROB-3: Dois detectGame() diferentes
-- `play/steps/01-detect.ts` → Usado pelo pipeline Play (duplica funcoes)
-- `services/detection/index.ts` → Usado pelo `modDetectGamePath` (events)
-- **Problema:** Logica duplicada, podem divergir
-- **Acao:** Unificar - o `play/steps/01-detect.ts` deve importar de `services/detection/`
-
-#### PROB-4: Sem popup "biblioteca alternativa"
-- Quando o jogo nao e encontrado, mostra erro generico na UI
-- Nao ha modal/popup explicando que e jogo de biblioteca alternativa
-- **Acao:** Criar popup especifico quando `detectGame()` retorna `source: null`
-
-#### PROB-5: Wizard detecta TODOS os jogos, nao so o selecionado
-- `GameDetectionWizard.tsx:39-41` → Scaneia todos os jogos do catalogo
-- User disse: "se eu to no Skyrim, quero detectar so o Skyrim"
-- **Acao:** Filtrar wizard para mostrar SO o jogo selecionado (com opcao de "todos")
-
-#### PROB-6: Caminho do prefixo nao e preenchido自动
-- Apos deteccao GOG, `prefixPath` retorna `null` (services/detection/index.ts:46)
-- User disse: "vai ta aqui no prefixo o caminho"
-- **Acao:** Gerar prefixo padrao `~/Games/Prefix/{gameId}` na deteccao GOG
-
----
-
-## 7. Problemas Encontrados (CRITICOS)
-
-### BUG-1: core/ sem fontes Python
-- **O que:** O diretorio `core/` contem APENAS `__pycache__/` com arquivos `.pyc`
-- **Evidencia:** Nenhum `.py` encontrado via glob
-- **Impacto:** O backend Python esta completo, mas as fontes nao estao no repositorio
-- **Possivel causa:** Arquivos `.py` estao em outro local ou foram excluidos
-- **Acao:** Verificar de onde vem esses .pyc ou se o Python esta em outro path
-
-### BUG-2: Prefixo invalido recorrente
-- **O que:** `prefixHealthCheck` retorna `valid=false`反复
-- **Evidencia no play.log:**
-  ```
-  [2026-07-08 16:26:38] prefixHealthCheck | skyrim ... valid=false errors=Prefixo invalido ou nao existe
-  ```
-  Isso se repete **dezenas de vezes** ao longo de toda a sessao
-- **Padrao:** O `prefixAutoFix` cria o prefixo, mas na proxima checagem ele continua invalido
-- **Causa provavel:** O prefixo e criado mas os arquivos esperados (user.reg, system.reg, drive_c) nao estao sendo populados corretamente
-- **Impacto:** Ciclo vicioso de criacao → validacao → falha → recriacao
-
-### BUG-3: Erro de instalacao offline
-- **O que:** Falha ao instalar DLLs quando offline
-- **Evidencia no play.log:**
-  ```
-  [2026-07-08 20:34:45] modInstallGameDlls_result | skyrim installed= errors=Failed to install vcrun2022:
-  warning: Github offline? versao '' nao parece uma versao valida
-  ```
-- **Causa:** O sistema tenta baixar winetricks/verb do GitHub sem fallback offline
-- **Impacto:** DLLs criticas (vcrun2022, d3dcompiler_47) nao sao instaladas
-
-### BUG-4: Variacao extrema no tempo de configs
-- **O que:** Step 4 (configs) varia de ~140ms a ~31.000ms
-- **Evidencia no activity.log:**
-  ```
-  Step 4: 146ms  (rapido)
-  Step 4: 23.910ms (24 segundos!)
-  Step 4: 12.093ms (12 segundos)
-  Step 4: 31.023ms (31 segundos!)
-  Step 4: 16.760ms (17 segundos)
-  ```
-- **Causa provavel:** `applyGameConfigs` faz operacoes bloqueantes (cópia de INIs, winetricks)
-- **Impacto:** UI fica congelada por ate 30 segundos
-
-### BUG-5: useCustomPrefix inconsistente
-- **O que:** `useCustomPrefix` alterna entre true/false sem mudanca visivel
-- **Evidencia no activity.log:**
-  ```
-  useCustomPrefix=false (19:14:48)
-  useCustomPrefix=true  (19:18:58)
-  useCustomPrefix=false (19:19:12)
-  useCustomPrefix=false (21:15:49)
-  ```
-- **Causa:** A decisao de prefixo customizado depende de condicoes instaveis
-
----
-
-## 6. Problemas de Organizacao
-
-### ORG-1: Logs duplicados
-- `play/activity.log` (JSON-lines) e `play/play.log` (texto plano) registram as mesmas informacoes em formatos diferentes
-- Recomendado: Unificar em um so formato ou fazer um espelhar o outro
-
-### ORG-2: `play-game.ts` mistura idiomas
-- Comentarios em ingles ("// Always use the configured prefix")
-- Logs em portugues ("Iniciando deteccao do jogo...")
-- Variaveis em ingles (`finalPrefixPath`, `resolvedPrefix`)
-
-### ORG-3: Games com estrutura inconsistente
-- Alguns jogos tem `installer/` (skyrim), outros nao
-- Alguns tem `frameworks.ts` (fallout3), outros nao
-- Alguns tem `launch.ts` (fallout3), a maioria delega para `play/steps/07-launch.ts`
-
-### ORG-4: Services fragmentados
-- `services/` tem 10+ arquivos soltos sem subpastas claras
-- `services/fomod/` tem 3 arquivos, mas outros servicos estao na raiz
-
-### ORG-5: UI ANALISE.md desatualizado
-- Menciona 36 IPC handlers (22 alive, 14 dead)
-- Nao reflete o estado atual do codigo
-
----
-
-## 7. Arquivos Chave para Investigacao
-
-| Arquivo | Linhas | Por que ler |
-|---------|--------|-------------|
-| `play/play-game.ts` | 217 | Orquestrador principal |
-| `play/steps/03-prefix.ts` | 151 | Problema do prefixo invalido |
-| `play/steps/04-configs.ts` | 220 | Lentidao do step configs |
-| `play/steps/02-proton.ts` | 224 | Logica de selecao Proton |
-| `play/steps/07-launch.ts` | 393 | Maior arquivo, logica complexa |
-| `events/mod-config.ts` | 182 | prefixHealthCheck/prefixAutoFix |
-| `services/prefix-validator.ts` | 63 | Validacao do prefixo |
-| `services/scanfix-game.ts` | 107 | Auto-fix do jogo |
-| `events/mod-prefix-rpc.ts` | 207 | Comunicacao com Python RPC |
-
----
-
-## 8. Jogos Suportados (36)
-
-**Bethesda (12):** skyrim, skyrim-se, skyrim-vr, enderal, enderal-se, fallout3, falloutnv, fallout4, fallout4-vr, oblivion, morrowind, starfield
-
-**Non-Bethesda (24):** cyberpunk2077, witcher3, masseffect, bannerlord, valheim, stardewvalley, terraria, factorio, rimworld, satisfactory, kerbalspaceprogram, xcom2, 7daystodie, subnautica, projectzomboid, battletech, minecraft, dragonageorigins, dragonage2, thelongdark, donotfeedthemonkeys, larian, generic
-
----
-
-## 9. Proximos Passos
-
-1. **Investigar BUG-1:** Onde estao as fontes Python do core/?
-2. **Investigar BUG-2:** Por que o prefixo criado continua invalido?
-3. **Investigar BUG-4:** O que causa a lentidao extrema no step configs?
-4. **Verificar BUG-5:** Logica de `useCustomPrefix` no `ensureProton`
-5. **Organizar:** Unificar logs ou justificar duplicacao
-6. **Atualizar:** ui/ANALISE.md com estado atual
-
----
-
-## 10. Comandos Uteis
+### Comando umu-run (tutorial do usuario)
 
 ```bash
-# Verificar se .py existem em algum lugar
-find /home/cas/Documentos/Makai-forge -name "*.py" -path "*/core/*" 2>/dev/null
+# Steam
+umu-run --prefix "$CUSTOM_PREFIX" --appid "$GAME_ID" --proton "$PROTON" "$GAME_EXE"
 
-# Verificar o prefixo do Skyrim
-ls -la ~/Games/Prefix/skyrim/drive_c/ 2>/dev/null || echo "Prefixo nao existe"
+# GOG/Pirata (sem appid)
+umu-run --prefix "$CUSTOM_PREFIX" "$GAME_EXE"
+```
 
-# Verificar se Proton existe
-ls -la ~/.config/makai-forger/compat-tools/compatibilitytools.d/
+### O que o Amethyst faz
 
-# Verificar activity.log por erros
-grep -c '"status":"error"' /home/cas/Documentos/Makai-forge/tools/Mods_manager/play/activity.log
+- 5 modos: Native (proton run), Steam (steam://launch/), umu-run, Heroic, WB Games
+- Scan de .exe/.bat no diretorio do jogo
+- Per-exe environment config
+- Wrapper scripts pra Wrye Bash (.bat)
 
-# Contar execucoes bem-sucedidas vs falhas
-grep -c '"play_completed"' /home/cas/Documentos/Makai-forge/tools/Mods_manager/play/activity.log
-grep -c '"play_failed"' /home/cas/Documentos/Makai-forge/tools/Mods_manager/play/activity.log
+---
+
+## 7. Proton API (Python RPC)
+
+### Metodos disponiveis
+
+| Metodo | Funcao | Arquivo |
+|--------|--------|---------|
+| `recommend_proton` | Recomenda Proton pra um jogo | `recommendation/` |
+| `create_prefix` | Cria/configura prefixo Wine | `prefix/core.py` |
+| `get_launch_command` | Monta comando de lancamento | `launch_args/core.py` |
+| `get_recommended_dlls` | DLLs recomendadas | `dlls.py` |
+| `install_game_dlls` | Instala DLLs/verbs | `prefix/winetricks.py` |
+| `get_installed_protons` | Lista Protons instalados | `proton_versions.py` |
+| `analyze_exe` | Analisa .exe pra compatibilidade | `compatflow_bridge.py` |
+| `delete_prefix` | Deleta prefixo | `prefix/core.py` |
+| `clean_prefix` | Limpa prefixo | `prefix/core.py` |
+
+### O que falta integrar
+
+1. **`get_launch_command`** - nostro 07-launch.ts monta comando manualmente
+2. **`recommend_proton`** - nosso 02-proton.ts tem logica propria
+3. **`install_game_dlls`** - nosso 04-configs.ts usa runPythonCommand
+
+---
+
+## 8. Tabelas de Implementacao por Jogo
+
+### Bethesda (12 jogos) - TODOS tem:
+
+| Componente | skyrim | skyrim-se | skyrim-vr | fallout3 | falloutnv | fallout4 | fallout4-vr | oblivion | morrowind | starfield | enderal | enderal-se |
+|------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| seedRegistry | custom | shared | shared | shared | shared | shared | shared | shared | shared | shared | shared | shared |
+| DLL Overrides | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES |
+| frameworks.ts | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES |
+| launch.ts | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES |
+| routing.ts | YES | YES | YES | inline | inline | inline | inline | inline | YES | YES | YES | YES |
+| tools.ts | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES |
+
+### Nao-Bethesda (24 jogos) - NENHUM tem seedRegistry:
+
+| Componente | witcher3 | cyberpunk | valheim | stardew | factorio | rimworld | terraria | bannerlord | 7days | subnautica | zomboid | masseffect | xcom2 |
+|------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| DLL Overrides | YES | YES | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO |
+| frameworks.ts | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO |
+| launch.ts | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO | NO |
+| routing.ts | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES |
+| tools.ts | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES | YES |
+
+---
+
+## 9. Bugs Conhecidos
+
+| Bug | Descricao | Status |
+|-----|-----------|--------|
+| BUG-1 | core/ sem fontes Python (só .pyc) | Verificar |
+| BUG-2 | Prefixo invalido recorrente | Investigar |
+| BUG-3 | Falha instalacao offline | Conhecido |
+| BUG-4 | Step 4 varia 140ms ~ 31s | Investigar |
+| BUG-5 | useCustomPrefix inconsistente | Investigar |
+
+---
+
+## 10. O Que Precisa Ser Feito
+
+### Prioridade Alta
+
+1. **Integrar `get_launch_command` da Proton API** no 07-launch.ts
+   - Hoje: codigo manual funcional mas duplica logica
+   - Meta: usar RPC `get_launch_command` com fallback
+
+2. **Auto-configuration no Play** - quando usuario clica Play sem configurar
+   - Hoje: retorna erro
+   - Meta: abrir wizard automaticamente
+
+3. **Popup de prefixo** - quando nao tem prefixo, perguntar se quer criar
+   - Hoje: botao manual no GameConfigPanel
+   - Meta: popup automatico
+
+4. **Auto-download SKSE** - quando nao encontrado, baixar automaticamente
+   - Hoje: botao manual no GameConfigPanel
+   - Meta: baixar no Play automaticamente
+
+5. **Fluxo Steam vs GOG vs Pirata** - organizar em 3 caminhos claros
+   - Hoje: tudo junto com condicoes
+   - Meta: 3 funcoes separadas
+
+### Prioridade Media
+
+6. **Completar registries** - verificar se todos os 12 Bethesda estao funcionando
+7. **Adicionar routing.ts** pros jogos Bethesda que estao inline (fallout3, falloutnv, etc)
+8. **Testar GOG** - fluxo de deteccao e lancamento
+9. **Testar pirata** - fluxo manual completo
+
+---
+
+## 11. URLs de Download por Jogo
+
+### Script Extenders (12 jogos Bethesda)
+
+| Jogo | SE | URL | Status |
+|------|-----|-----|--------|
+| skyrim | SKSE | `skse.silverlock.org/beta/skse_1_07_03.7z` | OK |
+| skyrim_se | SKSE64 | `skse.silverlock.org/beta/skse64_2_02_06.7z` | OK (+ GOG URL) |
+| skyrim_vr | SKSEVR | `skse.silverlock.org/beta/sksevr_2_00_12.7z` | CORRIGIDO (usava URL do SE) |
+| enderal | SKSE | `skse.silverlock.org/beta/skse_1_07_03.7z` | OK |
+| enderal_se | SKSE64 | `skse.silverlock.org/beta/skse64_2_02_06.7z` | OK (+ GOG URL) |
+| fallout3 | FOSE | `github.com/llde/FOSE/.../fose_4_2_2.7z` | OK |
+| falloutnv | xNVSE | `github.com/xNVSE/NVSE/.../nvse_6_4_8.7z` | OK |
+| fallout4 | F4SE | `f4se.silverlock.org/beta/f4se_0_06_23.7z` | CORRIGIDO (usava URL do VR) |
+| fallout4_vr | F4SEVR | `github.com/llde/F4SEVR/.../f4sevr_0_2_0.7z` | OK |
+| oblivion | OBSE | `github.com/llde/OBSE/.../obse_21_0.7z` | OK |
+| morrowind | MWSE | `github.com/MWSE/MWSE/.../MWSE-2.1.7z` | OK |
+| starfield | SFSE | `sfse.silverlock.org/beta/sfse_0_2_6.7z` | OK |
+
+### Mudancas Recentes (2026-07-13)
+
+- **skse-downloader.ts**: Expandido de 3 para 12 jogos (todos Bethesda)
+- **skyrim-vr/index.ts**: Corrigido URL (era skse64, agora sksevr)
+- **fallout4/index.ts**: Corrigido URL (era 0_6_21/VR, agora 0_06_23/desktop)
+- **game-dlls.json**: Preenchidas URLs vazias (skyrim, starfield)
+- **morrowind/tools.ts**: Adicionadas URLs (TES3Edit, LOOT, MWSE)
+- **enderal/tools.ts**: Adicionadas URLs (EnderalEdit, LOOT, Wrye Bash)
+- **enderal-se/tools.ts**: Adicionadas URLs (EnderalEdit, SSEEdit, LOOT, Wrye Bash)
+- **cyberpunk2077/index.ts**: Adicionada URL do WolvenKit em getExternalTools
+
+---
+
+## 12. Comandos Uteis
+
+```bash
+# Verificar registro do Skyrim no prefixo
+cat ~/Games/Prefix/skyrim/system.reg | grep -A2 "Bethesda Softworks"
+
+# Verificar se prefixo existe
+ls -la ~/Games/Prefix/skyrim/user.reg 2>/dev/null || echo "Prefixo nao existe"
+
+# Verificar Proton
+ls ~/.config/makai-forger/compat-tools/compatibilitytools.d/
+
+# Verificar activity.log
+grep '"play_completed"' tools/Mods_manager/play/activity.log | wc -l
+grep '"play_failed"' tools/Mods_manager/play/activity.log | wc -l
 ```
