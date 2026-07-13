@@ -59,12 +59,14 @@ export function GameConfigPanel({
     if (!selectedGame) return;
     setFixing(true);
     try {
-      const result = await window.electron.prefixAutoFix(selectedGame);
-      if (result.ok && result.data) {
-        setFixResult(result.data.fixed);
+      const result = await (window.electron as any).createModPrefix(selectedGame);
+      if (result?.ok) {
+        setFixResult(result.data?.dllsInstalled || ["Prefixo reparado via Proton API"]);
         await runHealthCheck();
+      } else {
+        setFixResult([result?.error || "Falha ao reparar prefixo"]);
       }
-    } catch { /* ignore */ }
+    } catch (err) { setFixResult([`Erro: ${String(err).slice(0, 150)}`]); }
     setFixing(false);
   };
 
