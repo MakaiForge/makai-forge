@@ -179,7 +179,7 @@ export function verifyGameReady(gameId: string): CheckResult {
   }
 
   // ── 4. Proton ──
-  const protonPath = gameConfig?.protonVersion || "";
+  const protonPath = gameConfig?.protonVersion || ModStorageService.get<string>("proton_binary") || "";
   if (!protonPath) {
     checks.push({
       id: "proton",
