@@ -233,7 +233,17 @@ async function launchCustomPrefix(
 
     return new Promise<PlayResult>((resolve) => {
       const launchEnv = { ...process.env, ...env };
-      const child = spawn(umuRunPath, [launchExe, ...launchArgs], {
+
+      // umu-run native flags — more reliable than env vars for custom prefixes
+      const umuArgs: string[] = [];
+      if (protonPath) umuArgs.push("--proton", protonPath);
+      umuArgs.push("--prefix", prefixPath);
+      if (steamAppId) umuArgs.push("--appid", steamAppId);
+      umuArgs.push(launchExe, ...launchArgs);
+
+      logger.info(`[Launch] umu-run args: ${umuArgs.join(" ")}`);
+
+      const child = spawn(umuRunPath, umuArgs, {
         cwd: gameDir,
         env: launchEnv,
         stdio: ["ignore", "pipe", "pipe"],
