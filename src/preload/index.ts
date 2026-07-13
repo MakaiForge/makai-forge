@@ -1090,6 +1090,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("installModOrchestrated", archivePath, config),
   abortInstall: () =>
     ipcRenderer.invoke("abortInstall"),
+  verifyGameReady: (gameId: string) =>
+    ipcRenderer.invoke("verifyGameReady", gameId),
   onModInstallProgress: (cb: (data: any) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, data: any) => cb(data);
     ipcRenderer.on("mod-install-progress", listener);

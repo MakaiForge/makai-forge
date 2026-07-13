@@ -197,6 +197,13 @@ async function launchCustomPrefix(
   const customEnv = mod.getLaunchEnv?.(gamePath, prefixPath, protonPath);
   if (customEnv) Object.assign(env, customEnv);
 
+  // For custom prefixes, never use Steam's compatdata — our prefix is standalone.
+  // getLaunchEnv may set STEAM_COMPAT_DATA_PATH to the Steam compatdata dir,
+  // which makes Proton wrap WINEPREFIX with /pfx/ and break our prefix layout.
+  if (!isSteamCompatPrefix(prefixPath)) {
+    delete env.STEAM_COMPAT_DATA_PATH;
+  }
+
   logger.info(`[Launch] === CUSTOM PREFIX LAUNCH ===`);
   logger.info(`[Launch] gameId: ${gameId}`);
   logger.info(`[Launch] launchExe: ${launchExe}`);
