@@ -89,7 +89,15 @@ export async function applyGameConfigs(
     const seedOk = mod.seedRegistry(prefixPath, gamePath, protonPath, steamAppId, libraryPath);
 
     // Verify registry content in system.reg
-    const regName = info?.id === "skyrim" ? "Skyrim" : info?.id || gameId;
+    // Each game's seedXxxRegistry() hardcodes the Bethesda registry name.
+    // We must use the SAME name for verification — info?.id may not match.
+    const BETHESDA_REG_NAMES: Record<string, string> = {
+      skyrim: "Skyrim", "skyrim-se": "Skyrim Special Edition", "skyrim-vr": "Skyrim VR",
+      fallout3: "Fallout3", falloutnv: "FalloutNV", fallout4: "Fallout4", "fallout4-vr": "Fallout4VR",
+      oblivion: "Oblivion", morrowind: "Morrowind", starfield: "Starfield",
+      enderal: "Enderal", "enderal-se": "Enderal Special Edition",
+    };
+    const regName = BETHESDA_REG_NAMES[gameId] || info?.id || gameId;
     const verifyReg = verifyBethesdaRegistry(prefixPath, regName, gamePath);
 
     if (seedOk && verifyReg) {
