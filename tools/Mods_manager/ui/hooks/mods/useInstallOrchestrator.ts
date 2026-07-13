@@ -234,18 +234,13 @@ export function useInstallOrchestrator(
       configOverrides?: Partial<InstallConfig>,
     ): Promise<InstallResult | null> => {
       // ── Pré-verificação ──
-      try {
-        const verify: VerifyResult = await (window.electron as any).verifyGameReady(gameIdRef.current);
-        setVerifyResult(verify);
-        if (!verify.ok) {
-          // Guarda archivePath pra continuar depois que o usuário configurar
-          setPendingArchivePath(archivePath);
-          addLog(`❌ Pré-verificação falhou — aguardando configuração do jogo`);
-          return null;
-        }
-      } catch (verifyErr) {
-        console.warn("[INSTALL] verifyGameReady not available:", verifyErr);
-        // Se o IPC não existe, segue sem verificação
+      const verify: VerifyResult = await (window.electron as any).verifyGameReady(gameIdRef.current);
+      setVerifyResult(verify);
+      if (!verify.ok) {
+        // Guarda archivePath pra continuar depois que o usuário configurar
+        setPendingArchivePath(archivePath);
+        addLog(`❌ Pré-verificação falhou — aguardando configuração do jogo`);
+        return null;
       }
 
       // ── Verificação ok — executa instalação ──
