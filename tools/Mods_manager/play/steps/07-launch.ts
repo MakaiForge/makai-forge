@@ -232,18 +232,9 @@ async function launchCustomPrefix(
     logger.info(`[Launch] Using umu-run: ${umuRunPath}`);
 
     return new Promise<PlayResult>((resolve) => {
+      // umu-run uses env vars (WINEPREFIX, PROTONPATH) — no CLI flags
       const launchEnv = { ...process.env, ...env };
-
-      // umu-run native flags — more reliable than env vars for custom prefixes
-      const umuArgs: string[] = [];
-      if (protonPath) umuArgs.push("--proton", protonPath);
-      umuArgs.push("--prefix", prefixPath);
-      if (steamAppId) umuArgs.push("--appid", steamAppId);
-      umuArgs.push(launchExe, ...launchArgs);
-
-      logger.info(`[Launch] umu-run args: ${umuArgs.join(" ")}`);
-
-      const child = spawn(umuRunPath, umuArgs, {
+      const child = spawn(umuRunPath, [launchExe, ...launchArgs], {
         cwd: gameDir,
         env: launchEnv,
         stdio: ["ignore", "pipe", "pipe"],

@@ -37,6 +37,23 @@ function _ensureTrackedFiles(compatDataPath: string) {
   }
 }
 
+function ensureDosDevices(prefixPath: string) {
+  // Check both root and pfx/ — Proton expects dosdevices at the prefix it uses
+  const candidates = [prefixPath, path.join(prefixPath, "pfx")];
+  for (const dir of candidates) {
+    if (!fs.existsSync(path.join(dir, "drive_c"))) continue;
+    const dosdevicesDir = path.join(dir, "dosdevices");
+    if (fs.existsSync(dosdevicesDir)) continue;
+    try {
+      fs.mkdirSync(dosdevicesDir, { recursive: true });
+      fs.symlinkSync("../drive_c", path.join(dosdevicesDir, "c:"));
+      logger.info(`[Prefix] Created dosdevices/c: → ../drive_c in ${dir}`);
+    } catch (err) {
+      logger.warn(`[Prefix] Failed to create dosdevices in ${dir}: ${err}`);
+    }
+  }
+}
+
 function getProtonVersionFile(pfxPath: string): string {
   return path.join(pfxPath, ".makai-proton-version");
 }
@@ -130,6 +147,8 @@ export async function ensurePrefix(
   if (result.success) {
     _ensureTrackedFiles(compatDataPath);
     setProtonVersion(prefixPath, protonPath);
+    // Ensure dosdevices/ exists in the resolved prefix (Proton requires it)
+    ensureDosDevices(prefixPath);
     send("prefix", "✅ Prefixo criado/validado com sucesso via Python", "done");
     return { prefixPath, created: true };
   }
@@ -143,6 +162,8 @@ export async function ensurePrefix(
     send("prefix", "❌ Não foi possível criar o diretório do prefixo", "error");
     throw new Error("Cannot create prefix dir");
   }
+
+  ensureDosDevices(pfx);
 
   _ensureTrackedFiles(compatDataPath);
   setProtonVersion(pfx, protonPath);
