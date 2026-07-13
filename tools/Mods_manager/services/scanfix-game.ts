@@ -1,106 +1,66 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ModStorageService, logger } from "@main/services";
-import { getGameModule, getGameInfo } from "@games/registry";
+import { logger } from "@main/services";
+import { getGameModule } from "@games/registry";
 import { applyWineDllOverrides } from "@games/_shared/prefix";
 import { seedBethesdaRegistry, verifyBethesdaRegistry } from "@prefix/core/bethesda-registry";
 import type { ScanFixResult } from "@prefix/types";
 import { downloadSkse } from "./skse-downloader";
-import { resolvePrefixDir, isValidPrefix, cleanNestedPfx, dllOverridesMatch } from "./prefix-validator";
-import { defaultStagingDir, defaultPrefixDir, steamCompatDataPath, findSteamAppPath } from "./steam-library";
-import { detectGame } from "./detection";
+import { cleanNestedPfx } from "./prefix-validator";
+import { scanEnvironment } from "./environment-scanner";
 
 export async function scanFixGame(gameId: string): Promise<ScanFixResult> {
-  let config = ModStorageService.get<any>(`game:${gameId}:config`);
-  let gamePath = config?.gamePath;
-  const info = getGameInfo(gameId);
+  const env = scanEnvironment({ gameId });
 
-  if (!gamePath) {
-    const detected = detectGame(gameId);
-    if (detected.source && detected.gamePath) {
-      gamePath = detected.gamePath;
-      const staging = defaultStagingDir(gameId);
-      const prefix = detected.prefixPath || defaultPrefixDir(gameId);
-      ModStorageService.put(`game:${gameId}:config`, {
-        gamePath,
-        stagingDir: staging,
-        protonPrefix: prefix,
-        protonVersion: "",
-      });
-    } else {
-      return {
-        found: false,
-        steamAppId: info?.steamAppId,
-        error: "Jogo não encontrado na Steam, GOG ou diretórios comuns. Configure manualmente em Configurações do Jogo.",
-      };
-    }
+  if (!env.gamePath) {
+    return {
+      found: false,
+      steamAppId: env.steamAppId,
+      error: "Jogo não encontrado. Configure manualmente em Configurações do Jogo.",
+    };
   }
 
-  if (!gamePath) {
-    return { found: false, error: "Caminho do jogo não encontrado." };
-  }
-
-  config = ModStorageService.get<any>(`game:${gameId}:config`);
-  let prefixPath = config?.protonPrefix;
-  if (!prefixPath) {
-    if (info?.steamAppId) {
-      const found = findSteamAppPath(info.steamAppId);
-      if (found) {
-        const steamPrefix = steamCompatDataPath(found.libraryPath, info.steamAppId);
-        if (steamPrefix) prefixPath = steamPrefix;
+  // ── Fix prefix se inválido ──
+  if (env.prefixPath && !env.prefixValid) {
+    logger.warn(`Prefix invalid at ${env.prefixPath}, will recreate`);
+    try {
+      const entries = fs.readdirSync(env.prefixPath);
+      for (const entry of entries) {
+        fs.rmSync(path.join(env.prefixPath, entry), { recursive: true, force: true });
       }
-    }
-    if (!prefixPath) prefixPath = defaultPrefixDir(gameId);
-    ModStorageService.put(`game:${gameId}:config`, { ...config, protonPrefix: prefixPath });
-  }
-
-  const actualPfx = resolvePrefixDir(prefixPath);
-  const prefixValid = actualPfx ? isValidPrefix(actualPfx) : false;
-
-  if (!prefixValid) {
-    logger.warn(`Prefix invalid at ${prefixPath}, will recreate`);
-    if (actualPfx && fs.existsSync(actualPfx)) {
-      try {
-        const entries = fs.readdirSync(actualPfx);
-        for (const entry of entries) {
-          fs.rmSync(path.join(actualPfx, entry), { recursive: true, force: true });
-        }
-      } catch {}
-    }
+    } catch {}
     const { ensurePrefixDir } = await import("@prefix/core/validate");
-    ensurePrefixDir(prefixPath);
-  } else {
-    cleanNestedPfx(actualPfx!);
+    ensurePrefixDir(env.prefixPath);
+  } else if (env.prefixPath && env.prefixValid) {
+    cleanNestedPfx(env.prefixPath);
   }
 
-  const mod = getGameModule(gameId, gamePath);
-  const requiredOverrides = mod.getWineDllOverrides?.();
-  if (requiredOverrides && Object.keys(requiredOverrides).length > 0) {
-    const matches = dllOverridesMatch(prefixPath, requiredOverrides);
-    if (!matches) {
+  // ── Fix DLL overrides ──
+  if (!env.dllOverridesOk && env.prefixPath) {
+    const mod = getGameModule(gameId, env.gamePath);
+    const overrides = mod.getWineDllOverrides?.();
+    if (overrides && Object.keys(overrides).length > 0) {
       logger.info(`DLL overrides mismatch for ${gameId}, applying`);
-      applyWineDllOverrides(prefixPath, requiredOverrides);
-    } else {
-      logger.info(`DLL overrides already correct for ${gameId}`);
+      applyWineDllOverrides(env.prefixPath, overrides);
     }
   }
 
-  if (mod.bethesdaRegistryName && prefixPath) {
-    const registryOk = verifyBethesdaRegistry(prefixPath, mod.bethesdaRegistryName, gamePath);
-    if (!registryOk) {
-      logger.info(`Bethesda registry missing or wrong for ${gameId}, seeding`);
-      seedBethesdaRegistry(prefixPath, gamePath, mod.bethesdaRegistryName);
-    } else {
-      logger.info(`Bethesda registry already correct for ${gameId}`);
+  // ── Fix registry ──
+  if (!env.registryOk && env.prefixPath) {
+    const mod = getGameModule(gameId, env.gamePath);
+    if (mod.bethesdaRegistryName) {
+      logger.info(`Bethesda registry missing for ${gameId}, seeding`);
+      seedBethesdaRegistry(env.prefixPath, env.gamePath, mod.bethesdaRegistryName);
     }
   }
 
-  const skseFound = await downloadSkse(gameId, gamePath);
+  // ── Fix SKSE ──
+  const skseFound = await downloadSkse(gameId, env.gamePath);
 
   return {
     found: true,
-    gamePath,
-    steamAppId: info?.steamAppId,
+    gamePath: env.gamePath,
+    steamAppId: env.steamAppId,
     skseFound,
     configSaved: true,
   };

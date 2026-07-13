@@ -2,8 +2,7 @@ import os from "node:os";
 import path from "node:path";
 import { ModStorageService, logger } from "@main/services";
 import { getDeployFunction } from "@games/registry";
-import { getStagingDir } from "@games/_shared/filemap";
-import { detectGame } from "./steps/01-detect";
+import { scanEnvironment } from "@mods/services/environment-scanner";
 import { ensureProton } from "./steps/02-proton";
 import { ensurePrefix } from "./steps/03-prefix";
 import { applyGameConfigs } from "./steps/04-configs";
@@ -14,7 +13,6 @@ import { ensureSkse } from "./steps/06-skse";
 import { launchGame } from "./steps/07-launch";
 import { bridgePrefixToSteam } from "@mods/services/steam-prefix-bridge";
 import type { SendProgress, PlayResult } from "./types";
-import type { DetectResult } from "./steps/01-detect";
 import { logPlay } from "./logger";
 import { logStep, logEvent, resetStepCounter } from "./activity-logger";
 
@@ -31,18 +29,39 @@ export async function playGame(
     const usedProfile = profile || "Default";
     logPlay(gameId, "start", { profile: usedProfile });
 
-    // ── Step 1: Detect ──
-    logStep(gameId, "detect", "Iniciando detecção do jogo...", "working");
-    const _s1 = Date.now();
-    const detect = await detectGame(gameId, send);
-    if (!("gamePath" in detect)) {
-      logStep(gameId, "detect", "Jogo não encontrado", "error", { duration_ms: Date.now() - _s1 });
-      logEvent(gameId, "play_failed", { reason: "game_not_found" });
-      return { ...detect, failedStep: "detect" };
-    }
-    logStep(gameId, "detect", "Jogo detectado", "done", { duration_ms: Date.now() - _s1 });
+    // ── Step 0: Scan environment (única fonte de verdade) ──
+    logStep(gameId, "scan", "Verificando ambiente...", "working");
+    const _s0 = Date.now();
+    const env = scanEnvironment({ gameId });
+    logStep(gameId, "scan", env.ready ? "Ambiente pronto" : `${env.errors.length} problema(s) encontrado(s)`, env.ready ? "done" : "error", {
+      duration_ms: Date.now() - _s0,
+      gamePath: env.gamePath || "",
+      prefixValid: String(env.prefixValid),
+      protonExists: String(env.protonExists),
+    });
+    logPlay(gameId, "environment_scan", {
+      gamePath: env.gamePath || "",
+      prefixValid: String(env.prefixValid),
+      protonExists: String(env.protonExists),
+      ready: String(env.ready),
+    });
 
-    const { gamePath, steamAppId, prefixPath, libraryPath } = detect as DetectResult;
+    // Bloquear se jogo não encontrado
+    if (!env.gamePath) {
+      logStep(gameId, "scan", "Jogo não configurado", "error");
+      logEvent(gameId, "play_failed", { reason: "game_not_found" });
+      return { success: false, error: "Jogo não configurado. Configure em Configurar Jogo.", failedStep: "detect" };
+    }
+    if (!env.gamePathExists) {
+      logStep(gameId, "scan", `Caminho não encontrado: ${env.gamePath}`, "error");
+      logEvent(gameId, "play_failed", { reason: "game_not_found" });
+      return { success: false, error: `Caminho não encontrado: ${env.gamePath}`, failedStep: "detect" };
+    }
+
+    const gamePath = env.gamePath;
+    const steamAppId = env.steamAppId;
+    const prefixPath = env.prefixPath || "";
+    const libraryPath = env.libraryPath;
     logPlay(gameId, "detect", {
       gamePath: gamePath || "",
       steamAppId: steamAppId || "",
@@ -50,57 +69,60 @@ export async function playGame(
       libraryPath: libraryPath || "",
     });
 
-    // Always use the configured prefix — never fall back to Steam compatdata.
-    // The user configured this prefix in "Configurar Jogo" and expects mods to be deployed there.
-    const effectivePrefix = prefixPath;
-    logPlay(gameId, "prefix_effective", { effectivePrefix: effectivePrefix || "" });
-
     // ── Step 2: Proton ──
     let protonPath: string;
     let useCustomPrefix: boolean;
-    try {
-      logStep(gameId, "proton", "Verificando Proton...", "working");
-      const _s2 = Date.now();
-      const protonResult = await ensureProton(gameId, send, effectivePrefix);
-      protonPath = protonResult.protonPath;
-      useCustomPrefix = protonResult.useCustomPrefix || false;
-      logStep(gameId, "proton", `Proton: ${protonPath}`, "done", {
-        duration_ms: Date.now() - _s2,
-        useCustomPrefix: String(useCustomPrefix),
-      });
-      logPlay(gameId, "proton", {
-        protonPath: protonPath || "",
-        useCustomPrefix: String(useCustomPrefix),
-      });
-    } catch (protonErr) {
-      const msg = String(protonErr).slice(0, 200);
-      logStep(gameId, "proton", msg, "error");
-      logEvent(gameId, "play_failed", { reason: "proton_error", error: msg });
-      send("error", `Falha ao configurar Proton: ${msg}`, "error");
-      return { success: false, error: `Falha ao configurar Proton: ${msg}`, failedStep: "proton" };
+    if (env.protonExists) {
+      // Proton já existe no disco — usar direto
+      protonPath = env.protonPath;
+      useCustomPrefix = false;
+      logStep(gameId, "proton", `Proton já configurado: ${protonPath}`, "done");
+      logPlay(gameId, "proton", { protonPath, useCustomPrefix: "false" });
+    } else {
+      try {
+        logStep(gameId, "proton", "Verificando Proton...", "working");
+        const _s2 = Date.now();
+        const protonResult = await ensureProton(gameId, send, prefixPath);
+        protonPath = protonResult.protonPath;
+        useCustomPrefix = protonResult.useCustomPrefix || false;
+        logStep(gameId, "proton", `Proton: ${protonPath}`, "done", { duration_ms: Date.now() - _s2 });
+        logPlay(gameId, "proton", { protonPath, useCustomPrefix: String(useCustomPrefix) });
+      } catch (protonErr) {
+        const msg = String(protonErr).slice(0, 200);
+        logStep(gameId, "proton", msg, "error");
+        logEvent(gameId, "play_failed", { reason: "proton_error", error: msg });
+        send("error", `Falha ao configurar Proton: ${msg}`, "error");
+        return { success: false, error: `Falha ao configurar Proton: ${msg}`, failedStep: "proton" };
+      }
     }
 
     // ── Step 3: Prefix ──
     let resolvedPrefix: string;
-    try {
-      logStep(gameId, "prefix", "Verificando/criando prefixo...", "working");
-      const _s3 = Date.now();
-      const finalPrefixPath = prefixPath;
-      const prefixResult = await ensurePrefix(
-        gameId, finalPrefixPath, protonPath, steamAppId, gamePath, libraryPath, send,
-      );
-      resolvedPrefix = prefixResult.prefixPath;
-      logStep(gameId, "prefix", `Prefixo: ${resolvedPrefix}`, "done", { duration_ms: Date.now() - _s3 });
-      logPlay(gameId, "prefix_resolved", { resolvedPrefix: resolvedPrefix || "" });
-    } catch (prefixErr) {
-      const msg = String(prefixErr).slice(0, 200);
-      logStep(gameId, "prefix", msg, "error");
-      logEvent(gameId, "play_failed", { reason: "prefix_error", error: msg });
-      send("error", `Falha ao criar prefixo: ${msg}`, "error");
-      return { success: false, error: `Falha ao criar prefixo: ${msg}`, failedStep: "prefix" };
+    if (env.prefixValid) {
+      // Prefixo já válido — usar direto
+      resolvedPrefix = env.prefixPath!;
+      logStep(gameId, "prefix", `Prefixo já válido: ${resolvedPrefix}`, "done");
+      logPlay(gameId, "prefix_resolved", { resolvedPrefix });
+    } else {
+      try {
+        logStep(gameId, "prefix", "Verificando/criando prefixo...", "working");
+        const _s3 = Date.now();
+        const prefixResult = await ensurePrefix(
+          gameId, prefixPath, protonPath, steamAppId, gamePath, libraryPath, send,
+        );
+        resolvedPrefix = prefixResult.prefixPath;
+        logStep(gameId, "prefix", `Prefixo: ${resolvedPrefix}`, "done", { duration_ms: Date.now() - _s3 });
+        logPlay(gameId, "prefix_resolved", { resolvedPrefix });
+      } catch (prefixErr) {
+        const msg = String(prefixErr).slice(0, 200);
+        logStep(gameId, "prefix", msg, "error");
+        logEvent(gameId, "play_failed", { reason: "prefix_error", error: msg });
+        send("error", `Falha ao criar prefixo: ${msg}`, "error");
+        return { success: false, error: `Falha ao criar prefixo: ${msg}`, failedStep: "prefix" };
+      }
     }
 
-    // ── Step 3b: Bridge prefix to Steam (symlink compatdata + config.vdf) ──
+    // ── Step 3b: Bridge prefix to Steam ──
     if (steamAppId && resolvedPrefix) {
       logStep(gameId, "bridge", "Conectando prefixo ao Steam...", "working");
       const _s3b = Date.now();
@@ -128,7 +150,6 @@ export async function playGame(
     });
     logPlay(gameId, "configs_applied", { resolvedPrefix, protonPath, ok: String(configsResult.ok) });
 
-    // Block launch if DLL overrides or registry failed
     if (!configsResult.ok) {
       const errMsg = `Verificacao falhou: ${configsResult.errors.join("; ")}`;
       logEvent(gameId, "play_blocked", { reason: "configs_verification_failed", errors: configsResult.errors });
@@ -136,7 +157,7 @@ export async function playGame(
       return { success: false, error: errMsg, failedStep: "dll" };
     }
 
-    // ── Step 5: Frameworks (BepInEx, SMAPI, CET, etc.) ──
+    // ── Step 5: Frameworks ──
     logStep(gameId, "frameworks", "Verificando frameworks...", "working");
     const _s5f = Date.now();
     const frameworksResult = await ensureGameFrameworks(gameId, gamePath, send);
@@ -147,7 +168,7 @@ export async function playGame(
       failed: frameworksResult.failed.join(", "),
     });
 
-    // ── Step 5.5: External Tools (LOOT, xEdit, etc.) ──
+    // ── Step 5.5: External Tools ──
     logStep(gameId, "tools", "Verificando tools externas...", "working");
     const _s5t = Date.now();
     const toolsResult = await ensureGameExternalTools(gameId, gamePath, send);
@@ -158,7 +179,7 @@ export async function playGame(
       failed: toolsResult.failed.join(", "),
     });
 
-    // ── Step 6: SKSE (antes do deploy para o swap do launcher funcionar) ──
+    // ── Step 6: SKSE ──
     logStep(gameId, "skse", "Verificando Script Extender...", "working");
     const _s5 = Date.now();
     const { hasSkse, sksePath } = await ensureSkse(gameId, gamePath, send);
@@ -172,17 +193,14 @@ export async function playGame(
     logStep(gameId, "deploy", "Implantando mods...", "working");
     const _s6 = Date.now();
     try {
-      const config = ModStorageService.get<any>(`game:${gameId}:config`);
-      const rawStaging = config?.stagingDir || getStagingDir(gameId);
-      const stagingDir = rawStaging.startsWith("~") ? rawStaging.replace("~", os.homedir()) : rawStaging;
       const modlistKey = `game:${gameId}:profile:${usedProfile}:modlist`;
       const modlist = ModStorageService.get<any[]>(modlistKey) || [];
       const deployFn = getDeployFunction(gameId);
       const deployResult = await deployFn(
-        gameId, gamePath, stagingDir, modlist, usedProfile, resolvedPrefix,
+        gameId, gamePath, env.stagingDir, modlist, usedProfile, resolvedPrefix,
       );
       logPlay(gameId, "deploy", {
-        stagingDir,
+        stagingDir: env.stagingDir,
         modlistCount: String(modlist.length),
         success: String(deployResult.success),
       });

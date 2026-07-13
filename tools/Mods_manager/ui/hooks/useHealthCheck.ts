@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface UseHealthCheckOpts {
   selectedGame: string | null;
@@ -17,34 +17,33 @@ export function useHealthCheck({
 }: UseHealthCheckOpts) {
   const [healthBanner, setHealthBanner] = useState<{ status: "loading" | "valid" | "issues" | "error"; message: string } | null>(null);
   const [healthReport, setHealthReport] = useState<{ depsMissing: string[] } | null>(null);
+  const scanCounterRef = useRef(0);
 
-  // Health check effect
+  // Health check effect — usa scanEnvironment como fonte única
   useEffect(() => {
     if (!selectedGame || !configGamePath) return;
     let cancelled = false;
     (async () => {
-      setHealthBanner({ status: "loading", message: "Verificando prefixo..." });
+      setHealthBanner({ status: "loading", message: "Verificando ambiente..." });
       try {
-        const result = await window.electron.prefixHealthCheck(selectedGame);
+        const env = await (window.electron as any).scanEnvironment(selectedGame);
         if (cancelled) return;
-        if (result.ok && result.data) {
-          setHealthReport({ depsMissing: result.data.depsMissing || [] });
-          if (result.data.valid) {
-            setHealthBanner({ status: "valid", message: "Prefixo configurado corretamente" });
-          } else if (result.data.errors.length > 0) {
-            setHealthBanner({ status: "error", message: `Problemas: ${result.data.errors.join("; ")}` });
-          } else {
-            setHealthBanner({ status: "issues", message: "Algumas configurações precisam de atenção" });
-          }
+
+        if (env?.ready) {
+          setHealthReport({ depsMissing: env.depsMissing || [] });
+          setHealthBanner({ status: "valid", message: "Ambiente configurado corretamente" });
+        } else if (env?.errors?.length > 0) {
+          setHealthReport({ depsMissing: env.depsMissing || [] });
+          setHealthBanner({ status: "error", message: env.errors.join("; ") });
         } else {
-          setHealthBanner({ status: "error", message: result.error || "Falha ao verificar prefixo" });
+          setHealthBanner({ status: "issues", message: "Algumas configurações precisam de atenção" });
         }
       } catch {
-        if (!cancelled) setHealthBanner({ status: "error", message: "Erro ao verificar saúde do prefixo" });
+        if (!cancelled) setHealthBanner({ status: "error", message: "Erro ao verificar ambiente" });
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedGame, configGamePath]);
+  }, [selectedGame, configGamePath, scanCounterRef.current]);
 
   // Auto-dismiss valid banner
   useEffect(() => {
@@ -58,9 +57,15 @@ export function useHealthCheck({
     setShowGameConfig(true);
   }, [configProtonPath, setShowGameConfig, setOriginalProtonPath]);
 
+  /** Força re-scan do ambiente (chamar após criar prefixo, instalar proton, etc) */
+  const rescanEnvironment = useCallback(() => {
+    scanCounterRef.current += 1;
+  }, []);
+
   return {
     healthBanner,
     healthReport,
     openConfigForFix,
+    rescanEnvironment,
   };
 }

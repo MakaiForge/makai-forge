@@ -60,7 +60,7 @@ export function useProtonSetup({
   const handleProtonSelect = useCallback(async (protonPath: string) => {
     if (!selectedGame) return;
     setConfigProtonPath(protonPath);
-    await saveGameConfig(selectedGame, configGamePath, configStagingDir);
+    await saveGameConfig(selectedGame, configGamePath, configStagingDir, { protonVersion: protonPath });
     await saveGlobalProton(protonPath);
     addLog(`Proton salvo na config: ${protonPath}`);
     await setupProton(selectedGame, protonPath);
@@ -76,7 +76,7 @@ export function useProtonSetup({
     }
 
     setConfigProtonPath(protonPath);
-    await saveGameConfig(selectedGame, configGamePath, configStagingDir);
+    await saveGameConfig(selectedGame, configGamePath, configStagingDir, { protonVersion: protonPath });
     await saveGlobalProton(protonPath);
     addLog(`Proton baixado: ${protonPath}`);
 

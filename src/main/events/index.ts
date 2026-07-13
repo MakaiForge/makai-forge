@@ -44,6 +44,7 @@ import "@mods/events/mod-conflicts";
 import "@mods/events/mod-bridge";
 import "@mods/events/mod-load-order";
 import "@mods/events/mod-storage";
+import "@mods/events/mod-environment";
 import "@mods/events/mod-exe-launcher";
 import "@mods/events/mod-eslifier";
 import "@mods/events/mod-backup";

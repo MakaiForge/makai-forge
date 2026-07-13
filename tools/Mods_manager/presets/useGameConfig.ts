@@ -111,13 +111,13 @@ export function useGameConfig() {
     })();
   }, [selectedGame, currentGame]);
 
-  const saveGameConfig = useCallback(async (name: string, gamePath: string, stagingDir: string) => {
+  const saveGameConfig = useCallback(async (name: string, gamePath: string, stagingDir: string, extra?: Record<string, string>) => {
     const gameId = name;
     await window.electron.saveGameConfig(gameId, {
       gamePath,
       stagingDir: stagingDir || defaultStagingDir(gameId, name),
-      protonPrefix: configPrefixPath,
-      protonVersion: configProtonPath,
+      protonPrefix: extra?.protonPrefix ?? configPrefixPath,
+      protonVersion: extra?.protonVersion ?? configProtonPath,
     });
     setGames(prev => {
       if (prev.find(g => gameIdFor(g) === gameId)) return prev;
