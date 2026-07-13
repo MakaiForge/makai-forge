@@ -211,7 +211,7 @@ export default function ModManager() {
           <GameReadinessModal open={gameReadinessResult !== null && !gameReadinessResult?.ok} result={gameReadinessResult} gameId={selectedGame} onClose={dismissGameReadiness} onRetry={reVerifyGameReadiness} onConfigure={() => { proton.setOriginalProtonPath(configProtonPath); setShowGameConfig(true); }} />
           <DeployResultModal open={deployResult !== null} result={deployResult} onClose={() => setDeployResult(null)} />
 
-          <Modal visible={showGameConfig} title={t("configure_game_title", { name: currentGame?.name || selectedGame })} onClose={() => setShowGameConfig(false)}>
+          <Modal visible={showGameConfig} title={t("configure_game_title", { name: currentGame?.name || selectedGame })} onClose={async () => { setShowGameConfig(false); if (gameReadinessResult) await reVerifyGameReadiness(); }}>
             <GameConfigPanel open={showGameConfig} selectedGame={selectedGame} configGamePath={configGamePath} configStagingDir={configStagingDir} configPrefixPath={configPrefixPath} configProtonPath={configProtonPath} originalProtonPath={proton.originalProtonPath} onGamePathChange={setConfigGamePath} onStagingDirChange={setConfigStagingDir} onPrefixPathChange={setConfigPrefixPath} onProtonPathChange={setConfigProtonPath} onOpenProtonSwitch={async () => { await gameConfigActions.handleSaveGameConfig(); handleProtonConfigOpen("switch"); }} onSave={gameConfigActions.handleSaveGameConfig} onCancel={() => setShowGameConfig(false)} t={t} />
           </Modal>
 

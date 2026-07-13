@@ -116,7 +116,14 @@ registerEvent("modCreatePrefix", async (_event, gameId: string) => {
     }
   }
 
-  const prefixPath = config.protonPrefix || "";
+  let prefixPath = config.protonPrefix || "";
+
+  // Se prefixo não configurado, gera path default e salva no config
+  if (!prefixPath) {
+    prefixPath = path.join(os.homedir(), "Games", "Prefix", gameId);
+    logPlay(gameId, "modCreatePrefix", { status: "prefix_gerado_default", prefixPath });
+    ModStorageService.put(`game:${gameId}:config`, { ...config, protonPrefix: prefixPath });
+  }
 
   // Monta lista de verbs Makaitricks para este jogo
   const extraVerbs = getVerbsForGame(gameId);
