@@ -22,6 +22,7 @@ interface GameReadinessModalProps {
   gameId: string;
   onClose: () => void;
   onRetry: () => Promise<void>;
+  onConfigure?: () => void;
 }
 
 export function GameReadinessModal({
@@ -30,6 +31,7 @@ export function GameReadinessModal({
   gameId,
   onClose,
   onRetry,
+  onConfigure,
 }: GameReadinessModalProps) {
   const { t } = useTranslation("mod_manager");
   const [creatingPrefix, setCreatingPrefix] = useState(false);
@@ -50,7 +52,6 @@ export function GameReadinessModal({
       const res = await (window.electron as any).modCreatePrefix(gameId);
       if (res?.ok) {
         setPrefixResult("Prefixo criado com sucesso!");
-        // Re-verify after creating prefix
         await onRetry();
       } else {
         setPrefixResult(res?.error || "Falha ao criar prefixo");
@@ -66,6 +67,7 @@ export function GameReadinessModal({
 
   const failedChecks = result.checks.filter(c => !c.ok);
   const hasPrefixIssue = failedChecks.some(c => c.action === "create_prefix");
+  const hasConfigIssue = failedChecks.some(c => c.action === "configure" || c.action === "install_proton");
   const allOk = result.ok;
 
   return (
@@ -75,6 +77,12 @@ export function GameReadinessModal({
       onClose={onClose}
     >
       <div className="game-readiness__modal">
+        <p className="game-readiness__modal-intro">
+          {allOk
+            ? t("game_readiness_all_ok", "Todos os pré-requisitos estão OK. A instalação começará automaticamente.")
+            : t("game_readiness_needs_setup", "Alguns pré-requisitos precisam ser configurados antes de instalar mods.")}
+        </p>
+
         <div className="game-readiness__modal-checks">
           {result.checks.map((check) => (
             <div
@@ -102,6 +110,12 @@ export function GameReadinessModal({
         )}
 
         <div className="game-readiness__modal-actions">
+          {hasConfigIssue && onConfigure && (
+            <Button theme="primary" onClick={onConfigure}>
+              {t("game_readiness_configure", "Configurar Jogo")}
+            </Button>
+          )}
+
           {hasPrefixIssue && (
             <Button
               theme="primary"
