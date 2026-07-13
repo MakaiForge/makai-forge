@@ -5,6 +5,7 @@ interface UseGameConfigActionsOpts {
   configGamePath: string;
   configStagingDir: string;
   configPrefixPath: string;
+  configProtonPath: string;
   addLog: (msg: string) => void;
   saveGameConfig: (gameId: string, gamePath: string, stagingDir: string, extra?: Record<string, string>) => Promise<void>;
   setSelectedGame: (v: string | null) => void;
@@ -21,6 +22,7 @@ export function useGameConfigActions({
   configGamePath,
   configStagingDir,
   configPrefixPath,
+  configProtonPath,
   addLog,
   saveGameConfig,
   setSelectedGame,
@@ -35,15 +37,21 @@ export function useGameConfigActions({
     if (!selectedGame) {
       const gameName = prompt("Enter game name:") || "";
       if (!gameName) return;
-      await saveGameConfig(gameName, configGamePath, configStagingDir);
+      await saveGameConfig(gameName, configGamePath, configStagingDir, {
+        protonPrefix: configPrefixPath,
+        protonVersion: configProtonPath,
+      });
       setGames(prev => [...prev, { name: gameName, gameId: gameName, path: configGamePath }]);
       setSelectedGame(gameName);
     } else {
-      await saveGameConfig(selectedGame, configGamePath, configStagingDir);
+      await saveGameConfig(selectedGame, configGamePath, configStagingDir, {
+        protonPrefix: configPrefixPath,
+        protonVersion: configProtonPath,
+      });
       addLog(`Saved config for ${selectedGame}`);
     }
     setShowGameConfig(false);
-  }, [selectedGame, configGamePath, configStagingDir, saveGameConfig, setGames, setSelectedGame, addLog, setShowGameConfig]);
+  }, [selectedGame, configGamePath, configStagingDir, configPrefixPath, configProtonPath, saveGameConfig, setGames, setSelectedGame, addLog, setShowGameConfig]);
 
   const handleDetectionWizardGame = useCallback(async (gameId: string, gamePath: string) => {
     const slug = gameId.toLowerCase().replace(/[\s:/\\]+/g, "-").replace(/[^a-z0-9-]/g, "");

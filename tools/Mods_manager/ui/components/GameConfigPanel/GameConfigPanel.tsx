@@ -1,8 +1,27 @@
 import { Button } from "@renderer/components";
 import { useState, useEffect, useCallback } from "react";
 import { useGameDllCatalog } from "../../../presets/useGameDllCatalog";
-import type { HealthReport } from "@renderer/declaration";
 import "./GameConfigPanel.scss";
+
+interface ScanResult {
+  gamePath: string;
+  gamePathExists: boolean;
+  prefixPath: string | null;
+  prefixValid: boolean;
+  protonPath: string;
+  protonExists: boolean;
+  dllOverridesOk: boolean;
+  dllOverridesMissing: string[];
+  registryOk: boolean;
+  skseInstalled: boolean;
+  skseName: string;
+  frameworks: { name: string; installed: boolean }[];
+  depsInstalled: string[];
+  depsMissing: string[];
+  ready: boolean;
+  errors: string[];
+  fixed: string[];
+}
 
 interface GameConfigPanelProps {
   open: boolean;
@@ -34,10 +53,9 @@ export function GameConfigPanel({
   const { catalog, getGameInfo } = useGameDllCatalog();
   const gameInfo = selectedGame ? getGameInfo(selectedGame) : undefined;
 
-  const [health, setHealth] = useState<HealthReport | null>(null);
+  const [health, setHealth] = useState<ScanResult | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [fixing, setFixing] = useState(false);
-  const [fixResult, setFixResult] = useState<string[]>([]);
   const [installingDep, setInstallingDep] = useState<string | null>(null);
   const [preparingPrefix, setPreparingPrefix] = useState(false);
   const [prefixPrepResult, setPrefixPrepResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -47,10 +65,8 @@ export function GameConfigPanel({
     setHealthLoading(true);
     setHealth(null);
     try {
-      const result = await window.electron.prefixHealthCheck(selectedGame);
-      if (result.ok && result.data) {
-        setHealth(result.data);
-      }
+      const env = await (window.electron as any).scanEnvironment(selectedGame, true);
+      if (env) setHealth(env);
     } catch { /* ignore */ }
     setHealthLoading(false);
   }, [selectedGame]);
@@ -59,14 +75,14 @@ export function GameConfigPanel({
     if (!selectedGame) return;
     setFixing(true);
     try {
-      const result = await (window.electron as any).createModPrefix(selectedGame);
-      if (result?.ok) {
-        setFixResult(result.data?.dllsInstalled || ["Prefixo reparado via Proton API"]);
-        await runHealthCheck();
-      } else {
-        setFixResult([result?.error || "Falha ao reparar prefixo"]);
+      const env = await (window.electron as any).scanEnvironment(selectedGame, true);
+      if (env) {
+        setHealth(env);
+        if (env.fixed?.length > 0) {
+          await runHealthCheck();
+        }
       }
-    } catch (err) { setFixResult([`Erro: ${String(err).slice(0, 150)}`]); }
+    } catch (err) { /* ignore */ }
     setFixing(false);
   };
 
@@ -130,7 +146,7 @@ export function GameConfigPanel({
     }
   }, [open, selectedGame, configGamePath, runHealthCheck]);
 
-  const healthColor = !health ? "" : health.valid ? "green" : health.errors.length > 0 ? "red" : "yellow";
+  const healthColor = !health ? "" : health.ready ? "green" : health.errors.length > 0 ? "red" : "yellow";
 
   return (
     <div className="mod-manager__config-form">
@@ -187,8 +203,8 @@ export function GameConfigPanel({
             <div className={`mod-manager__config-health-banner mod-manager__config-health-banner--${healthColor}`}>
               <p><strong>Prefixo:</strong> {health.prefixValid ? "✅ Válido" : "❌ Inválido"}</p>
               <p><strong>DLL Overrides:</strong> {health.dllOverridesOk ? "✅ OK" : `❌ Faltando: ${health.dllOverridesMissing.join(", ")}`}</p>
-              {health.seName && (
-                <p><strong>{health.seName}:</strong> {health.seInstalled ? "✅ Instalado" : "❌ Não encontrado"}</p>
+              {health.skseName && (
+                <p><strong>{health.skseName}:</strong> {health.skseInstalled ? "✅ Instalado" : "❌ Não encontrado"}</p>
               )}
               {health.frameworks.length > 0 && health.frameworks.map(fw => (
                 <p key={fw.name}><strong>{fw.name}:</strong> {fw.installed ? "✅" : "❌"}</p>
@@ -198,10 +214,15 @@ export function GameConfigPanel({
                   {health.errors.map((e, i) => <p key={i} className="mod-manager__config-health-error">⚠️ {e}</p>)}
                 </div>
               )}
-              {!health.valid && (
+              {!health.ready && (
                 <Button onClick={handleAutoFix} disabled={fixing} theme="primary" className="mod-manager__config-fix-btn">
                   {fixing ? "Corrigindo..." : "Reparar Prefixo"}
                 </Button>
+              )}
+              {health.fixed && health.fixed.length > 0 && (
+                <div className="mod-manager__config-fix-result">
+                  {health.fixed.map((r: string, i: number) => <p key={i}>✅ {r}</p>)}
+                </div>
               )}
               <Button
                 onClick={handlePreparePrefix}
@@ -214,11 +235,6 @@ export function GameConfigPanel({
               {prefixPrepResult && (
                 <div className={`mod-manager__config-prepare-result ${prefixPrepResult.ok ? "--ok" : "--fail"}`}>
                   {prefixPrepResult.ok ? "✅ " : "❌ "}{prefixPrepResult.msg}
-                </div>
-              )}
-              {fixResult.length > 0 && (
-                <div className="mod-manager__config-fix-result">
-                  {fixResult.map((r, i) => <p key={i}>✅ {r}</p>)}
                 </div>
               )}
             </div>
@@ -284,8 +300,8 @@ export function GameConfigPanel({
           <label>Script Extender: {gameInfo.scriptExtender.name}</label>
           <div className="mod-manager__config-se-info">
             <p>Loader: {gameInfo.scriptExtender.loaderExe}</p>
-            <p>Status: {health?.seInstalled ? "✅ Instalado" : "❌ Não encontrado"}</p>
-            {!health?.seInstalled && (
+            <p>Status: {health?.skseInstalled ? "✅ Instalado" : "❌ Não encontrado"}</p>
+            {!health?.skseInstalled && (
               <Button onClick={async () => {
                 if (!selectedGame || !configGamePath) return;
                 const result = await window.electron.seInstall(selectedGame, configGamePath);

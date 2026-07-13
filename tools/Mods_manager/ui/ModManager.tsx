@@ -98,7 +98,7 @@ export default function ModManager() {
 
   // ── Action hooks ──
   const modActions = useModActions({ selectedGame, selectedModIdx, filteredMods, mods, addLog, removeMod, deleteMod, toggleMod, setSelectedModIdx, detectAndShowConflicts });
-  const gameConfigActions = useGameConfigActions({ selectedGame, configGamePath, configStagingDir, configPrefixPath, addLog, saveGameConfig, setSelectedGame, setGames, setConfigGamePath, setConfigStagingDir, setConfigPrefixPath, setShowGameConfig, discoverInstalledGames });
+  const gameConfigActions = useGameConfigActions({ selectedGame, configGamePath, configStagingDir, configPrefixPath, configProtonPath, addLog, saveGameConfig, setSelectedGame, setGames, setConfigGamePath, setConfigStagingDir, setConfigPrefixPath, setShowGameConfig, discoverInstalledGames });
 
   // ── Derived ──
   const modsActive = mods.filter(m => m.enabled).length;
