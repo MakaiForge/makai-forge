@@ -49,7 +49,7 @@ export function GameReadinessModal({
     setCreatingPrefix(true);
     setPrefixResult(null);
     try {
-      const res = await (window.electron as any).modCreatePrefix(gameId);
+      const res = await (window.electron as any).createModPrefix(gameId);
       if (res?.ok) {
         setPrefixResult("Prefixo criado com sucesso!");
         await onRetry();

@@ -16,6 +16,8 @@ import os from "node:os";
 import { ModStorageService } from "@main/services";
 import { getGameModule } from "@games/registry";
 import { getStagingDir } from "@games/_shared/filemap";
+import { detectGame } from "@mods/services/detection";
+import { defaultStagingDir, defaultPrefixDir } from "@mods/services/steam-library";
 
 export interface CheckResult {
   ok: boolean;
@@ -53,12 +55,29 @@ function expandHome(p: string): string {
 
 export function verifyGameReady(gameId: string): CheckResult {
   const checks: Check[] = [];
-  const gameConfig = ModStorageService.get<any>(`game:${gameId}:config`);
+  let gameConfig = ModStorageService.get<any>(`game:${gameId}:config`);
   const gameModule = getGameModule(gameId, gameConfig?.gamePath || "");
   const gameName = gameModule.displayName || gameId;
 
-  // ── 1. Game Path ──
-  const rawGamePath = gameConfig?.gamePath || "";
+  // ── Auto-detect se não tem gamePath configurado ──
+  let rawGamePath = gameConfig?.gamePath || "";
+  if (!rawGamePath) {
+    const detected = detectGame(gameId);
+    if (detected.source && detected.gamePath) {
+      rawGamePath = detected.gamePath;
+      const staging = defaultStagingDir(gameId);
+      const prefix = detected.prefixPath || defaultPrefixDir(gameId);
+
+      ModStorageService.put(`game:${gameId}:config`, {
+        gamePath: rawGamePath,
+        stagingDir: gameConfig?.stagingDir || staging,
+        protonPrefix: gameConfig?.protonPrefix || prefix,
+        protonVersion: gameConfig?.protonVersion || "",
+      });
+
+      gameConfig = ModStorageService.get<any>(`game:${gameId}:config`);
+    }
+  }
   const gamePath = rawGamePath ? expandHome(rawGamePath) : "";
 
   if (!rawGamePath) {
