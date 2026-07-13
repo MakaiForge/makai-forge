@@ -68,32 +68,6 @@ export async function readArchiveInfo(archivePath: string): Promise<ArchiveInfo>
 }
 
 /**
- * Verifica se um archive é protegido por senha.
- */
-export async function checkPasswordProtected(archivePath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const child = spawn(get7zPath(), ["t", archivePath], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    let stderr = "";
-    child.stderr?.on("data", (data: Buffer) => {
-      stderr += data.toString();
-    });
-
-    child.on("close", (code) => {
-      if (code !== 0 && /wrong password|encrypted|can not open/i.test(stderr)) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    });
-
-    child.on("error", () => resolve(false));
-  });
-}
-
-/**
  * Parse do output do `7z l -slt`.
  *
  * Formato esperado:

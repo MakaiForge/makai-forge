@@ -38,11 +38,11 @@ export function ModManagerTopBar({
       <div className="mod-manager__topbar-actions" ref={scrollRef}>
         <Button
           onClick={onLaunchGame}
-          disabled={launching || !hasGame}
+          disabled={launching}
           theme="primary"
-          title={depsMissing.length > 0 ? `Faltando: ${depsMissing.join(", ")}` : undefined}
+          title={!hasGame ? "Selecione um jogo primeiro (ou clique para detectar)" : depsMissing.length > 0 ? `Faltando: ${depsMissing.join(", ")}` : undefined}
         >
-          {launching ? "Iniciando..." : "▶ Iniciar Jogo"}
+          {launching ? "Iniciando..." : !hasGame ? "▶ Detectar e Iniciar" : "▶ Iniciar Jogo"}
           {depsMissing.length > 0 && !launching && <span style={{ marginLeft: 6, opacity: 0.8 }}>⚠️</span>}
         </Button>
         <Button theme="primary" onClick={onInstallMod} disabled={installing}>

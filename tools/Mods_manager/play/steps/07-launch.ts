@@ -1,12 +1,43 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { app } from "electron";
 
 import { getGameInfo, getGameModule } from "@games/registry";
 import { findSteamClientPath } from "@prefix/core/steam-paths";
 import { logger } from "@main/services";
 import type { PlayResult, SendProgress } from "../types";
+
+/** Reference to the currently running game process (if any). */
+let activeGameProcess: ChildProcess | null = null;
+
+/**
+ * Kill the active game process. Called when the user clicks "Fechar" on the
+ * LaunchOverlay. Sends SIGTERM first, escalates to SIGKILL after 3 seconds.
+ */
+export function killGameProcess(): boolean {
+  if (!activeGameProcess || !activeGameProcess.pid) return false;
+  const pid = activeGameProcess.pid;
+  const procName = activeGameProcess.spawnargs?.join(" ") || `pid=${pid}`;
+  logger.info(`[Launch] Killing game process: ${procName}`);
+  try {
+    process.kill(-pid, "SIGTERM");
+    setTimeout(() => {
+      try { process.kill(-pid, "SIGKILL"); } catch { /* already dead */ }
+    }, 3000);
+  } catch {
+    try { activeGameProcess.kill("SIGKILL"); } catch { /* ignore */ }
+  }
+  activeGameProcess = null;
+  return true;
+}
+
+function trackProcess(child: ChildProcess): void {
+  activeGameProcess = child;
+  child.on("close", () => { if (activeGameProcess === child) activeGameProcess = null; });
+  child.on("error", () => { if (activeGameProcess === child) activeGameProcess = null; });
+}
 
 /**
  * Returns true if the prefix is inside Steam's compatdata directory
@@ -201,6 +232,7 @@ async function launchCustomPrefix(
         stdio: ["ignore", "pipe", "pipe"],
         detached: true,
       });
+      trackProcess(child);
       const stderrChunks: Buffer[] = [];
       child.stdout!.on("data", (chunk: Buffer) => { /* drain */ });
       child.stderr!.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
@@ -231,6 +263,7 @@ async function launchCustomPrefix(
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
     });
+    trackProcess(child);
 
     const stderrChunks: Buffer[] = [];
     child.stdout!.on("data", () => { /* drain */ });
@@ -336,6 +369,7 @@ export async function launchGame(
           stdio: ["ignore", "pipe", "pipe"],
           detached: true,
         });
+        trackProcess(child);
         const stderrChunks: Buffer[] = [];
         child.stdout!.on("data", () => { /* drain */ });
         child.stderr!.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
@@ -364,6 +398,7 @@ export async function launchGame(
         stdio: ["ignore", "pipe", "pipe"],
         detached: true,
       });
+      trackProcess(child);
 
       const stderrChunks: Buffer[] = [];
       child.stdout!.on("data", () => { /* drain */ });

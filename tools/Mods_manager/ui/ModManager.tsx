@@ -1,19 +1,28 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@renderer/components";
 import { BrowserMirror } from "@renderer/components/browser-view";
 import type { ModlistEntry } from "./types";
-import type { ProtonVersion, ProtonFork } from "@types";
-import type { FomodComponent } from "@types";
+import type { ProtonVersion } from "@types";
 
-import { useModLog, useMods, useDeploy, useFomod, useMedia, useRightPanel, useModManagerShortcuts, usePlugins, useSplitPane, useInstallMod, useConflictBadges, normalizeToDeployPath, useSortPlugins } from "./hooks";
+import { useModLog, useMods, useDeploy, useFomod, useMedia, useRightPanel, useModManagerShortcuts, usePlugins, useSplitPane, useConflictBadges, useSortPlugins } from "./hooks";
 import { useInstallOrchestrator } from "./hooks/mods/useInstallOrchestrator";
+import { useFomodComponents } from "./hooks/useFomodComponents";
+import { useProtonSetup } from "./hooks/useProtonSetup";
+import { useHealthCheck } from "./hooks/useHealthCheck";
+import { useBainHandlers } from "./hooks/useBainHandlers";
+import { useLaunchGame } from "./hooks/useLaunchGame";
+import { useModActions } from "./hooks/useModActions";
+import { useGameConfigActions } from "./hooks/useGameConfigActions";
 import { InstallProgressOverlay } from "./components/InstallProgressOverlay";
+import { InstallResultOverlay } from "./components/InstallResultOverlay";
+import { HealthBanner } from "./components/HealthBanner";
 import { useGameConfig, useProfiles, GamePresetBar } from "../presets";
 import { ModListPanel, RightPanel, StatusBar, ModManagerTopBar, ModManagerTabs, GameConfigPanel, GameDetectionWizard, LaunchOverlay, PlayErrorModal } from "./components";
 import { ProtonRecommendationModal } from "@provision/proton_recommended/ui/proton-recommendation-modal";
 import { AddProfileModal, ConflictsModal, DeployConfirmModal, DeployResultModal, OverwriteModal, PreviewModal, ReadmeModal } from "./components/Modals";
 import { ConflictDetailsModal } from "./components/Modals/ConflictDetailsModal";
+import { GameReadinessModal } from "./components/Modals/GameReadinessModal";
 import { PrefixSetupModal } from "@prefix/wine_prefix/PrefixSetupModal";
 import { FomodDialog } from "./components/FomodDialog";
 import { BainDialog } from "./components/BainDialog";
@@ -27,154 +36,43 @@ const DEFAULT_BROWSER_URL = "https://www.nexusmods.com";
 export default function ModManager() {
   const { t } = useTranslation("mod_manager");
 
+  // ── UI state ──
   const [activeTab, setActiveTab] = useState<TabId>("mods");
   const [showProtonSelector, setShowProtonSelector] = useState(false);
   const [protonSelectorMode, setProtonSelectorMode] = useState<"install" | "switch">("install");
   const [installedProtons, setInstalledProtons] = useState<ProtonVersion[]>([]);
-  const [launchSteps, setLaunchSteps] = useState<{ key: string; label: string; status: "waiting" | "working" | "done" | "error"; message?: string }[]>([]);
-  const [showLaunchOverlay, setShowLaunchOverlay] = useState(false);
-  const isLaunching = launchSteps.some(s => s.status === "working");
-
-  const [playError, setPlayError] = useState<{ error: string; failedStep?: string } | null>(null);
-
-  const [prefixSetupVisible, setPrefixSetupVisible] = useState(false);
-  const [prefixSetupGameName, setPrefixSetupGameName] = useState("");
-  const [prefixSetupLog, setPrefixSetupLog] = useState<string[]>([]);
-  const [prefixSetupResult, setPrefixSetupResult] = useState<{ ok: boolean; msg: string } | null>(null);
-
   const [showDetectionWizard, setShowDetectionWizard] = useState(false);
-  const [healthBanner, setHealthBanner] = useState<{ status: "loading" | "valid" | "issues" | "error"; message: string } | null>(null);
-  const [healthReport, setHealthReport] = useState<{ depsMissing: string[] } | null>(null);
-  const [originalProtonPath, setOriginalProtonPath] = useState<string>("");
+  const [showAddProfile, setShowAddProfile] = useState(false);
+  const [showConflictDetails, setShowConflictDetails] = useState(false);
+  const [selectedConflictMod, setSelectedConflictMod] = useState<ModlistEntry | null>(null);
 
+  // ── Core hooks ──
   const { log, addLog } = useModLog();
   const { games, setGames, selectedGame, setSelectedGame, currentGame, showGameConfig, setShowGameConfig, configGamePath, setConfigGamePath, configStagingDir, setConfigStagingDir, configPrefixPath, setConfigPrefixPath, configProtonPath, setConfigProtonPath, saveGameConfig, discoverInstalledGames } = useGameConfig();
-
-  useEffect(() => {
-    return window.electron.onModLaunchProgress(data => {
-      setLaunchSteps(prev => {
-        const idx = prev.findIndex(s => s.key === data.step);
-        if (idx !== -1) {
-          const next = [...prev];
-          next[idx] = {
-            ...next[idx],
-            status: data.status as any,
-            message: data.message,
-          };
-          return next;
-        }
-        return prev;
-      });
-    });
-  }, []);
   const { profiles, selectedProfile, setSelectedProfile, createProfile } = useProfiles(selectedGame);
   const { mods, filteredMods, searchQuery, setSearchQuery, mediaMap, selectedModIdx, setSelectedModIdx, loadMods, toggleMod, reorderMods, removeMod, deleteMod, toggleLock, addSeparator, loading } = useMods(selectedGame, selectedProfile);
   const selectedMod = useMemo((): ModlistEntry | null => selectedModIdx !== null ? filteredMods[selectedModIdx] ?? null : null, [selectedModIdx, filteredMods]);
-
   const filteredModsRef = useRef(filteredMods);
-  useEffect(() => { filteredModsRef.current = filteredMods; }, [filteredMods]);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleModInstalled = useCallback((modName: string) => {
-    const currentFiltered = filteredModsRef.current;
-    const idx = currentFiltered.findIndex(m => m.name === modName);
-    if (idx >= 0) setSelectedModIdx(idx);
-  }, []);
-
+  // ── Feature hooks ──
   const { conflictSet, conflictDetails, allConflicts } = useConflictBadges(mods);
   const { deploying, deployResult, setDeployResult, conflicts, showConflicts, setShowConflicts, showDeployConfirm, setShowDeployConfirm, handleDeploy, detectAndShowConflicts } = useDeploy(selectedGame, selectedProfile, addLog);
-  const { showFomod, fomodDir, config, filteredSteps, loading: fomodLoading, error: fomodError, currentStep, installing, selections, openFomod, handleTogglePlugin, handleNextStep, handlePrevStep, handleInstall, handleFomodCancel, handleResetSelections } = useFomod(addLog, loadMods, selectedGame, handleModInstalled);
-  const [bainVisible, setBainVisible] = useState(false);
-  const [bainLoading, setBainLoading] = useState(false);
-  const [bainPackages, setBainPackages] = useState<{ order: number; name: string; directory: string; file_count: number }[]>([]);
-  const [bainSelected, setBainSelected] = useState<Set<number>>(new Set());
-  const [bainInstalling, setBainInstalling] = useState(false);
-  const [bainError, setBainError] = useState<string | null>(null);
-  const [bainArchivePath, setBainArchivePath] = useState("");
-  const [bainModName, setBainModName] = useState("");
-  const [bainStagingDir, setBainStagingDir] = useState("");
-  const handleBainOpen = useCallback(async (modName: string, stagingDir: string, archivePath: string, packages: { order: number; name: string; directory: string; file_count: number }[]) => {
-    setBainModName(modName);
-    setBainStagingDir(stagingDir);
-    setBainArchivePath(archivePath);
-    setBainPackages(packages);
-    setBainSelected(new Set(packages.map(p => p.order)));
-    setBainError(null);
-    setBainVisible(true);
-  }, []);
-  const handleBainToggle = useCallback((order: number) => {
-    setBainSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(order)) next.delete(order);
-      else next.add(order);
-      return next;
-    });
-  }, []);
-  const handleBainInstall = useCallback(async () => {
-    if (!bainStagingDir || bainSelected.size === 0) return;
-    setBainInstalling(true);
-    setBainError(null);
-    try {
-      const result = await window.electron.bainInstall(bainArchivePath, bainStagingDir, [...bainSelected]);
-      if (result.ok) {
-        addLog(`BAIN: ${result.data?.packages_installed} packages installed (${result.data?.files_extracted} files)`);
-        setBainVisible(false);
-        loadMods();
-      } else {
-        setBainError(result.error || "Install failed");
-      }
-    } catch (e) {
-      setBainError(`Error: ${e}`);
-    }
-    setBainInstalling(false);
-  }, [bainArchivePath, bainStagingDir, bainSelected, addLog, loadMods]);
-  // useInstallMod — apenas para OverwriteModal (será removido quando orquestrador tiver overwrite check)
-  const { showOverwriteModal, pendingMod, confirmOverwrite, cancelOverwrite } = useInstallMod(selectedGame, selectedProfile, addLog, openFomod, loadMods, handleModInstalled, handleBainOpen);
+  const { showFomod, filteredSteps, loading: fomodLoading, error: fomodError, currentStep, installing: fomodInstalling, openFomod, handleTogglePlugin, handleNextStep, handlePrevStep, handleInstall, handleFomodCancel, handleResetSelections } = useFomod(addLog, loadMods, selectedGame, handleModInstalled);
   const { showPreview, setShowPreview, previewImages, previewIndex, previewCurrentData, showReadme, setShowReadme, readmeData, openPreview, openReadme } = useMedia();
   const { activeRightTab, setActiveRightTab, modFiles, iniFiles, selectedIni, setSelectedIni, iniContent, setIniContent, dataFiles, excludedFiles, toggleExcludedFile } = useRightPanel(selectedMod, selectedGame);
   const { plugins, togglePlugin } = usePlugins(selectedGame, selectedProfile, mods);
   const { sorting, sortWarnings, handleSortPlugins } = useSortPlugins(selectedGame, plugins, mods, addLog);
 
-  // FOMOD component toggle state
-  const [fomodComponents, setFomodComponents] = useState<FomodComponent[]>([]);
+  // ── Domain hooks ──
+  const fomod = useFomodComponents({ selectedMod, selectedGame, addLog, setActiveRightTab, allConflicts });
+  const proton = useProtonSetup({ configPrefixPath, selectedGame, configGamePath, configStagingDir, addLog, saveGameConfig, setConfigProtonPath });
+  const health = useHealthCheck({ selectedGame, configGamePath, configProtonPath, setShowGameConfig, setOriginalProtonPath: proton.setOriginalProtonPath });
+  const bain = useBainHandlers({ addLog, loadMods });
+  const launch = useLaunchGame({ selectedGame, selectedProfile: selectedProfile || "", currentGame, addLog });
 
-  // Load FOMOD components when selected mod changes + auto-switch to FOMOD tab
-  useEffect(() => {
-    if (!selectedMod || !selectedGame) {
-      setFomodComponents([]);
-      return;
-    }
-    if (!selectedMod.hasFomod) {
-      setFomodComponents([]);
-      return;
-    }
-    (async () => {
-      try {
-        let components = await window.electron.modsStore.get(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`);
-        if (Array.isArray(components) && components.length > 0) {
-          setFomodComponents(components);
-          setActiveRightTab("fomod");
-          return;
-        }
-        // Auto-capture retroactively
-        if (selectedMod.stagingDir) {
-          const captured = await window.electron.captureFomodComponents(selectedMod.stagingDir);
-          if (captured && captured.length > 0) {
-            await window.electron.modsStore.put(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`, captured);
-            setFomodComponents(captured);
-            setActiveRightTab("fomod");
-            addLog(`Captured ${captured.length} FOMOD component(s) for ${selectedMod.name}`);
-            return;
-          }
-        }
-        setFomodComponents([]);
-      } catch (err) {
-        console.error("[FOMOD] capture error:", err);
-        setFomodComponents([]);
-      }
-    })();
-  }, [selectedMod, selectedGame]);
-
-  // Install Orchestrator — novo sistema de instalação com verificação
+  // ── Install orchestrator ──
   const {
     stage: installStage,
     progress: installProgressOrch,
@@ -184,12 +82,28 @@ export default function ModManager() {
     startInstall: startOrchInstall,
     cancel: cancelOrchInstall,
     dismissResult: dismissOrchResult,
-    stageLabel: installStageLabel,
-    stagePercent: installStagePercent,
-    elapsedTime: installElapsedTime,
-  } = useInstallOrchestrator(selectedGame, selectedProfile, configStagingDir, addLog, loadMods);
+    verifyResult: gameReadinessResult,
+    dismissVerify: dismissGameReadiness,
+    reVerify: reVerifyGameReadiness,
+    pendingOverwrite: orchPendingOverwrite,
+    confirmOverwrite: orchConfirmOverwrite,
+    cancelOverwrite: orchCancelOverwrite,
+  } = useInstallOrchestrator(selectedGame, selectedProfile || "", configStagingDir, addLog, loadMods);
 
-  // Wrapper: abre file dialog → chama orquestrador → abre FOMOD se necessário
+  // ── Action hooks ──
+  const modActions = useModActions({ selectedGame, selectedModIdx, filteredMods, mods, addLog, removeMod, deleteMod, toggleMod, setSelectedModIdx, detectAndShowConflicts });
+  const gameConfigActions = useGameConfigActions({ selectedGame, configGamePath, configStagingDir, configPrefixPath, addLog, saveGameConfig, setSelectedGame, setGames, setConfigGamePath, setConfigStagingDir, setConfigPrefixPath, setShowGameConfig, discoverInstalledGames });
+
+  // ── Derived ──
+  const modsActive = mods.filter(m => m.enabled).length;
+
+  // ── Callbacks ──
+  const handleModInstalled = useCallback((modName: string) => {
+    const currentFiltered = filteredModsRef.current;
+    const idx = currentFiltered.findIndex(m => m.name === modName);
+    if (idx >= 0) setSelectedModIdx(idx);
+  }, []);
+
   const pickAndOrchInstall = useCallback(async () => {
     try {
       const result = await window.electron.showOpenDialog({
@@ -203,7 +117,6 @@ export default function ModManager() {
       if (result.canceled || !result.filePaths.length) return;
       const archivePath = result.filePaths[0];
       const installResult = await startOrchInstall(archivePath);
-      // Se o mod tem FOMOD, abre o wizard de seleção
       if (installResult?.success && installResult.hasFomod) {
         await loadMods();
         openFomod(installResult.stagingDir, archivePath, installResult.modName);
@@ -213,17 +126,12 @@ export default function ModManager() {
     }
   }, [startOrchInstall, addLog, openFomod, loadMods, t]);
 
-  const [showAddProfile, setShowAddProfile] = useState(false);
-  const [showConflictDetails, setShowConflictDetails] = useState(false);
-  const [selectedConflictMod, setSelectedConflictMod] = useState<ModlistEntry | null>(null);
-
   const handleConflictClick = useCallback((mod: ModlistEntry) => {
     setSelectedConflictMod(mod);
     setShowConflictDetails(true);
   }, []);
 
   const handleApplyConflictResolution = useCallback((deselectedMods: string[]) => {
-    // Deselect the mods that were chosen in the conflict modal
     for (const modName of deselectedMods) {
       const idx = mods.findIndex(m => m.name === modName);
       if (idx !== -1 && mods[idx].enabled) {
@@ -234,371 +142,17 @@ export default function ModManager() {
     setSelectedConflictMod(null);
   }, [mods, toggleMod]);
 
-  const searchRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const handleLaunchWrapper = useCallback(() => {
+    if (!selectedGame) { setShowDetectionWizard(true); return; }
+    launch.handleLaunchClick();
+  }, [selectedGame, launch.handleLaunchClick]);
 
-  const anyEnabled = mods.some(m => m.enabled);
-  const modsActive = mods.filter(m => m.enabled).length;
-
-  const handleSaveGameConfig = useCallback(async () => {
-    if (!selectedGame) {
-      const gameName = prompt("Enter game name:") || "";
-      if (!gameName) return;
-      await saveGameConfig(gameName, configGamePath, configStagingDir);
-      setGames(prev => [...prev, { name: gameName, gameId: gameName, path: configGamePath }]);
-      setSelectedGame(gameName);
-    } else {
-      await saveGameConfig(selectedGame, configGamePath, configStagingDir);
-      const g = games.find(x => (x.gameId || x.name) === selectedGame);
-      addLog(`Saved config for ${g?.name || selectedGame}`);
-    }
-    setShowGameConfig(false);
-  }, [selectedGame, configGamePath, configStagingDir, saveGameConfig, setGames, setSelectedGame, addLog, setShowGameConfig]);
-
-  const handleDetectionWizardGame = useCallback(async (gameId: string, gamePath: string) => {
-    const slug = gameId.toLowerCase().replace(/[\s:/\\]+/g, "-").replace(/[^a-z0-9-]/g, "");
-    const homeDir = await window.electron.getHomeDir();
-    const home = homeDir || "/home/" + (process.env.USER || "user");
-    const staging = home + "/Games/Mods/" + slug + "/staging";
-    const prefix = home + "/Games/Prefix/" + slug;
-    setConfigStagingDir(staging);
-    setConfigPrefixPath(prefix);
-    await window.electron.saveGameConfig(gameId, {
-      gamePath,
-      stagingDir: staging,
-      protonPrefix: prefix,
-      protonVersion: "",
-    });
-    setSelectedGame(gameId);
-    setConfigGamePath(gamePath);
-    addLog(`Jogo detectado: ${gameId} em ${gamePath}`);
-  }, [setSelectedGame, setConfigGamePath, setConfigStagingDir, setConfigPrefixPath, addLog]);
-
-  useEffect(() => {
-    if (!selectedGame || !configGamePath) return;
-    let cancelled = false;
-    (async () => {
-      setHealthBanner({ status: "loading", message: "Verificando prefixo..." });
-      try {
-        const result = await window.electron.prefixHealthCheck(selectedGame);
-        if (cancelled) return;
-        if (result.ok && result.data) {
-          setHealthReport({ depsMissing: result.data.depsMissing || [] });
-          if (result.data.valid) {
-            setHealthBanner({ status: "valid", message: "Prefixo configurado corretamente" });
-          } else if (result.data.errors.length > 0) {
-            setHealthBanner({ status: "error", message: `Problemas: ${result.data.errors.join("; ")}` });
-          } else {
-            setHealthBanner({ status: "issues", message: "Algumas configurações precisam de atenção" });
-          }
-        } else {
-          setHealthBanner({ status: "error", message: result.error || "Falha ao verificar prefixo" });
-        }
-      } catch {
-        if (!cancelled) setHealthBanner({ status: "error", message: "Erro ao verificar saúde do prefixo" });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [selectedGame, configGamePath]);
-
-  useEffect(() => {
-    if (healthBanner?.status !== "valid") return;
-    const timer = setTimeout(() => setHealthBanner(null), 4000);
-    return () => clearTimeout(timer);
-  }, [healthBanner]);
-
-  const handleDiscover = useCallback(async () => {
-    const count = await discoverInstalledGames();
-    if (count > 0) addLog(`Discovered ${count} game(s)`);
-  }, [discoverInstalledGames, addLog]);
-
-  useEffect(() => {
-    if (showProtonSelector && selectedGame) {
-      window.electron.getInstalledProtonVersions().then(setInstalledProtons).catch(() => setInstalledProtons([]));
-    }
-  }, [showProtonSelector, selectedGame]);
-
-  const setupProton = useCallback(async (gameName: string, protonPath: string) => {
-    setPrefixSetupGameName(gameName);
-    setPrefixSetupLog([`▶ Configurando ambiente Proton para ${gameName}...`]);
-    setPrefixSetupResult(null);
-    setPrefixSetupVisible(true);
-    const cleanup = window.electron.onProtonSetupLog((line: string) => {
-      setPrefixSetupLog(prev => [...prev, line]);
-    });
-    try {
-      const prefixPath = configPrefixPath || "";
-      const result = await window.electron.setupProtonEnvironment(gameName, protonPath, prefixPath, true);
-      if (result.success) {
-        setPrefixSetupLog(prev => [...prev, "", "✅ Ambiente Proton configurado com sucesso!"]);
-        setPrefixSetupResult({ ok: true, msg: "✅ Configuração concluída!" });
-      } else {
-        setPrefixSetupLog(prev => [...prev, "", "❌ Configuração do Proton falhou"]);
-        setPrefixSetupResult({ ok: false, msg: "❌ Configuração do Proton falhou" });
-      }
-    } catch (err) {
-      setPrefixSetupLog(prev => [...prev, `❌ Erro: ${String(err)}`]);
-      setPrefixSetupResult({ ok: false, msg: `Erro: ${String(err)}` });
-    } finally {
-      cleanup();
-    }
-  }, [configPrefixPath]);
-
-  const saveGlobalProton = useCallback(async (protonPath: string) => {
-    await window.electron.modsStore.put("proton_binary", protonPath);
-    addLog(`Proton global salvo: ${protonPath}`);
-  }, [addLog]);
-
-  const handleProtonSelect = useCallback(async (protonPath: string) => {
-    if (!selectedGame) return;
-    setConfigProtonPath(protonPath);
-    await saveGameConfig(selectedGame, configGamePath, configStagingDir);
-    await saveGlobalProton(protonPath);
-    addLog(`Proton salvo na config: ${protonPath}`);
-    // Now prepare the environment (clean prefix + recreate + apply configs)
-    await setupProton(selectedGame, protonPath);
-  }, [selectedGame, configGamePath, configStagingDir, saveGameConfig, setConfigProtonPath, addLog, setupProton, saveGlobalProton]);
-
-  const handleDownloadAndSelect = useCallback(async (fork: ProtonFork) => {
-    if (!selectedGame) return;
-
-    const protonPath = await window.electron.downloadProton(fork);
-    if (!protonPath) {
-      addLog(`Falha ao baixar ${fork.name} ${fork.version}`);
-      return;
-    }
-
-    setConfigProtonPath(protonPath);
-    await saveGameConfig(selectedGame, configGamePath, configStagingDir);
-    await saveGlobalProton(protonPath);
-    addLog(`Proton baixado: ${protonPath}`);
-
-    const info = await window.electron.getModGameInfo(selectedGame);
-    const steamAppId = info?.steamAppId;
-    if (steamAppId) {
-      const protonName = protonPath.replace(/\/+$/, '').split(/[\\/]/).pop() || '';
-      if (protonName) {
-        await window.electron.setSteamGameProton(steamAppId, protonName);
-        addLog(`Steam configurado: ${selectedGame} → ${protonName}`);
-      }
-    }
-
-    // Now prepare the environment (clean prefix + recreate + apply configs)
-    await setupProton(selectedGame, protonPath);
-  }, [selectedGame, configGamePath, configStagingDir, saveGameConfig, setConfigProtonPath, addLog, setupProton, saveGlobalProton]);
-
-  const handleSwitchProton = useCallback(async (newProtonPath: string) => {
-    if (!selectedGame) return;
-    addLog(`Iniciando troca de Proton: ${configProtonPath} → ${newProtonPath}`);
-    const result = await window.electron.switchProton(selectedGame, newProtonPath);
-    if (result.ok) {
-      setConfigProtonPath(newProtonPath);
-      setOriginalProtonPath(newProtonPath);
-      addLog(`Proton trocado com sucesso! Saves restaurados: ${result.data?.savesRestored ?? 0}`);
-    } else {
-      addLog(`Falha na troca: ${result.error}`);
-    }
-    return result;
-  }, [selectedGame, configProtonPath, setConfigProtonPath, addLog]);
-
-  const handleLaunchClick = useCallback(() => {
-    if (!selectedGame) return;
-    const displayName = currentGame?.name || selectedGame;
-    setLaunchSteps([
-      { key: "detect", label: "Detectando jogo", status: "working" },
-      { key: "proton", label: "Verificando Proton", status: "waiting" },
-      { key: "prefix", label: "Verificando prefixo", status: "waiting" },
-      { key: "dll", label: "Configurando DLL Overrides", status: "waiting" },
-      { key: "registry", label: "Registro do jogo", status: "waiting" },
-      { key: "deploy", label: "Implantando mods", status: "waiting" },
-      { key: "skse", label: "Verificando SKSE", status: "waiting" },
-      { key: "launch", label: "Iniciando jogo", status: "waiting" },
-    ]);
-    setShowLaunchOverlay(true);
-
-    window.electron.modPlayGame(selectedGame, selectedProfile).then(result => {
-      if (result.success) {
-        addLog(`✅ ${displayName} iniciado via ${result.method}`);
-        setTimeout(() => {
-          setShowLaunchOverlay(false);
-          setLaunchSteps([]);
-        }, 2000);
-      } else {
-        setLaunchSteps(prev => {
-          const failed = prev.find(s => s.status === "working");
-          if (failed) {
-            return prev.map(s => s.key === failed.key ? { ...s, status: "error" as const, message: result.error } : s);
-          }
-          return prev;
-        });
-        setTimeout(() => {
-          setShowLaunchOverlay(false);
-          setLaunchSteps([]);
-          setPlayError({
-            error: result.error || "Falha ao iniciar o jogo",
-            failedStep: result.failedStep,
-          });
-        }, 1500);
-      }
-    }).catch(e => {
-      addLog(`❌ Erro: ${e}`);
-      setTimeout(() => {
-        setShowLaunchOverlay(false);
-        setLaunchSteps([]);
-        setPlayError({
-          error: String(e),
-          failedStep: "unknown",
-        });
-      }, 1500);
-    });
-  }, [selectedGame, selectedProfile, currentGame, addLog]);
-
-  const handleRemoveMod = useCallback(() => {
-    if (selectedModIdx === null || !filteredMods[selectedModIdx]) return;
-    const modName = filteredMods[selectedModIdx].name;
-    if (!window.confirm(`Remove "${modName}"?`)) return;
-    addLog(`Removing mod: ${modName}`);
-    removeMod(modName);
-    setSelectedModIdx(null);
-    addLog(`Removed: ${modName}. Re-deploy to apply.`);
-  }, [selectedModIdx, filteredMods, addLog, removeMod, setSelectedModIdx]);
-
-  const handleDeleteMod = useCallback((modName: string) => {
-    if (!window.confirm(`Permanently delete "${modName}"? This will remove staging files.`)) return;
-    addLog(`Deleting mod: ${modName}`);
-    deleteMod(modName);
-    setSelectedModIdx(null);
-    addLog(`Deleted: ${modName}.`);
-  }, [addLog, deleteMod]);
-
-  const handleEslify = useCallback(async (modName: string) => {
-    if (!selectedGame) return;
-    const mod = mods.find(m => m.name === modName);
-    if (!mod?.stagingDir) {
-      addLog(`Cannot ESLify: no staging dir for ${modName}`);
-      return;
-    }
-    const espPlugins = mod.plugins?.filter(p => p.toLowerCase().endsWith(".esp")) || [];
-    if (espPlugins.length === 0) {
-      addLog(`${modName}: no .esp plugins to ESLify`);
-      return;
-    }
-    addLog(`ESLifying ${modName}...`);
-    for (const plugin of espPlugins) {
-      const pluginPath = `${mod.stagingDir}/${plugin}`;
-      try {
-        const result = await window.electron.eslify(pluginPath, false, true);
-        if (result.success) {
-          addLog(`  ✅ ${plugin} → ESL (safe: ${result.safe})`);
-        } else {
-          addLog(`  ❌ ${plugin}: ${result.error || "failed"}`);
-        }
-      } catch (e) {
-        addLog(`  ❌ ${plugin}: ${e}`);
-      }
-    }
-  }, [selectedGame, mods, addLog]);
-
-  const handleDeployClick = useCallback(async () => {
-    detectAndShowConflicts(mods.filter(m => m.enabled && !m.isSeparator).map((m, i) => ({ name: m.name, priority: m.priority ?? i })));
-  }, [mods, detectAndShowConflicts]);
-
-  // Compute FOMOD component conflicts using normalized deploy paths
-  const fomodConflicts = useMemo(() => {
-    if (!selectedMod || fomodComponents.length === 0 || allConflicts?.conflicts?.length === 0) return [];
-    const modConflicts = allConflicts?.conflicts?.filter(c =>
-      c.mods.some(m => m.name === selectedMod.name)
-    );
-    if (!modConflicts || modConflicts.length === 0) return [];
-
-    const result: { modName: string; files: string[] }[] = [];
-
-    for (const conflict of modConflicts) {
-      const otherMod = conflict.mods.find(m => m.name !== selectedMod.name);
-      if (!otherMod) continue;
-
-      const conflictNorm = conflict.relativePath;
-      const matchingComponentFiles: string[] = [];
-
-      for (const component of fomodComponents) {
-        for (const file of component.files) {
-          const fileNorm = normalizeToDeployPath(file.toLowerCase());
-          if (fileNorm === conflictNorm) {
-            matchingComponentFiles.push(file);
-          }
-        }
-      }
-
-      if (matchingComponentFiles.length > 0) {
-        let existing = result.find(r => r.modName === otherMod.name);
-        if (existing) {
-          for (const f of matchingComponentFiles) {
-            if (!existing.files.includes(f)) existing.files.push(f);
-          }
-        } else {
-          result.push({ modName: otherMod.name, files: matchingComponentFiles });
-        }
-      }
-    }
-    return result;
-  }, [selectedMod, fomodComponents, allConflicts]);
+  const handleProtonConfigOpen = useCallback((mode: "install" | "switch") => {
+    setProtonSelectorMode(mode);
+    setShowProtonSelector(true);
+  }, []);
 
   const { onDividerMouseDown } = useSplitPane(containerRef);
-
-  const handleToggleFomodComponent = useCallback(async (componentName: string) => {
-    if (!selectedMod || !selectedGame) return;
-    const component = fomodComponents.find(c => c.name === componentName);
-    if (!component) return;
-
-    const wasEnabled = component.enabled;
-    const newEnabled = !wasEnabled;
-
-    // Toggle the component
-    const newComponents = fomodComponents.map(c =>
-      c.name === componentName ? { ...c, enabled: newEnabled } : c
-    );
-    setFomodComponents(newComponents);
-
-    // Persist to storage
-    await window.electron.modsStore.put(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`, newComponents);
-
-    // Toggle files in staging
-    if (selectedMod.stagingDir) {
-      try {
-        await window.electron.toggleFomodComponent(
-          selectedMod.stagingDir,
-          component.files,
-          newEnabled,
-          newEnabled ? component.sourceFiles : undefined,
-        );
-        addLog(`${newEnabled ? "Enabled" : "Disabled"} FOMOD component: ${componentName}`);
-      } catch (err) {
-        addLog(`Failed to toggle ${componentName}: ${err}`);
-      }
-    }
-  }, [selectedMod, selectedGame, fomodComponents, addLog]);
-
-  const handleReconfigureFomod = useCallback(() => {
-    if (!selectedMod?.stagingDir || !selectedMod.hasFomod) return;
-    openFomod(selectedMod.stagingDir, "", selectedMod.name);
-  }, [selectedMod, openFomod]);
-
-  const handleDetectFomodComponents = useCallback(async () => {
-    if (!selectedMod?.stagingDir || !selectedGame) return;
-    try {
-      const captured = await window.electron.captureFomodComponents(selectedMod.stagingDir);
-      if (captured && captured.length > 0) {
-        await window.electron.modsStore.put(`game:${selectedGame}:mod:${selectedMod.name}:fomodComponents`, captured);
-        setFomodComponents(captured);
-        addLog(`Detected ${captured.length} FOMOD component(s) for ${selectedMod.name}`);
-      } else {
-        addLog(`No FOMOD components found for ${selectedMod.name}`);
-      }
-    } catch (err) {
-      console.error("[FOMOD] manual detect error:", err);
-      addLog(`Error detecting FOMOD components: ${String(err)}`);
-    }
-  }, [selectedMod, selectedGame, addLog]);
 
   useModManagerShortcuts({
     selectedModIdx,
@@ -609,39 +163,20 @@ export default function ModManager() {
     onDeselect: () => setSelectedModIdx(null),
   });
 
+  // ── JSX ──
   return (
     <div className="mod-manager">
-      {showLaunchOverlay && (
+      {launch.showLaunchOverlay && (
         <LaunchOverlay
           gameName={currentGame?.name || selectedGame}
-          steps={launchSteps}
-          onCancel={() => setShowLaunchOverlay(false)}
+          steps={launch.launchSteps}
+          onCancel={() => { window.electron.modKillGame(); launch.setShowLaunchOverlay(false); }}
         />
       )}
 
-      <PlayErrorModal
-        open={!!playError}
-        error={playError?.error || ""}
-        gameId={selectedGame || ""}
-        gamePath={configGamePath}
-        prefixPath={configPrefixPath}
-        protonPath={configProtonPath}
-        failedStep={playError?.failedStep}
-        onClose={() => setPlayError(null)}
-      />
+      <PlayErrorModal open={!!launch.playError} error={launch.playError?.error || ""} gameId={selectedGame || ""} gamePath={configGamePath} prefixPath={configPrefixPath} protonPath={configProtonPath} failedStep={launch.playError?.failedStep} onClose={() => launch.setPlayError(null)} />
 
-      <ProtonRecommendationModal
-        visible={showProtonSelector}
-        gameId={selectedGame!}
-        gameTitle={currentGame?.name || selectedGame || ""}
-        installedProtons={installedProtons}
-        mode={protonSelectorMode}
-        currentProtonPath={configProtonPath}
-        onClose={() => setShowProtonSelector(false)}
-        onSelect={handleProtonSelect}
-        onSwitchProton={handleSwitchProton}
-        onDownloadAndSelect={handleDownloadAndSelect}
-      />
+      <ProtonRecommendationModal visible={showProtonSelector} gameId={selectedGame!} gameTitle={currentGame?.name || selectedGame || ""} installedProtons={installedProtons} mode={protonSelectorMode} currentProtonPath={configProtonPath} onClose={() => setShowProtonSelector(false)} onSelect={proton.handleProtonSelect} onSwitchProton={proton.handleSwitchProton} onDownloadAndSelect={proton.handleDownloadAndSelect} />
 
       <ModManagerTabs activeTab={activeTab} onChange={setActiveTab} />
 
@@ -649,253 +184,50 @@ export default function ModManager() {
         <>
           <div className="mod-manager__topbar">
             <div className="mod-manager__topbar-left">
-              <GamePresetBar
-                games={games}
-                selectedGame={selectedGame}
-                profiles={profiles}
-                selectedProfile={selectedProfile}
-                onGameChange={(g) => { setSelectedGame(g); setSelectedModIdx(null); }}
-                onProfileChange={setSelectedProfile}
-                onGameConfig={() => { setOriginalProtonPath(configProtonPath); setShowGameConfig(true); }}
-                onAddProfile={() => setShowAddProfile(true)}
-                onDetectGames={() => setShowDetectionWizard(true)}
-              />
+              <GamePresetBar games={games} selectedGame={selectedGame} profiles={profiles} selectedProfile={selectedProfile} onGameChange={(g) => { setSelectedGame(g); setSelectedModIdx(null); }} onProfileChange={setSelectedProfile} onGameConfig={() => { proton.setOriginalProtonPath(configProtonPath); setShowGameConfig(true); }} onAddProfile={() => setShowAddProfile(true)} onDetectGames={() => setShowDetectionWizard(true)} />
             </div>
-            <ModManagerTopBar
-              deploying={deploying}
-              installing={isOrchInstalling}
-              launching={isLaunching}
-              hasGame={!!selectedGame}
-              selectedModIdx={selectedModIdx}
-              depsMissing={healthReport?.depsMissing || []}
-              t={t}
-              onInstallMod={() => pickAndOrchInstall()}
-              onDeploy={handleDeployClick}
-              onLaunchGame={handleLaunchClick}
-              onProtonConfig={() => { setProtonSelectorMode("install"); setShowProtonSelector(true); }}
-              onRefresh={() => { loadMods(); addLog(t("refresh")); }}
-              onRemoveMod={handleRemoveMod}
-            />
+            <ModManagerTopBar deploying={deploying} installing={isOrchInstalling} launching={launch.isLaunching} hasGame={!!selectedGame} selectedModIdx={selectedModIdx} depsMissing={health.healthReport?.depsMissing || []} t={t} onInstallMod={() => pickAndOrchInstall()} onDeploy={modActions.handleDeployClick} onLaunchGame={handleLaunchWrapper} onProtonConfig={() => handleProtonConfigOpen("install")} onRefresh={() => { loadMods(); addLog(t("refresh")); }} onRemoveMod={modActions.handleRemoveMod} />
           </div>
 
-          {healthBanner && healthBanner.status !== "loading" && (
-            <div className={`mod-manager__health-banner mod-manager__health-banner--${healthBanner.status}`}>
-              {healthBanner.status === "valid" && "✅ "}
-              {healthBanner.status === "issues" && "⚠️ "}
-              {healthBanner.status === "error" && "❌ "}
-              {healthBanner.message}
-              {healthBanner.status !== "valid" && (
-                <button className="mod-manager__health-banner-fix" onClick={() => { setOriginalProtonPath(configProtonPath); setShowGameConfig(true); }}>
-                  Configurar
-                </button>
-              )}
-            </div>
-          )}
-          <GameDetectionWizard
-            open={showDetectionWizard}
-            onClose={() => setShowDetectionWizard(false)}
-            onGameDetected={handleDetectionWizardGame}
-            selectedGameId={selectedGame || undefined}
-          />
+          {health.healthBanner && <HealthBanner status={health.healthBanner.status} message={health.healthBanner.message} onConfigure={health.openConfigForFix} />}
+
+          <GameDetectionWizard open={showDetectionWizard} onClose={() => setShowDetectionWizard(false)} onGameDetected={gameConfigActions.handleDetectionWizardGame} selectedGameId={selectedGame || undefined} />
+
           <div className="mod-manager__main" ref={containerRef}>
             <div className="mod-manager__left">
-              <ModListPanel
-                mods={filteredMods}
-                selectedMod={selectedMod}
-                searchQuery={searchQuery}
-                mediaCache={mediaMap}
-                loading={loading}
-                searchRef={searchRef}
-                conflicts={conflictSet}
-                conflictDetails={conflictDetails}
-                onToggle={(idx) => toggleMod(idx)}
-                onSelect={(mod) => {
-                  if (!mod) { setSelectedModIdx(null); return; }
-                  const currentFiltered = filteredModsRef.current;
-                  const idx = currentFiltered.findIndex(m => m.name === mod.name);
-                  if (idx === -1) return;
-                  setSelectedModIdx(prev => prev === idx ? null : idx);
-                }}
-                onSearch={setSearchQuery}
-                onReorder={(from, to) => reorderMods(from, to)}
-                onPreview={(mod) => openPreview(mod.stagingDir)}
-                onReadme={(mod) => openReadme(mod.stagingDir)}
-                onLock={(idx) => toggleLock(idx)}
-                onAddSeparator={(idx) => addSeparator(idx)}
-                onRemoveMod={(name) => { removeMod(name); setSelectedModIdx(null); }}
-                onDeleteMod={handleDeleteMod}
-                onEslify={handleEslify}
-                onReconfigureFomod={(modName) => {
-                  const mod = mods.find(m => m.name === modName);
-                  if (mod?.stagingDir && mod.hasFomod) {
-                    openFomod(mod.stagingDir, "", mod.name);
-                  }
-                }}
-                onConflictClick={handleConflictClick}
-              />
+              <ModListPanel mods={filteredMods} selectedMod={selectedMod} searchQuery={searchQuery} mediaCache={mediaMap} loading={loading} searchRef={searchRef} conflicts={conflictSet} conflictDetails={conflictDetails} onToggle={(idx) => toggleMod(idx)} onSelect={(mod) => { if (!mod) { setSelectedModIdx(null); return; } const idx = filteredModsRef.current.findIndex(m => m.name === mod.name); if (idx === -1) return; setSelectedModIdx(prev => prev === idx ? null : idx); }} onSearch={setSearchQuery} onReorder={(from, to) => reorderMods(from, to)} onPreview={(mod) => openPreview(mod.stagingDir)} onReadme={(mod) => openReadme(mod.stagingDir)} onLock={(idx) => toggleLock(idx)} onAddSeparator={(idx) => addSeparator(idx)} onRemoveMod={(name) => { removeMod(name); setSelectedModIdx(null); }} onDeleteMod={modActions.handleDeleteMod} onEslify={modActions.handleEslify} onReconfigureFomod={(modName) => { const mod = mods.find(m => m.name === modName); if (mod?.stagingDir && mod.hasFomod) openFomod(mod.stagingDir, "", mod.name); }} onConflictClick={handleConflictClick} />
             </div>
-
             <div className="mod-manager__divider" onMouseDown={onDividerMouseDown} />
-
             <div className="mod-manager__right">
-              <RightPanel
-                selectedMod={selectedMod}
-                plugins={plugins}
-                modFiles={modFiles ?? []}
-                excludedFiles={excludedFiles}
-                dataFolderEntries={dataFiles}
-                iniFiles={iniFiles}
-                selectedIni={selectedIni}
-                iniContent={iniContent}
-                activeRightTab={activeRightTab}
-                onTabChange={setActiveRightTab}
-                onTogglePlugin={togglePlugin}
-                onToggleExclude={toggleExcludedFile}
-                onIniSelect={(path, content) => { setSelectedIni(path); setIniContent(content); }}
-                onIniChange={setIniContent}
-                fomodComponents={fomodComponents}
-                onToggleFomodComponent={handleToggleFomodComponent}
-                onReconfigureFomod={handleReconfigureFomod}
-                onDetectFomodComponents={handleDetectFomodComponents}
-                fomodConflicts={fomodConflicts}
-              />
+              <RightPanel selectedMod={selectedMod} plugins={plugins} modFiles={modFiles ?? []} excludedFiles={excludedFiles} dataFolderEntries={dataFiles} iniFiles={iniFiles} selectedIni={selectedIni} iniContent={iniContent} activeRightTab={activeRightTab} onTabChange={setActiveRightTab} onTogglePlugin={togglePlugin} onToggleExclude={toggleExcludedFile} onIniSelect={(path, content) => { setSelectedIni(path); setIniContent(content); }} onIniChange={setIniContent} fomodComponents={fomod.fomodComponents} onToggleFomodComponent={fomod.handleToggleFomodComponent} onReconfigureFomod={() => { if (selectedMod?.stagingDir && selectedMod.hasFomod) openFomod(selectedMod.stagingDir, "", selectedMod.name); }} onDetectFomodComponents={fomod.handleDetectFomodComponents} fomodConflicts={fomod.fomodConflicts} />
             </div>
           </div>
 
           <StatusBar log={log} modsTotal={mods.length} modsActive={modsActive} />
-          {sortWarnings.length > 0 && (
-            <div className="mod-manager__sort-warnings">
-              {sortWarnings.map((w, i) => <p key={i} className="mod-manager__sort-warning">{w}</p>)}
-            </div>
-          )}
+          {sortWarnings.length > 0 && <div className="mod-manager__sort-warnings">{sortWarnings.map((w, i) => <p key={i} className="mod-manager__sort-warning">{w}</p>)}</div>}
 
-          <OverwriteModal
-            open={showOverwriteModal}
-            modName={pendingMod?.modName}
-            onConfirm={confirmOverwrite}
-            onCancel={cancelOverwrite}
-          />
-
-          <DeployResultModal
-            open={deployResult !== null}
-            result={deployResult}
-            onClose={() => setDeployResult(null)}
-          />
+          <OverwriteModal open={orchPendingOverwrite !== null} modName={orchPendingOverwrite?.modName} onConfirm={orchConfirmOverwrite} onCancel={orchCancelOverwrite} />
+          <GameReadinessModal open={gameReadinessResult !== null && !gameReadinessResult?.ok} result={gameReadinessResult} gameId={selectedGame} onClose={dismissGameReadiness} onRetry={reVerifyGameReadiness} />
+          <DeployResultModal open={deployResult !== null} result={deployResult} onClose={() => setDeployResult(null)} />
 
           <Modal visible={showGameConfig} title={t("configure_game_title", { name: currentGame?.name || selectedGame })} onClose={() => setShowGameConfig(false)}>
-            <GameConfigPanel
-              open={showGameConfig}
-              selectedGame={selectedGame}
-              configGamePath={configGamePath}
-              configStagingDir={configStagingDir}
-              configPrefixPath={configPrefixPath}
-              configProtonPath={configProtonPath}
-              originalProtonPath={originalProtonPath}
-              onGamePathChange={setConfigGamePath}
-              onStagingDirChange={setConfigStagingDir}
-              onPrefixPathChange={setConfigPrefixPath}
-              onProtonPathChange={setConfigProtonPath}
-              onOpenProtonSwitch={async () => {
-                await handleSaveGameConfig();
-                setProtonSelectorMode("switch");
-                setShowGameConfig(false);
-                setShowProtonSelector(true);
-              }}
-              onSave={handleSaveGameConfig}
-              onCancel={() => setShowGameConfig(false)}
-              t={t}
-            />
+            <GameConfigPanel open={showGameConfig} selectedGame={selectedGame} configGamePath={configGamePath} configStagingDir={configStagingDir} configPrefixPath={configPrefixPath} configProtonPath={configProtonPath} originalProtonPath={proton.originalProtonPath} onGamePathChange={setConfigGamePath} onStagingDirChange={setConfigStagingDir} onPrefixPathChange={setConfigPrefixPath} onProtonPathChange={setConfigProtonPath} onOpenProtonSwitch={async () => { await gameConfigActions.handleSaveGameConfig(); handleProtonConfigOpen("switch"); }} onSave={gameConfigActions.handleSaveGameConfig} onCancel={() => setShowGameConfig(false)} t={t} />
           </Modal>
 
-        <AddProfileModal open={showAddProfile} onConfirm={async (name) => { await createProfile(name); setShowAddProfile(false); }} onClose={() => setShowAddProfile(false)} />
+          <AddProfileModal open={showAddProfile} onConfirm={async (name) => { await createProfile(name); setShowAddProfile(false); }} onClose={() => setShowAddProfile(false)} />
+          <ConflictsModal open={showConflicts} conflicts={conflicts.map(c => ({ file: c.relativePath, mods: c.mods.map(m => m.name) }))} onAutoResolve={() => {}} onClose={() => setShowConflicts(false)} />
+          <ConflictDetailsModal open={showConflictDetails} modName={selectedConflictMod?.name ?? ""} conflicts={selectedConflictMod ? (allConflicts?.conflicts ?? []).filter(c => c.mods.some(m => m.name === selectedConflictMod.name)) : []} onApply={handleApplyConflictResolution} onClose={() => { setShowConflictDetails(false); setSelectedConflictMod(null); }} />
+          <DeployConfirmModal open={showDeployConfirm} isDeploying={deploying} deployResult={deployResult ? { success: deployResult.success, filesCopied: deployResult.log.length, log: deployResult.log } : null} gamePath={configGamePath} gameId={selectedGame} onConfirm={(_backup, bsaInvalidate) => { setShowDeployConfirm(false); handleDeploy(bsaInvalidate); }} onClose={() => setShowDeployConfirm(false)} />
 
-        <ConflictsModal open={showConflicts} conflicts={conflicts.map(c => ({ file: c.relativePath, mods: c.mods.map(m => m.name) }))} onAutoResolve={() => {}} onClose={() => setShowConflicts(false)} />
+          <FomodDialog open={showFomod} loading={fomodLoading} steps={filteredSteps ?? []} currentStep={currentStep} installing={fomodInstalling} error={fomodError} onTogglePlugin={handleTogglePlugin} onNextStep={handleNextStep} onPrevStep={handlePrevStep} onInstall={handleInstall} onCancel={handleFomodCancel} onResetSelections={handleResetSelections} />
+          <BainDialog open={bain.bainVisible} loading={bain.bainLoading} packages={bain.bainPackages} selected={bain.bainSelected} installing={bain.bainInstalling} error={bain.bainError} onToggle={bain.handleBainToggle} onInstall={bain.handleBainInstall} onCancel={() => bain.setBainVisible(false)} />
 
-        <ConflictDetailsModal
-          open={showConflictDetails}
-          modName={selectedConflictMod?.name ?? ""}
-          conflicts={selectedConflictMod ? (allConflicts?.conflicts ?? []).filter(c => c.mods.some(m => m.name === selectedConflictMod.name)) : []}
-          onApply={handleApplyConflictResolution}
-          onClose={() => { setShowConflictDetails(false); setSelectedConflictMod(null); }}
-        />
+          <InstallProgressOverlay stage={installStage} progress={installProgressOrch} canCancel={canCancelInstall} onCancel={cancelOrchInstall} />
+          {installResultOrch && <InstallResultOverlay result={installResultOrch} onDismiss={dismissOrchResult} />}
 
-        <DeployConfirmModal open={showDeployConfirm} isDeploying={deploying} deployResult={deployResult ? { success: deployResult.success, filesCopied: deployResult.log.length, log: deployResult.log } : null} gamePath={configGamePath} gameId={selectedGame} onConfirm={(_backup, bsaInvalidate) => { setShowDeployConfirm(false); handleDeploy(bsaInvalidate); }} onClose={() => setShowDeployConfirm(false)} />
-
-        <FomodDialog
-          open={showFomod}
-          loading={fomodLoading}
-          steps={filteredSteps ?? []}
-          currentStep={currentStep}
-          installing={installing}
-          error={fomodError}
-          onTogglePlugin={handleTogglePlugin}
-          onNextStep={handleNextStep}
-          onPrevStep={handlePrevStep}
-          onInstall={handleInstall}
-          onCancel={handleFomodCancel}
-          onResetSelections={handleResetSelections}
-        />
-
-        <BainDialog
-          open={bainVisible}
-          loading={bainLoading}
-          packages={bainPackages}
-          selected={bainSelected}
-          installing={bainInstalling}
-          error={bainError}
-          onToggle={handleBainToggle}
-          onInstall={handleBainInstall}
-          onCancel={() => setBainVisible(false)}
-        />
-
-        {/* Novo overlay de instalação com orquestrador */}
-        <InstallProgressOverlay
-          stage={installStage}
-          progress={installProgressOrch}
-          canCancel={canCancelInstall}
-          onCancel={cancelOrchInstall}
-        />
-
-        {/* Overlay de resultado */}
-        {installResultOrch && (
-          <div className="install-overlay">
-            <div className="install-overlay__box">
-              <p className={`install-overlay__title ${installResultOrch.success ? "install-overlay__title--ok" : "install-overlay__title--err"}`}>
-                {installResultOrch.success ? `✓ ${t("install_complete")}` : `✗ ${t("install_error")}`}
-              </p>
-              <p className="install-overlay__message">
-                {installResultOrch.success
-                  ? `"${installResultOrch.modName}" ${t("install_complete").toLowerCase()}.`
-                  : installResultOrch.error}
-              </p>
-              {installResultOrch.success && (
-                <p className="install-overlay__details">
-                  {installResultOrch.extractedFiles.length} {t("files")}
-                  {installResultOrch.verified && ` • ${t("verified")}`}
-                  {installResultOrch.plugins.length > 0 && ` • ${installResultOrch.plugins.length} plugins`}
-                </p>
-              )}
-              <button
-                className="install-overlay__btn"
-                onClick={dismissOrchResult}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        )}
-
-        <PreviewModal open={showPreview} imageUrl={previewCurrentData} modName={previewImages[previewIndex]?.name} onClose={() => setShowPreview(false)} />
-
-        <ReadmeModal open={showReadme} content={readmeData} modName={selectedMod?.name} onClose={() => setShowReadme(false)} />
-
-        <PrefixSetupModal
-          visible={prefixSetupVisible}
-          gameName={prefixSetupGameName}
-          log={prefixSetupLog}
-          result={prefixSetupResult}
-          onClose={() => setPrefixSetupVisible(false)}
-        />
+          <PreviewModal open={showPreview} imageUrl={previewCurrentData} modName={previewImages[previewIndex]?.name} onClose={() => setShowPreview(false)} />
+          <ReadmeModal open={showReadme} content={readmeData} modName={selectedMod?.name} onClose={() => setShowReadme(false)} />
+          <PrefixSetupModal visible={proton.prefixSetupVisible} gameName={proton.prefixSetupGameName} log={proton.prefixSetupLog} result={proton.prefixSetupResult} onClose={() => proton.setPrefixSetupVisible(false)} />
         </>
       )}
 

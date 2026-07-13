@@ -1,5 +1,6 @@
 import { registerEvent } from "@main/events/register-event";
 import { playGame } from "./play-game";
+import { killGameProcess } from "./steps/07-launch";
 import type { SendProgress } from "./types";
 import { logEvent, logError } from "./activity-logger";
 
@@ -20,6 +21,10 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
     logError(gameId, "ipc_modPlayGame", msg);
     throw err;
   }
+});
+
+registerEvent("modKillGame", async () => {
+  return killGameProcess();
 });
 
 /**

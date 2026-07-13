@@ -126,21 +126,6 @@ export function applyStripPrefix(
 }
 
 /**
- * Detecta se um mod tem FOMOD
- */
-export function hasFomod(modDir: string): boolean {
-  const fomodNames = ["fomod", "Fomod", "FOMOD"];
-  for (const name of fomodNames) {
-    const fomodDir = path.join(modDir, name);
-    if (fs.existsSync(fomodDir)) {
-      const moduleConfig = path.join(fomodDir, "ModuleConfig.xml");
-      if (fs.existsSync(moduleConfig)) return true;
-    }
-  }
-  return false;
-}
-
-/**
  * Detecta se um mod tem BAIN
  */
 export function hasBain(modDir: string): boolean {
@@ -155,68 +140,4 @@ export function hasBain(modDir: string): boolean {
     }
   }
   return false;
-}
-
-/**
- * Detecta se um mod é SKSE
- */
-export function isSkseMod(modDir: string): boolean {
-  // Verificar por SKSE/Plugins ou scripts que contenham SKSE
-  const skseDir = path.join(modDir, "SKSE");
-  if (fs.existsSync(skseDir)) return true;
-
-  const scriptsDir = path.join(modDir, "Scripts");
-  if (fs.existsSync(scriptsDir)) {
-    const files = fs.readdirSync(scriptsDir);
-    for (const file of files) {
-      if (file.toLowerCase().includes("skse")) return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Detecta se um mod é ENB
- */
-export function isEnbMod(modDir: string): boolean {
-  const items = fs.readdirSync(modDir, { withFileTypes: true });
-  for (const item of items) {
-    if (item.name.toLowerCase() === "enbseries") return true;
-    if (item.name.toLowerCase() === "enblocal.ini") return true;
-    if (item.name.toLowerCase().startsWith("d3d9")) return true;
-  }
-  return false;
-}
-
-/**
- * Detecta tipo do mod
- */
-export function detectModType(
-  modDir: string
-): "fomod" | "bain" | "skse" | "enb" | "root" | "data" | "unknown" {
-  if (hasFomod(modDir)) return "fomod";
-  if (hasBain(modDir)) return "bain";
-  if (isSkseMod(modDir)) return "skse";
-  if (isEnbMod(modDir)) return "enb";
-
-  // Verificar se tem arquivos na raiz (root mod)
-  const items = fs.readdirSync(modDir, { withFileTypes: true });
-  const hasRootFiles = items.some(i =>
-    i.isFile() && (
-      i.name.endsWith(".dll") ||
-      i.name.endsWith(".asi") ||
-      i.name.toLowerCase() === "enblocal.ini"
-    )
-  );
-  if (hasRootFiles) return "root";
-
-  // Verificar se tem pastas de Data
-  const dataFolders = ["scripts", "meshes", "textures", "materials", "sound", "interface", "fonts"];
-  const hasDataFolders = items.some(i =>
-    i.isDirectory() && dataFolders.includes(i.name.toLowerCase())
-  );
-  if (hasDataFolders) return "data";
-
-  return "unknown";
 }

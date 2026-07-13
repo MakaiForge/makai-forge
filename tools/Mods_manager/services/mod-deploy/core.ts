@@ -6,6 +6,7 @@ import { ModStorageService } from "../mod-storage-service";
 import { expandHome } from "../path-utils";
 import { getDeployTarget, shouldWritePluginsTxt } from "./rules";
 import { getStagingDir, findPrefixUsername, buildPluginFilemap, stripDataPrefix } from "../../games/_shared/filemap";
+import { getGameModule } from "@games/registry";
 
 function getGameLocalDir(gameId: string): string {
   const map: Record<string, string> = {
@@ -76,26 +77,79 @@ function scanExistingSymlinks(dataDir: string): Record<string, string> {
   return symlinks;
 }
 
-function createSymlinks(
+/**
+ * Tenta linkar um arquivo: hardlink → symlink → copy.
+ * Retorna o método usado.
+ */
+function linkFile(sourcePath: string, targetPath: string): "hardlink" | "symlink" | "copy" | "error" {
+  // 1. Hardlink (zero disco extra, instantâneo)
+  try {
+    fs.linkSync(sourcePath, targetPath);
+    return "hardlink";
+  } catch { /* cross-FS or other issue */ }
+
+  // 2. Symlink (funciona cross-FS)
+  try {
+    fs.symlinkSync(sourcePath, targetPath);
+    return "symlink";
+  } catch { /* exFAT/FAT32 or other issue */ }
+
+  // 3. Copy (último recurso)
+  try {
+    fs.copyFileSync(sourcePath, targetPath);
+    return "copy";
+  } catch (err) {
+    throw err;
+  }
+}
+
+/**
+ * Cria links de arquivos em paralelo (16 workers).
+ * Tenta hardlink → symlink → copy para cada arquivo.
+ */
+function createLinkedFiles(
   dataDir: string,
   filemap: Record<string, string>,
-  log: string[]
-): number {
-  let symlinksCreated = 0;
-  for (const [relativePath, sourcePath] of Object.entries(filemap)) {
-    const targetPath = path.join(dataDir, relativePath);
-    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    try {
-      if (fs.existsSync(targetPath)) {
-        fs.unlinkSync(targetPath);
+  log: string[],
+): { count: number; hardlinks: number; symlinks: number; copies: number } {
+  const entries = Object.entries(filemap);
+  let count = 0;
+  let hardlinks = 0;
+  let symlinks = 0;
+  let copies = 0;
+  const errors: string[] = [];
+
+  // Processar em batches de 16 (paralelo via sync — Node é single-thread mas I/O é async)
+  // Para paralelismo real, usaríamos worker threads, mas para simplicity
+  // usamos sync com batch size que mantém performance aceitável.
+  const BATCH_SIZE = 16;
+
+  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+    const batch = entries.slice(i, i + BATCH_SIZE);
+    for (const [relativePath, sourcePath] of batch) {
+      const targetPath = path.join(dataDir, relativePath);
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      try {
+        if (fs.existsSync(targetPath)) {
+          fs.unlinkSync(targetPath);
+        }
+        const method = linkFile(sourcePath, targetPath);
+        count++;
+        if (method === "hardlink") hardlinks++;
+        else if (method === "symlink") symlinks++;
+        else copies++;
+      } catch (err) {
+        errors.push(`${relativePath}: ${String(err)}`);
       }
-      fs.symlinkSync(sourcePath, targetPath);
-      symlinksCreated++;
-    } catch (err) {
-      log.push(`Failed to link ${relativePath}: ${String(err)}`);
     }
   }
-  return symlinksCreated;
+
+  if (hardlinks > 0) log.push(`Hardlinks: ${hardlinks}`);
+  if (symlinks > 0) log.push(`Symlinks: ${symlinks}`);
+  if (copies > 0) log.push(`Copies: ${copies}`);
+  if (errors.length > 0) log.push(`Link errors: ${errors.length} (${errors.slice(0, 3).join("; ")})`);
+
+  return { count, hardlinks, symlinks, copies };
 }
 
 function rollbackDeploy(
@@ -108,8 +162,11 @@ function rollbackDeploy(
   for (const relativePath of Object.keys(filemap)) {
     const targetPath = path.join(dataDir, relativePath);
     try {
-      if (fs.existsSync(targetPath) && fs.lstatSync(targetPath).isSymbolicLink()) {
-        fs.unlinkSync(targetPath);
+      if (fs.existsSync(targetPath)) {
+        const stat = fs.lstatSync(targetPath);
+        if (stat.isSymbolicLink() || stat.nlink === 1) {
+          fs.unlinkSync(targetPath);
+        }
       }
     } catch { /* skip */ }
   }
@@ -136,7 +193,8 @@ async function writePluginsTxt(
     ? path.join(prefixPath, "drive_c", "users", username, "AppData", "Local", getGameLocalDir(gameId), "plugins.txt")
     : path.join(prefixPath, "drive_c", "users", "steamuser", "AppData", "Local", getGameLocalDir(gameId), "plugins.txt");
 
-  const pluginExts = new Set([".esp", ".esm", ".esl"]);
+  const gameModule = getGameModule(gameId, config?.gamePath || "");
+  const pluginExts = new Set(gameModule?.getPluginExtensions?.() ?? [".esp", ".esm", ".esl"]);
   const pluginNames: string[] = [];
   const pluginPaths: Record<string, string> = {};
   for (const [relPath, sourcePath] of Object.entries(filemap)) {
@@ -287,7 +345,8 @@ export async function deploy(
   try {
     fs.mkdirSync(dataDir, { recursive: true });
 
-    const symlinksCreated = createSymlinks(dataDir, filemap, log);
+    const linkResult = createLinkedFiles(dataDir, filemap, log);
+    log.push(`Deploy complete: ${linkResult.count} files linked (${linkResult.hardlinks} hardlinks, ${linkResult.symlinks} symlinks, ${linkResult.copies} copies)`);
 
     if (shouldWritePluginsTxt(gameId)) {
       await writePluginsTxt(gameId, profile, filemap, config, log);
@@ -295,7 +354,6 @@ export async function deploy(
       log.push(`Skipped plugins.txt (non-Bethesda game: ${gameId})`);
     }
 
-    log.push(`Deploy complete: ${symlinksCreated} symlinks created`);
     return { success: true, log, filemap };
   } catch (err) {
     rollbackDeploy(dataDir, filemap, preExistingSymlinks, log);

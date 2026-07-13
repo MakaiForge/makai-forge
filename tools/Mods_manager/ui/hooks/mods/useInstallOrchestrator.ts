@@ -6,6 +6,8 @@
  * - Progresso (percent, message, files)
  * - Resultado (success, plugins, verified)
  * - Controles (start, cancel, dismiss)
+ * - Verificação de pré-requisitos (verifyGameReady)
+ * - Overwrite dialog (mod já existe no staging)
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
@@ -18,28 +20,42 @@ import type {
 } from "../../types/install.types";
 
 export interface UseInstallOrchestratorReturn {
-  /** Stage atual da instalação */
   stage: InstallStage;
-  /** Progresso detalhado */
   progress: InstallProgress | null;
-  /** Resultado da instalação */
   result: InstallResult | null;
-  /** Se está instalando */
   isInstalling: boolean;
-  /** Se pode cancelar */
   canCancel: boolean;
-  /** Inicia instalação */
   startInstall: (archivePath: string, config?: Partial<InstallConfig>) => Promise<InstallResult | null>;
-  /** Cancela instalação */
   cancel: () => void;
-  /** Fecha overlay de resultado */
   dismissResult: () => void;
-  /** Label do stage atual (traduzido via i18n) */
   stageLabel: string;
-  /** Percentual de progresso (0-100) */
   stagePercent: number;
-  /** Tempo decorrido formatado ("01:23") */
   elapsedTime: string;
+  /** Resultado da verificação de pré-requisitos (null = não verificado) */
+  verifyResult: VerifyResult | null;
+  /** Fecha popup de verificação */
+  dismissVerify: () => void;
+  /** Re-verifica após criar prefixo */
+  reVerify: () => Promise<void>;
+  /** Nome do mod pendente de overwrite (null = nada pendente) */
+  pendingOverwrite: { archivePath: string; modName: string } | null;
+  /** Confirma overwrite e re-instala com overwriteExisting: true */
+  confirmOverwrite: () => Promise<void>;
+  /** Cancela overwrite */
+  cancelOverwrite: () => void;
+}
+
+export interface VerifyCheck {
+  id: string;
+  label: string;
+  ok: boolean;
+  message: string;
+  action?: "configure" | "create_prefix" | "install_proton";
+}
+
+export interface VerifyResult {
+  ok: boolean;
+  checks: VerifyCheck[];
 }
 
 export function useInstallOrchestrator(
@@ -53,7 +69,16 @@ export function useInstallOrchestrator(
   const [stage, setStage] = useState<InstallStage>("idle");
   const [progress, setProgress] = useState<InstallProgress | null>(null);
   const [result, setResult] = useState<InstallResult | null>(null);
+  const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
+  const [pendingOverwrite, setPendingOverwrite] = useState<{ archivePath: string; modName: string } | null>(null);
   const progressRef = useRef(progress);
+  const gameIdRef = useRef(gameId);
+  const configRef = useRef({ gameId, profile, stagingDir });
+
+  // Manter configRef atualizado
+  useEffect(() => {
+    configRef.current = { gameId, profile, stagingDir };
+  }, [gameId, profile, stagingDir]);
 
   useEffect(() => {
     progressRef.current = progress;
@@ -81,17 +106,18 @@ export function useInstallOrchestrator(
   }), [t]);
 
   /**
-   * Inicia instalação de um mod.
+   * Executa a instalação real (chamado tanto pelo startInstall quanto pelo confirmOverwrite).
    */
-  const startInstall = useCallback(
+  const doInstall = useCallback(
     async (
       archivePath: string,
-      configOverrides?: Partial<InstallConfig>,
+      configOverrides: Partial<InstallConfig>,
     ): Promise<InstallResult | null> => {
+      const cfg = configRef.current;
       const config: InstallConfig = {
-        gameId,
-        profile,
-        stagingDir,
+        gameId: cfg.gameId,
+        profile: cfg.profile,
+        stagingDir: cfg.stagingDir,
         overwriteExisting: false,
         verifyAfterExtract: true,
         maxRetries: 2,
@@ -105,13 +131,15 @@ export function useInstallOrchestrator(
       const modName = archivePath.split("/").pop()?.replace(/\.\w+$/, "") || "unknown";
       addLog(`${t("installing_mod")} ${modName}`);
 
-      console.log("[INSTALL] startInstall called", { gameId, profile, stagingDir, archivePath, config });
-
       try {
         const installResult = await window.electron.installModOrchestrated(archivePath, config);
 
-        console.log("[INSTALL] installResult received", { success: installResult?.success, error: installResult?.error });
         setResult(installResult);
+
+        // Mod já existe — não fecha o resultado, deixa o UI tratar
+        if (installResult.alreadyExists) {
+          return installResult;
+        }
 
         if (installResult.success) {
           addLog(
@@ -132,7 +160,6 @@ export function useInstallOrchestrator(
         if (errorStr.includes("ARCHIVE_PASSWORD_PROTECTED") || /wrong password|encrypted/i.test(errorStr)) {
           const password = window.prompt(`${t("archive_password_protected")}\n${modName}`);
           if (password !== null && password !== "") {
-            // Retry com senha
             try {
               const retryResult = await window.electron.installModOrchestrated(archivePath, { ...config, password });
               setResult(retryResult);
@@ -147,6 +174,8 @@ export function useInstallOrchestrator(
               const retryErrorResult: InstallResult = {
                 success: false,
                 modName,
+                gameName: "",
+                gameId: cfg.gameId,
                 stagingDir: config.stagingDir,
                 archiveInfo: {
                   path: archivePath,
@@ -172,7 +201,6 @@ export function useInstallOrchestrator(
               return retryErrorResult;
             }
           }
-          // Usuário cancelou
           addLog(`❌ ${t("install_cancelled")}`);
           setStage("idle");
           return null;
@@ -181,6 +209,8 @@ export function useInstallOrchestrator(
         const errorResult: InstallResult = {
           success: false,
           modName,
+          gameName: "",
+          gameId: cfg.gameId,
           stagingDir: config.stagingDir,
           archiveInfo: {
             path: archivePath,
@@ -208,8 +238,68 @@ export function useInstallOrchestrator(
         setStage("idle");
       }
     },
-    [gameId, profile, stagingDir, addLog, onRefresh, t],
+    [addLog, onRefresh, t],
   );
+
+  /**
+   * Inicia instalação de um mod.
+   * Primeiro roda verifyGameReady — se falhar, mostra popup e para.
+   * Se mod já existe, mostra popup de overwrite.
+   */
+  const startInstall = useCallback(
+    async (
+      archivePath: string,
+      configOverrides?: Partial<InstallConfig>,
+    ): Promise<InstallResult | null> => {
+      // ── Pré-verificação ──
+      try {
+        const verify: VerifyResult = await (window.electron as any).verifyGameReady(gameIdRef.current);
+        setVerifyResult(verify);
+        if (!verify.ok) {
+          addLog(`❌ Pré-verificação falhou: ${verify.checks.filter(c => !c.ok).map(c => c.message).join("; ")}`);
+          return null;
+        }
+      } catch (verifyErr) {
+        console.warn("[INSTALL] verifyGameReady not available:", verifyErr);
+      }
+
+      // ── Executa instalação ──
+      const installResult = await doInstall(archivePath, configOverrides || {});
+
+      // Se mod já existe, abre popup de overwrite
+      if (installResult?.alreadyExists) {
+        const modName = installResult.modName;
+        setPendingOverwrite({ archivePath, modName });
+        addLog(`⚠️ Mod "${modName}" já existe — aguardando confirmação de overwrite`);
+        return installResult;
+      }
+
+      return installResult;
+    },
+    [doInstall, addLog],
+  );
+
+  /**
+   * Confirma overwrite — re-instala com overwriteExisting: true.
+   */
+  const confirmOverwrite = useCallback(async () => {
+    if (!pendingOverwrite) return;
+    const { archivePath, modName } = pendingOverwrite;
+    setPendingOverwrite(null);
+    addLog(`🔄 Sobrescrevendo mod "${modName}"...`);
+    await doInstall(archivePath, { overwriteExisting: true });
+  }, [pendingOverwrite, doInstall, addLog]);
+
+  /**
+   * Cancela overwrite.
+   */
+  const cancelOverwrite = useCallback(() => {
+    if (!pendingOverwrite) return;
+    addLog(`❌ Overwrite cancelado para "${pendingOverwrite.modName}"`);
+    setPendingOverwrite(null);
+    setResult(null);
+    setStage("idle");
+  }, [pendingOverwrite, addLog]);
 
   /**
    * Cancela instalação em andamento.
@@ -226,6 +316,25 @@ export function useInstallOrchestrator(
    */
   const dismissResult = useCallback(() => {
     setResult(null);
+  }, []);
+
+  /**
+   * Fecha popup de verificação.
+   */
+  const dismissVerify = useCallback(() => {
+    setVerifyResult(null);
+  }, []);
+
+  /**
+   * Re-verifica pré-requisitos (chamar após criar prefixo).
+   */
+  const reVerify = useCallback(async () => {
+    try {
+      const verify: VerifyResult = await (window.electron as any).verifyGameReady(gameIdRef.current);
+      setVerifyResult(verify);
+    } catch (err) {
+      console.warn("[INSTALL] reVerify failed:", err);
+    }
   }, []);
 
   // ── Helpers computados ─────────────────────────────────────────────────
@@ -253,5 +362,11 @@ export function useInstallOrchestrator(
     stageLabel: stageLabels[stage],
     stagePercent,
     elapsedTime,
+    verifyResult,
+    dismissVerify,
+    reVerify,
+    pendingOverwrite,
+    confirmOverwrite,
+    cancelOverwrite,
   };
 }

@@ -52,8 +52,8 @@ export function createFallout4Module(): GameModule {
     }),
     getScriptExtender: () => ({ name: "F4SE", pattern: /^f4se/i, installDir: "", dllPattern: /f4se/i }),
     getScriptExtenderRelease: (): ScriptExtenderRelease => ({
-      version: "0.6.21",
-      url: "https://f4se.silverlock.org/beta/f4se_0_6_21.7z",
+      version: "0.6.23",
+      url: "https://f4se.silverlock.org/beta/f4se_0_06_23.7z",
       loaderName: "f4se_loader.exe",
       dllPattern: /f4se_\d+_\d+_\d+\.dll/i,
     }),

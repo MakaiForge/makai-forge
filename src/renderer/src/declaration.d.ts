@@ -911,6 +911,8 @@ declare global {
     getGameConfig: (gameName: string) => Promise<any>;
     listGameConfigs: () => Promise<{ name: string; config: any }[]>;
     modLaunchGame: (gameId: string) => Promise<{ success: boolean; method?: string; error?: string }>;
+    modPlayGame: (gameId: string, profile?: string) => Promise<{ success: boolean; method?: string; error?: string; failedStep?: string; gamePath?: string }>;
+    modKillGame: () => Promise<boolean>;
     modScanFixGame: (gameId: string) => Promise<{ success: boolean; gamePath?: string; skseFound?: boolean; error?: string }>;
     onModLaunchProgress: (cb: (data: { step: string; message: string; status: "working" | "done" | "error" | "prompt"; promptType?: string }) => void) => () => void;
     modRunWineTool: (gameId: string, tool: string) => Promise<{ success: boolean; error?: string }>;

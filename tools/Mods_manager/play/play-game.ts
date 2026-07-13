@@ -56,27 +56,49 @@ export async function playGame(
     logPlay(gameId, "prefix_effective", { effectivePrefix: effectivePrefix || "" });
 
     // ── Step 2: Proton ──
-    logStep(gameId, "proton", "Verificando Proton...", "working");
-    const _s2 = Date.now();
-    const { protonPath, useCustomPrefix } = await ensureProton(gameId, send, effectivePrefix);
-    logStep(gameId, "proton", `Proton: ${protonPath}`, "done", {
-      duration_ms: Date.now() - _s2,
-      useCustomPrefix: String(useCustomPrefix),
-    });
-    logPlay(gameId, "proton", {
-      protonPath: protonPath || "",
-      useCustomPrefix: String(useCustomPrefix),
-    });
+    let protonPath: string;
+    let useCustomPrefix: boolean;
+    try {
+      logStep(gameId, "proton", "Verificando Proton...", "working");
+      const _s2 = Date.now();
+      const protonResult = await ensureProton(gameId, send, effectivePrefix);
+      protonPath = protonResult.protonPath;
+      useCustomPrefix = protonResult.useCustomPrefix || false;
+      logStep(gameId, "proton", `Proton: ${protonPath}`, "done", {
+        duration_ms: Date.now() - _s2,
+        useCustomPrefix: String(useCustomPrefix),
+      });
+      logPlay(gameId, "proton", {
+        protonPath: protonPath || "",
+        useCustomPrefix: String(useCustomPrefix),
+      });
+    } catch (protonErr) {
+      const msg = String(protonErr).slice(0, 200);
+      logStep(gameId, "proton", msg, "error");
+      logEvent(gameId, "play_failed", { reason: "proton_error", error: msg });
+      send("error", `Falha ao configurar Proton: ${msg}`, "error");
+      return { success: false, error: `Falha ao configurar Proton: ${msg}`, failedStep: "proton" };
+    }
 
     // ── Step 3: Prefix ──
-    logStep(gameId, "prefix", "Verificando/criando prefixo...", "working");
-    const _s3 = Date.now();
-    const finalPrefixPath = prefixPath;
-    const { prefixPath: resolvedPrefix } = await ensurePrefix(
-      gameId, finalPrefixPath, protonPath, steamAppId, gamePath, libraryPath, send,
-    );
-    logStep(gameId, "prefix", `Prefixo: ${resolvedPrefix}`, "done", { duration_ms: Date.now() - _s3 });
-    logPlay(gameId, "prefix_resolved", { resolvedPrefix: resolvedPrefix || "" });
+    let resolvedPrefix: string;
+    try {
+      logStep(gameId, "prefix", "Verificando/criando prefixo...", "working");
+      const _s3 = Date.now();
+      const finalPrefixPath = prefixPath;
+      const prefixResult = await ensurePrefix(
+        gameId, finalPrefixPath, protonPath, steamAppId, gamePath, libraryPath, send,
+      );
+      resolvedPrefix = prefixResult.prefixPath;
+      logStep(gameId, "prefix", `Prefixo: ${resolvedPrefix}`, "done", { duration_ms: Date.now() - _s3 });
+      logPlay(gameId, "prefix_resolved", { resolvedPrefix: resolvedPrefix || "" });
+    } catch (prefixErr) {
+      const msg = String(prefixErr).slice(0, 200);
+      logStep(gameId, "prefix", msg, "error");
+      logEvent(gameId, "play_failed", { reason: "prefix_error", error: msg });
+      send("error", `Falha ao criar prefixo: ${msg}`, "error");
+      return { success: false, error: `Falha ao criar prefixo: ${msg}`, failedStep: "prefix" };
+    }
 
     // ── Step 3b: Bridge prefix to Steam (symlink compatdata + config.vdf) ──
     if (steamAppId && resolvedPrefix) {
@@ -203,7 +225,7 @@ export async function playGame(
       total_duration_ms: totalMs,
     });
 
-    return { success: launchResult.success, method: launchResult.method, gamePath };
+    return { success: launchResult.success, method: launchResult.method, gamePath, failedStep: launchResult.success ? undefined : "launch" };
   } catch (err) {
     const msg = String(err).slice(0, 200);
     const totalMs = Date.now() - _startAll;

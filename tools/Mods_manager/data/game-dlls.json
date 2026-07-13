@@ -22,7 +22,7 @@
       "scriptExtender": {
         "name": "SKSE",
         "loaderExe": "skse_loader.exe",
-        "downloadUrl": "",
+        "downloadUrl": "https://skse.silverlock.org/beta/skse_1_07_03.7z",
         "installPath": "."
       },
       "reshadeDll": "dxgi.dll",
@@ -274,7 +274,7 @@
       "scriptExtender": {
         "name": "SFSE",
         "loaderExe": "sfse_loader.exe",
-        "downloadUrl": "",
+        "downloadUrl": "https://sfse.silverlock.org/beta/sfse_0_2_6.7z",
         "installPath": "."
       },
       "reshadeDll": "dxgi.dll",

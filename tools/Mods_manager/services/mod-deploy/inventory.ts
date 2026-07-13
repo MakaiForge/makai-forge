@@ -4,11 +4,12 @@ import type { ModFileEntry, ModInventory } from "@types";
 import { SE_REGEXES } from "../../games/_shared/bethesda-constants";
 import { walkDirWithDirs } from "../../games/_shared/filemap";
 
+const DEFAULT_PLUGIN_EXTS = [".esp", ".esm", ".esl"];
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"]);
 const README_EXTS = new Set([".txt", ".md", ".htm", ".html"]);
 const README_PATTERNS = ["readme", "leia", "install", "instruç", "instruc", "about", "descriç", "descric", "info"];
 
-export function detectModType(stagingDir: string): {
+export function detectModType(stagingDir: string, pluginExtensions?: string[]): {
   hasFomod: boolean;
   plugins: string[];
   hasSkse: boolean;
@@ -17,10 +18,14 @@ export function detectModType(stagingDir: string): {
   let hasFomod = false;
   let hasSkse = false;
 
+  const exts = pluginExtensions?.length ? pluginExtensions : DEFAULT_PLUGIN_EXTS;
+  const extSet = new Set(exts.map(e => e.toLowerCase()));
+
   walkDirWithDirs(stagingDir, {
     onFile: (fullPath) => {
       const lower = path.basename(fullPath).toLowerCase();
-      if (lower.endsWith(".esp") || lower.endsWith(".esm") || lower.endsWith(".esl")) {
+      const ext = path.extname(lower);
+      if (extSet.has(ext)) {
         plugins.push(path.basename(fullPath));
       }
       if (lower.startsWith("skse") && lower.endsWith(".dll")) {
@@ -37,13 +42,16 @@ export function detectModType(stagingDir: string): {
   return { hasFomod, plugins, hasSkse };
 }
 
-export function inventoryMod(stagingDir: string, modName: string): ModInventory {
+export function inventoryMod(stagingDir: string, modName: string, pluginExtensions?: string[]): ModInventory {
   const files: ModFileEntry[] = [];
   const scriptExtenderFiles: ModFileEntry[] = [];
   const pluginFiles: string[] = [];
   const previewFiles: ModFileEntry[] = [];
   const readmeFiles: ModFileEntry[] = [];
   let hasFomod = false;
+
+  const exts = pluginExtensions?.length ? pluginExtensions : DEFAULT_PLUGIN_EXTS;
+  const extSet = new Set(exts.map(e => e.toLowerCase()));
 
   walkDirWithDirs(stagingDir, {
     onFile: (fullPath, relativePath) => {
@@ -62,7 +70,7 @@ export function inventoryMod(stagingDir: string, modName: string): ModInventory 
         relativePathLower: relativePath.toLowerCase(),
         size: fs.statSync(fullPath).size,
         isScriptExtender: isSE,
-        isPlugin: /\.(esp|esm|esl)$/i.test(lowerName),
+        isPlugin: extSet.has(ext),
       };
       files.push(fe);
       if (isSE) scriptExtenderFiles.push(fe);

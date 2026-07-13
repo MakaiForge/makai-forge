@@ -20,7 +20,21 @@ const SKSE_RELEASES: Record<string, SkseRelease> = {
     gogUrl: "https://skse.silverlock.org/beta/skse64_2_02_06_gog.7z",
     loader: "skse64_loader.exe",
   },
-  skyrim_vr: { version: "2_02_06", url: "https://skse.silverlock.org/beta/skse64_2_02_06.7z", loader: "skse64_loader.exe" },
+  skyrim_vr: { version: "2_00_12", url: "https://skse.silverlock.org/beta/sksevr_2_00_12.7z", loader: "sksevr_loader.exe" },
+  enderal: { version: "1_07_03", url: "https://skse.silverlock.org/beta/skse_1_07_03.7z", loader: "skse_loader.exe" },
+  enderal_se: {
+    version: "2_02_06",
+    url: "https://skse.silverlock.org/beta/skse64_2_02_06.7z",
+    gogUrl: "https://skse.silverlock.org/beta/skse64_2_02_06_gog.7z",
+    loader: "skse64_loader.exe",
+  },
+  fallout3: { version: "4_2_2", url: "https://github.com/llde/FOSE/releases/download/4.2.2/fose_4_2_2.7z", loader: "fose_loader.exe" },
+  falloutnv: { version: "6_4_8", url: "https://github.com/xNVSE/NVSE/releases/download/6.4.8/nvse_6_4_8.7z", loader: "nvse_loader.exe" },
+  fallout4: { version: "0_06_23", url: "https://f4se.silverlock.org/beta/f4se_0_06_23.7z", loader: "f4se_loader.exe" },
+  fallout4_vr: { version: "0_2_0", url: "https://github.com/llde/F4SEVR/releases/download/0.2.0/f4sevr_0_2_0.7z", loader: "f4sevr_loader.exe" },
+  oblivion: { version: "21_0", url: "https://github.com/llde/OBSE/releases/download/21.0/obse_21_0.7z", loader: "obse_loader.exe" },
+  morrowind: { version: "2_1", url: "https://github.com/MWSE/MWSE/releases/download/2.1/MWSE-2.1.7z", loader: "mwse_loader.exe" },
+  starfield: { version: "0_2_6", url: "https://sfse.silverlock.org/beta/sfse_0_2_6.7z", loader: "sfse_loader.exe" },
 };
 
 function resolveSkseUrl(gameId: string, gamePath: string): string | null {
@@ -56,7 +70,12 @@ export async function downloadSkse(gameId: string, gamePath: string): Promise<bo
     execSync(`curl -sL "${url}" -o "${archivePath}"`, { stdio: "pipe", timeout: 60000 });
     execSync(`7z x "${archivePath}" -o"${tmpDir}" -y`, { stdio: "pipe", timeout: 30000 });
     const entries = fs.readdirSync(tmpDir);
-    const extractedFolder = entries.find(e => e.startsWith("skse") && fs.statSync(path.join(tmpDir, e)).isDirectory());
+    const extractedFolder = entries.find(e => {
+      const lower = e.toLowerCase();
+      return (lower.startsWith("skse") || lower.startsWith("fose") || lower.startsWith("nvse") ||
+              lower.startsWith("f4se") || lower.startsWith("obse") || lower.startsWith("mwse") ||
+              lower.startsWith("sfse")) && fs.statSync(path.join(tmpDir, e)).isDirectory();
+    });
     const srcDir = extractedFolder ? path.join(tmpDir, extractedFolder) : tmpDir;
     const files = fs.readdirSync(srcDir);
     for (const file of files) {

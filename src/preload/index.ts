@@ -1117,6 +1117,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("modLaunchGame", gameId),
   modPlayGame: (gameId: string, profile?: string) =>
     ipcRenderer.invoke("modPlayGame", gameId, profile),
+  modKillGame: () =>
+    ipcRenderer.invoke("modKillGame"),
   modScanFixGame: (gameId: string) =>
     ipcRenderer.invoke("modScanFixGame", gameId),
   onModLaunchProgress: (cb: (data: { step: string; message: string; status: string; promptType?: string }) => void) => {

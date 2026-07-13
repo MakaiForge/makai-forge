@@ -1,10 +1,11 @@
 /**
  * Install Orchestrator — Orquestra instalação completa de mods.
  *
- * Fluxo: reading_archive → extracting → verifying → resolving → saving → ready
+ * Fluxo: reading_archive → extracting → verifying → analyzing → saving → ready
  *
  * Cada stage tem seu próprio timeout e tratamento de erros.
  * Suporta abort via AbortController.
+ * Lê game:${gameId}:config e consulta GameModule pra saber qual jogo é.
  * NOTA: Arquivos ficam no staging — o deploy engine cria symlinks para o jogo.
  */
 
@@ -12,13 +13,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { ModStorageService } from "@main/services";
+import { getGameModule } from "@games/registry";
 import { getStagingDir } from "@games/_shared/filemap";
 import { readArchiveInfo } from "./archive-reader";
 import { extractWithProgress } from "./archive-extractor";
 import { verifyExtractedFiles } from "./integrity-checker";
-import { resolveInstallPlan } from "./install-resolver";
 import { detectModType, inventoryMod } from "../mod-deploy/inventory";
 import { parseFomodXml, resolveFomodFiles } from "../fomod/fomod-parser";
+import { hasBain } from "./strip-prefix";
+import { writeModMeta } from "./meta-writer";
+import { checkOverwrite } from "./overwrite-check";
+import { deploy } from "../mod-deploy/core";
 import { mkInvKey, mkMlKey } from "../storage-keys";
 import type {
   InstallStage,
@@ -27,7 +32,6 @@ import type {
   InstallConfig,
   ArchiveInfo,
   ExtractedFile,
-  InstallPlan,
 } from "../../types/install.types";
 import type { ModlistEntry } from "../../types/install.types";
 
@@ -62,37 +66,74 @@ export class InstallOrchestrator {
     };
   }
 
-  /**
-   * Executa instalação completa de um mod.
-   *
-   * @param archivePath Caminho do archive
-   * @returns InstallResult com resultado da instalação
-   */
   async install(archivePath: string, config: InstallConfig): Promise<InstallResult> {
     this.abortController = new AbortController();
     this.progress.startTime = Date.now();
     this.progress.modName = this.extractModName(archivePath);
 
+    // ── Ler config do jogo e GameModule ──
+    const gameConfig = ModStorageService.get<any>(`game:${config.gameId}:config`);
+    const gameModule = getGameModule(config.gameId, gameConfig?.gamePath || "");
+    const gameName = gameModule.displayName || config.gameId;
+    const pluginExts = gameModule?.getPluginExtensions?.() ?? [];
+
     try {
+      // ── Pre-flight: Validate game path ──
+      const gamePath = gameConfig?.gamePath ? (gameConfig.gamePath.startsWith("~") ? gameConfig.gamePath.replace("~", os.homedir()) : gameConfig.gamePath) : "";
+      if (gamePath && !fs.existsSync(gamePath)) {
+        this.updateProgress(0, `[${gameName}] Caminho do jogo não encontrado: ${gamePath}`);
+        throw new Error(`Caminho do jogo não encontrado: ${gamePath}. Configure em "Configurar Jogo".`);
+      }
+
       // ── Stage 1: Read Archive ──
       await this.transitionTo("reading_archive");
       const archiveInfo = await readArchiveInfo(archivePath);
       this.progress.archiveInfo = archiveInfo;
       this.progress.filesTotal = archiveInfo.totalFiles;
       this.progress.bytesTotal = archiveInfo.totalSize;
-      this.updateProgress(5, `${archiveInfo.totalFiles} arquivos, ${this.formatSize(archiveInfo.totalSize)}`);
+      this.updateProgress(5, `[${gameName}] ${archiveInfo.totalFiles} arquivos, ${this.formatSize(archiveInfo.totalSize)}`);
 
       // ── Stage 2: Extract ──
       await this.transitionTo("extracting");
       const stagingDir = this.getStagingDir(config);
       this.targetDir = path.join(stagingDir, this.progress.modName);
+
+      // ── Overwrite check (antes de extrair) ──
+      const overwriteInfo = checkOverwrite(config.gameId, config.profile, this.progress.modName, stagingDir);
+      if (overwriteInfo.exists && !config.overwriteExisting) {
+        await this.transitionTo("ready");
+        return {
+          success: false,
+          modName: this.progress.modName,
+          gameName,
+          gameId: config.gameId,
+          stagingDir: this.targetDir,
+          archiveInfo,
+          extractedFiles: [],
+          verified: false,
+          plugins: [],
+          hasFomod: false,
+          hasBain: false,
+          hasSkse: false,
+          category: "unknown",
+          alreadyExists: true,
+          error: `Mod "${this.progress.modName}" já existe no staging.`,
+          durationMs: Date.now() - this.progress.startTime,
+        };
+      }
+
+      if (overwriteInfo.exists && config.overwriteExisting) {
+        this.updateProgress(10, "Removendo versão anterior...");
+        try { fs.rmSync(this.targetDir, { recursive: true, force: true }); } catch { /* ignore */ }
+      }
+
       const rawExtractedFiles = await extractWithProgress(
         archivePath,
         this.targetDir,
         archiveInfo,
         config.password,
         (filesProcessed, filesTotal, bytesProcessed, _bytesTotal, currentFile) => {
-          const percent = Math.round((filesProcessed / filesTotal) * 60) + 5; // 5-65%
+          const percent = Math.round((filesProcessed / filesTotal) * 60) + 5;
           this.progress.filesProcessed = filesProcessed;
           this.progress.bytesProcessed = bytesProcessed;
           this.progress.currentFile = currentFile;
@@ -101,8 +142,6 @@ export class InstallOrchestrator {
         this.abortController.signal,
       );
 
-      // Detect single-nested folder pattern (e.g. ModName/Fomod/, ModName/Data/)
-      // and adjust targetDir so all downstream logic sees the correct root.
       const resolved = this.resolveNestedRoot(this.targetDir, rawExtractedFiles);
       this.targetDir = resolved.rootDir;
       const extractedFiles = resolved.extractedFiles;
@@ -122,9 +161,18 @@ export class InstallOrchestrator {
 
       // ── Stage 4: Analyze + Resolve ──
       await this.transitionTo("analyzing");
-      this.updateProgress(75, "Analisando estrutura...");
-      const modType = detectModType(this.targetDir);
-      const inventory = inventoryMod(this.targetDir, this.progress.modName);
+      this.updateProgress(75, `[${gameName}] Analisando estrutura...`);
+      const modType = detectModType(this.targetDir, pluginExts);
+      const inventory = inventoryMod(this.targetDir, this.progress.modName, pluginExts);
+
+      // Detectar BAIN
+      const bainDetected = hasBain(this.targetDir);
+
+      // Log do jogo detectado
+      const usesPlugins = gameModule?.shouldWritePluginsTxt?.() ?? false;
+      const deployTarget = gameModule?.getDeployTarget?.(gameConfig?.gamePath || "") || "";
+
+      this.updateProgress(78, `[${gameName}] Deploy: ${deployTarget || "game root"}, Plugins: ${usesPlugins ? pluginExts.join("/") : "nenhum"}`);
 
       // Verificar FOMOD
       let fomodConfig: ReturnType<typeof parseFomodXml> = null;
@@ -140,45 +188,29 @@ export class InstallOrchestrator {
         }
       }
 
-      // Se tem FOMOD com required files, resolver automaticamente
       let fomodFiles: Array<{ source: string; destination: string }> = [];
       if (fomodConfig?.required_files && fomodConfig.required_files.length > 0) {
         fomodFiles = resolveFomodFiles(fomodConfig, {});
         this.updateProgress(77, `FOMOD: ${fomodFiles.length} arquivos obrigatórios`);
       }
 
-      // Resolver destino de cada arquivo
-      this.updateProgress(78, "Resolvendo destinos...");
-      const installPlan = resolveInstallPlan(
-        this.targetDir,
-        config.gameId,
-        this.progress.modName,
-        config.getStripPrefixes ?? (() => []),
-        config.getDeployTarget ?? ((gp: string) => gp),
-        config.getCustomRoutingRules,
-        config.getPluginExtensions,
-        config.getRequiredFolders,
-        config.getFlattenExtensions,
-      );
-
-      // Se tem arquivos FOMOD, adicionar ao plano (se não já presentes)
-      if (fomodFiles.length > 0) {
-        for (const fomodFile of fomodFiles) {
-          const existing = installPlan.filesToInstall.find(f => f.source === fomodFile.source);
-          if (!existing) {
-            installPlan.filesToInstall.push({
-              source: fomodFile.source,
-              destination: fomodFile.destination || fomodFile.source,
-              action: "copy",
-              reason: "FOMOD required file",
-            });
-          }
-        }
-      }
-
-      // ── Stage 6: Save (files stay in staging — deploy engine handles symlinks) ──
+      // ── Stage 6: Save ──
       await this.transitionTo("saving");
-      this.updateProgress(95, "Salvando no modlist...");
+      this.updateProgress(90, `[${gameName}] Salvando metadata...`);
+
+      // Gravar meta.ini
+      if (config.writeMetadata !== false) {
+        writeModMeta({
+          gameId: config.gameId,
+          modName: this.progress.modName,
+          modDir: this.targetDir,
+          archivePath,
+          hasFomod: modType.hasFomod,
+          hasBain: bainDetected,
+          plugins: inventory.pluginFiles,
+        });
+        this.updateProgress(92, "Meta.ini gravado");
+      }
 
       // Salvar inventário
       const inventoryKey = mkInvKey(config.gameId, this.progress.modName);
@@ -209,11 +241,38 @@ export class InstallOrchestrator {
       }
       ModStorageService.put(modlistKey, existing);
 
+      // ── Stage 6b: Deploy (symlinks staging→jogo) ──
+      let deployed = false;
+      let deployLog: string[] = [];
+      if (gamePath) {
+        this.updateProgress(94, `[${gameName}] Implantando mods no jogo...`);
+        try {
+          const deployResult = await deploy(config.gameId, config.profile);
+          deployed = deployResult.success;
+          deployLog = deployResult.log || [];
+          if (deployed) {
+            this.updateProgress(96, `[${gameName}] Mods implantados (${deployLog.length} operações)`);
+          } else {
+            this.updateProgress(96, `[${gameName}] Deploy falhou: ${deployResult.log?.slice(-1)[0] || "erro"}`);
+          }
+        } catch (deployErr) {
+          deployLog = [`Deploy error: ${String(deployErr).slice(0, 200)}`];
+          this.updateProgress(96, `[${gameName}] Deploy ignorado: ${String(deployErr).slice(0, 100)}`);
+        }
+      } else {
+        this.updateProgress(94, `[${gameName}] Sem gamePath — deploy ignorado`);
+      }
+
+      this.updateProgress(98, "Instalação concluída");
+
       // ── Stage 7: Ready ──
       await this.transitionTo("ready");
       this.updateProgress(100, "Instalação concluída");
 
-      return this.buildResult(archiveInfo, extractedFiles, modType, inventory, installPlan);
+      const result = this.buildResult(archiveInfo, extractedFiles, modType, inventory, bainDetected, gameName, config.gameId);
+      result.deployed = deployed;
+      result.deployLog = deployLog;
+      return result;
 
     } catch (error) {
       console.error("[ORCHESTRATOR] install failed:", error);
@@ -224,6 +283,8 @@ export class InstallOrchestrator {
       return {
         success: false,
         modName: this.progress.modName,
+        gameName,
+        gameId: config.gameId,
         stagingDir: this.targetDir || config.stagingDir,
         archiveInfo: this.progress.archiveInfo || {
           path: archivePath,
@@ -239,6 +300,7 @@ export class InstallOrchestrator {
         verified: false,
         plugins: [],
         hasFomod: false,
+        hasBain: false,
         hasSkse: false,
         category: "unknown",
         error: String(error),
@@ -247,10 +309,6 @@ export class InstallOrchestrator {
     }
   }
 
-  /**
-   * Detecta quando um archive tem uma única pasta raiz (ex: ModName/Data/, ModName/Fomod/)
-   * e ajusta o targetDir para apontar para ela, corrigindo caminhos relativos.
-   */
   private resolveNestedRoot(
     rootDir: string,
     extractedFiles: ExtractedFile[],
@@ -265,17 +323,15 @@ export class InstallOrchestrator {
     const dirs = entries.filter(e => e.isDirectory());
     const files = entries.filter(e => e.isFile());
 
-    // Se tem múltiplos diretórios ou arquivos na raiz, não é nested
     if (dirs.length !== 1 || files.length > 0) return { rootDir, extractedFiles };
 
     const innerDir = path.join(rootDir, dirs[0].name);
-    // Só considera nested se o diretório interno tiver conteúdo de mod
     try {
       const innerEntries = fs.readdirSync(innerDir);
       const hasModContent = innerEntries.some(name =>
         ["fomod", "Fomod", "FOMOD", "Data", "data", "scripts", "meshes", "textures", "SKSE", "skse"]
           .includes(name) ||
-        name.endsWith(".esp") || name.endsWith(".esm") || name.endsWith(".esl")
+        pluginExts.some(ext => name.toLowerCase().endsWith(ext))
       );
       if (!hasModContent) return { rootDir, extractedFiles };
     } catch {
@@ -293,21 +349,13 @@ export class InstallOrchestrator {
     return { rootDir: innerDir, extractedFiles: adjusted };
   }
 
-  /**
-   * Cancela instalação em andamento.
-   */
   abort(): void {
     this.abortController?.abort();
   }
 
-  /**
-   * Retorna o stage atual.
-   */
   getCurrentStage(): InstallStage {
     return this.currentStage;
   }
-
-  // ── Private Helpers ─────────────────────────────────────────────────────
 
   private async transitionTo(stage: InstallStage): Promise<void> {
     const from = this.currentStage;
@@ -324,7 +372,12 @@ export class InstallOrchestrator {
   }
 
   private getStagingDir(config: InstallConfig): string {
+    // Prioridade: config do UI > config do jogo > default
     let stagingDir = config.stagingDir;
+    if (!stagingDir) {
+      const gameConfig = ModStorageService.get<any>(`game:${config.gameId}:config`);
+      stagingDir = gameConfig?.stagingDir || "";
+    }
     if (stagingDir) {
       if (stagingDir.startsWith("~")) stagingDir = stagingDir.replace("~", os.homedir());
       fs.mkdirSync(stagingDir, { recursive: true });
@@ -353,21 +406,25 @@ export class InstallOrchestrator {
     extractedFiles: ExtractedFile[],
     modType: ReturnType<typeof detectModType>,
     inventory: ReturnType<typeof inventoryMod>,
-    installPlan?: InstallPlan,
+    hasBain: boolean,
+    gameName: string,
+    gameId: string,
   ): InstallResult {
     return {
       success: true,
       modName: this.progress.modName,
+      gameName,
+      gameId,
       stagingDir: this.targetDir,
       archiveInfo,
       extractedFiles,
       verified: true,
       plugins: inventory.pluginFiles,
       hasFomod: modType.hasFomod,
+      hasBain,
       hasSkse: modType.hasSkse,
       category: "unknown",
       durationMs: Date.now() - this.progress.startTime,
-      installPlan,
     };
   }
 }

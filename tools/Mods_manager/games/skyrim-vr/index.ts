@@ -49,8 +49,8 @@ export function createSkyrimVRModule(): GameModule {
       dllPattern: /sksevr64/i,
     }),
     getScriptExtenderRelease: (): ScriptExtenderRelease => ({
-      version: "2_02_06",
-      url: "https://skse.silverlock.org/beta/skse64_2_02_06.7z",
+      version: "2_00_12",
+      url: "https://skse.silverlock.org/beta/sksevr_2_00_12.7z",
       loaderName: "sksevr_loader.exe",
       dllPattern: /sksevr64_\d+_\d+_\d+\.dll/i,
     }),

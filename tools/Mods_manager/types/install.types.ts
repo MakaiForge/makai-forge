@@ -108,6 +108,10 @@ export interface InstallResult {
   success: boolean;
   /** Nome do mod instalado */
   modName: string;
+  /** Nome do jogo (display name do GameModule) */
+  gameName: string;
+  /** ID do jogo */
+  gameId: string;
   /** Diretório de staging onde o mod foi extraído */
   stagingDir: string;
   /** Informações do archive */
@@ -120,6 +124,8 @@ export interface InstallResult {
   plugins: string[];
   /** Se o mod tem FOMOD */
   hasFomod: boolean;
+  /** Se o mod tem BAIN */
+  hasBain: boolean;
   /** Se o mod tem script extender (SKSE, etc) */
   hasSkse: boolean;
   /** Categoria do mod */
@@ -128,6 +134,12 @@ export interface InstallResult {
   error?: string;
   /** Duração total em milissegundos */
   durationMs: number;
+  /** Se o mod já existe no staging (requer decisão do usuário) */
+  alreadyExists?: boolean;
+  /** Resultado do deploy (symlinks staging→jogo) */
+  deployed?: boolean;
+  /** Log do deploy */
+  deployLog?: string[];
 }
 
 // ── Config ──────────────────────────────────────────────────────────────────
@@ -149,6 +161,8 @@ export interface InstallConfig {
   timeoutMs: number;
   /** Senha do archive (opcional, para archives protegidos) */
   password?: string;
+  /** Se deve gravar metadata (meta.ini) */
+  writeMetadata?: boolean;
 }
 
 // ── Verification ────────────────────────────────────────────────────────────
@@ -175,35 +189,4 @@ export interface VerificationResult {
   filesInvalid: number;
   /** Lista de erros */
   errors: VerificationError[];
-}
-
-// ── Install Plan ─────────────────────────────────────────────────────────────
-
-export interface PlanFileEntry {
-  source: string;
-  destination: string;
-  action: "copy" | "symlink" | "ignore";
-  reason: string;
-}
-
-export interface InstallPlan {
-  modName: string;
-  filesToInstall: PlanFileEntry[];
-  structure: {
-    category: string;
-    hasFomod: boolean;
-    hasData: boolean;
-    wrapperLevels: number;
-    plugins: string[];
-    archives: string[];
-  };
-}
-
-// ── Copy Result ──────────────────────────────────────────────────────────────
-
-export interface CopyResult {
-  success: boolean;
-  filesCopied: number;
-  filesFailed: number;
-  errors: { file: string; error: string }[];
 }

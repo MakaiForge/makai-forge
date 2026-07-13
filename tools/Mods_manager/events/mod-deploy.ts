@@ -1,10 +1,11 @@
 import { registerEvent } from "@main/events/register-event";
-import { ModStorageService } from "@main/services";
+import { ModStorageService, logger } from "@main/services";
 import { getDeployFunction, getGameModule } from "@games/registry";
 import { getStagingDir } from "@games/_shared/filemap";
 import { applyWineDllOverrides } from "@games/_shared/prefix";
 import { detectModType, inventoryMod } from "@mods/services/mod-deploy/inventory";
 import { InstallOrchestrator } from "@mods/services/install/install-orchestrator";
+import { verifyGameReady } from "@mods/services/install/verify-game-ready";
 import { expandHome } from "@mods/services/path-utils";
 import { mkInvKey, mkMlKey } from "@mods/services/storage-keys";
 import type { InstallConfig, InstallProgress, InstallStage } from "@types/install.types";
@@ -99,6 +100,10 @@ registerEvent("rescanStaging", async (_event, gameId: string, profileName: strin
 
   const trackedNames = new Set(modlist.map((m: any) => m.name));
 
+  // ── Game-aware plugin extensions ──
+  const gameModule = getGameModule(gameId, config?.gamePath || "");
+  const pluginExts = gameModule?.getPluginExtensions?.() ?? [];
+
   const stagingItems = fs.readdirSync(stagingDir, { withFileTypes: true });
   const newMods: any[] = [];
   const deadMods: any[] = [];
@@ -108,8 +113,8 @@ registerEvent("rescanStaging", async (_event, gameId: string, profileName: strin
     if (item.name.startsWith(".")) continue;
     if (!trackedNames.has(item.name)) {
       const fullPath = path.join(stagingDir, item.name);
-      const modType = detectModType(fullPath);
-      const inventory = inventoryMod(fullPath, item.name);
+      const modType = detectModType(fullPath, pluginExts);
+      const inventory = inventoryMod(fullPath, item.name, pluginExts);
       const inventoryKey = mkInvKey(gameId, item.name);
       ModStorageService.put(inventoryKey, inventory);
 
@@ -192,4 +197,10 @@ registerEvent("abortInstall", async () => {
     return { ok: true };
   }
   return { ok: false, error: "No active install" };
+});
+
+// ── Game Readiness Verification ────────────────────────────────────────────
+
+registerEvent("verifyGameReady", async (_event, gameId: string) => {
+  return verifyGameReady(gameId);
 });
