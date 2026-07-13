@@ -56,6 +56,12 @@ export default function ModManager() {
   const searchRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const handleModInstalled = useCallback((modName: string) => {
+    const currentFiltered = filteredModsRef.current;
+    const idx = currentFiltered.findIndex(m => m.name === modName);
+    if (idx >= 0) setSelectedModIdx(idx);
+  }, []);
+
   // ── Feature hooks ──
   const { conflictSet, conflictDetails, allConflicts } = useConflictBadges(mods);
   const { deploying, deployResult, setDeployResult, conflicts, showConflicts, setShowConflicts, showDeployConfirm, setShowDeployConfirm, handleDeploy, detectAndShowConflicts } = useDeploy(selectedGame, selectedProfile, addLog);
@@ -98,11 +104,6 @@ export default function ModManager() {
   const modsActive = mods.filter(m => m.enabled).length;
 
   // ── Callbacks ──
-  const handleModInstalled = useCallback((modName: string) => {
-    const currentFiltered = filteredModsRef.current;
-    const idx = currentFiltered.findIndex(m => m.name === modName);
-    if (idx >= 0) setSelectedModIdx(idx);
-  }, []);
 
   const pickAndOrchInstall = useCallback(async () => {
     try {
