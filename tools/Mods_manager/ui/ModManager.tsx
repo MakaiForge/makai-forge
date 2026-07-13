@@ -10,7 +10,7 @@ import { useModLog, useMods, useDeploy, useFomod, useMedia, useRightPanel, useMo
 import { useInstallOrchestrator } from "./hooks/mods/useInstallOrchestrator";
 import { InstallProgressOverlay } from "./components/InstallProgressOverlay";
 import { useGameConfig, useProfiles, GamePresetBar } from "../presets";
-import { ModListPanel, RightPanel, StatusBar, ModManagerTopBar, ModManagerTabs, GameConfigPanel, GameDetectionWizard, LaunchOverlay } from "./components";
+import { ModListPanel, RightPanel, StatusBar, ModManagerTopBar, ModManagerTabs, GameConfigPanel, GameDetectionWizard, LaunchOverlay, PlayErrorModal } from "./components";
 import { ProtonRecommendationModal } from "@provision/proton_recommended/ui/proton-recommendation-modal";
 import { AddProfileModal, ConflictsModal, DeployConfirmModal, DeployResultModal, OverwriteModal, PreviewModal, ReadmeModal } from "./components/Modals";
 import { ConflictDetailsModal } from "./components/Modals/ConflictDetailsModal";
@@ -34,6 +34,8 @@ export default function ModManager() {
   const [launchSteps, setLaunchSteps] = useState<{ key: string; label: string; status: "waiting" | "working" | "done" | "error"; message?: string }[]>([]);
   const [showLaunchOverlay, setShowLaunchOverlay] = useState(false);
   const isLaunching = launchSteps.some(s => s.status === "working");
+
+  const [playError, setPlayError] = useState<{ error: string; failedStep?: string } | null>(null);
 
   const [prefixSetupVisible, setPrefixSetupVisible] = useState(false);
   const [prefixSetupGameName, setPrefixSetupGameName] = useState("");
@@ -417,19 +419,37 @@ export default function ModManager() {
     window.electron.modPlayGame(selectedGame, selectedProfile).then(result => {
       if (result.success) {
         addLog(`✅ ${displayName} iniciado via ${result.method}`);
+        setTimeout(() => {
+          setShowLaunchOverlay(false);
+          setLaunchSteps([]);
+        }, 2000);
       } else {
-        addLog(`❌ ${result.error || "Falha ao iniciar"}`);
+        setLaunchSteps(prev => {
+          const failed = prev.find(s => s.status === "working");
+          if (failed) {
+            return prev.map(s => s.key === failed.key ? { ...s, status: "error" as const, message: result.error } : s);
+          }
+          return prev;
+        });
+        setTimeout(() => {
+          setShowLaunchOverlay(false);
+          setLaunchSteps([]);
+          setPlayError({
+            error: result.error || "Falha ao iniciar o jogo",
+            failedStep: result.failedStep,
+          });
+        }, 1500);
       }
-      setTimeout(() => {
-        setShowLaunchOverlay(false);
-        setLaunchSteps([]);
-      }, 2000);
     }).catch(e => {
       addLog(`❌ Erro: ${e}`);
       setTimeout(() => {
         setShowLaunchOverlay(false);
         setLaunchSteps([]);
-      }, 2000);
+        setPlayError({
+          error: String(e),
+          failedStep: "unknown",
+        });
+      }, 1500);
     });
   }, [selectedGame, selectedProfile, currentGame, addLog]);
 
@@ -598,6 +618,17 @@ export default function ModManager() {
           onCancel={() => setShowLaunchOverlay(false)}
         />
       )}
+
+      <PlayErrorModal
+        open={!!playError}
+        error={playError?.error || ""}
+        gameId={selectedGame || ""}
+        gamePath={configGamePath}
+        prefixPath={configPrefixPath}
+        protonPath={configProtonPath}
+        failedStep={playError?.failedStep}
+        onClose={() => setPlayError(null)}
+      />
 
       <ProtonRecommendationModal
         visible={showProtonSelector}

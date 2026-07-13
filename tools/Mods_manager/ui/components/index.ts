@@ -7,3 +7,4 @@ export { FomodDialog } from "./FomodDialog";
 export { GameConfigPanel } from "./GameConfigPanel/GameConfigPanel";
 export { GameDetectionWizard } from "./GameDetectionWizard/GameDetectionWizard";
 export { LaunchOverlay } from "./LaunchOverlay/LaunchOverlay";
+export { PlayErrorModal } from "./Modals/PlayErrorModal/PlayErrorModal";

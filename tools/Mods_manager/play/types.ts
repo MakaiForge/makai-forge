@@ -16,6 +16,7 @@ export interface PlayResult {
   success: boolean
   method?: "skse" | "steam" | "direct"
   error?: string
+  failedStep?: string
   gamePath?: string
   steamAppId?: string
 }

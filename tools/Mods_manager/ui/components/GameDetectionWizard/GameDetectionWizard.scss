@@ -52,6 +52,28 @@
   to { transform: rotate(360deg); }
 }
 
+.detection-wizard__alternative-notice {
+  background: rgba(255, 170, 68, 0.1);
+  border: 1px solid rgba(255, 170, 68, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+
+  p {
+    margin: 0 0 8px;
+    color: var(--color-text, #e0e0e0);
+    line-height: 1.5;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  strong {
+    color: #ffaa44;
+  }
+}
+
 .detection-wizard__error {
   color: #ff4444;
   margin-bottom: 12px;

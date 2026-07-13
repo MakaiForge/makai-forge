@@ -2,92 +2,124 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-export interface GogGameInfo {
-  appTitle: string;
-  installPath: string;
-  executable: string;
-}
+const GOG_SEARCH_DIRS = [
+  "GOG Games",
+  "GOG",
+  "Games",
+];
 
-function heroicConfigPath(): string | null {
+function getGogSearchRoots(): string[] {
   const home = os.homedir();
-  const candidates = [
-    path.join(home, ".config", "heroic"),
-    path.join(home, ".var", "app", "com.heroicgameslauncher.hgl", "config", "heroic"),
-    path.join(home, "snap", "heroic", "common", ".config", "heroic"),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
-  }
-  return null;
+  return GOG_SEARCH_DIRS.map(d => path.join(home, d));
 }
 
-function detectThroughHeroic(): GogGameInfo[] {
-  const heroPath = heroicConfigPath();
-  if (!heroPath) return [];
-
-  const gogStore = path.join(heroPath, "gog_store", "installed.json");
-  if (!fs.existsSync(gogStore)) return [];
-
+function scanForExe(dir: string, exes: string[]): string | null {
+  if (!fs.existsSync(dir)) return null;
   try {
-    const raw = JSON.parse(fs.readFileSync(gogStore, "utf-8"));
-    const games: GogGameInfo[] = [];
-    for (const entry of Object.values(raw) as Record<string, unknown>[]) {
-      const installPath = entry.install_path as string;
-      const appTitle = (entry.app_title as string) || "";
-      if (installPath && fs.existsSync(installPath)) {
-        games.push({
-          appTitle,
-          installPath,
-          executable: (entry.executable as string) || "",
-        });
+    const entries = fs.readdirSync(dir);
+    for (const entry of entries) {
+      const full = path.join(dir, entry);
+      if (!fs.statSync(full).isDirectory()) continue;
+      for (const exe of exes) {
+        if (fs.existsSync(path.join(full, exe))) {
+          return full;
+        }
       }
     }
-    return games;
-  } catch {
-    return [];
-  }
+  } catch {}
+  return null;
 }
 
-function detectCommonPaths(gameId: string): string | null {
-  const home = os.homedir();
-  const candidatePaths = [
-    path.join(home, "GOG Games", "Skyrim Special Edition"),
-    path.join(home, "GOG Games", "Skyrim SE"),
-    path.join(home, "GOG", "Skyrim Special Edition"),
-    path.join(home, "Games", "Skyrim Special Edition"),
-  ];
-  for (const gp of candidatePaths) {
-    if (fs.existsSync(path.join(gp, "SkyrimSELauncher.exe")) || fs.existsSync(path.join(gp, "skse64_loader.exe"))) {
-      return gp;
+function scanSubdirs(dir: string, exes: string[]): string | null {
+  if (!fs.existsSync(dir)) return null;
+  try {
+    const entries = fs.readdirSync(dir);
+    for (const entry of entries) {
+      const sub = path.join(dir, entry);
+      if (!fs.statSync(sub).isDirectory()) continue;
+      const found = scanForExe(sub, exes);
+      if (found) return found;
     }
+  } catch {}
+  return null;
+}
+
+function detectGogByExe(gameId: string, detectExe: string, detectExeAlts?: string[]): string | null {
+  const exes = [detectExe, ...(detectExeAlts || [])];
+  const searchRoots = getGogSearchRoots();
+
+  for (const root of searchRoots) {
+    const found = scanForExe(root, exes);
+    if (found) return found;
+  }
+
+  for (const root of searchRoots) {
+    const found = scanSubdirs(root, exes);
+    if (found) return found;
+  }
+
+  const home = os.homedir();
+  const extraRoots = [
+    path.join(home, ".local", "share"),
+    "/mnt",
+    "/media",
+  ];
+  for (const root of extraRoots) {
+    if (!fs.existsSync(root)) continue;
+    try {
+      const entries = fs.readdirSync(root);
+      for (const entry of entries) {
+        const sub = path.join(root, entry);
+        if (!fs.statSync(sub).isDirectory()) continue;
+        const found = scanForExe(sub, exes);
+        if (found) return found;
+        const foundDeep = scanSubdirs(sub, exes);
+        if (foundDeep) return foundDeep;
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+function detectGogByKeyword(gameId: string, gameName?: string): string | null {
+  const keywords: string[] = [];
+  if (gameName) {
+    keywords.push(...gameName.toLowerCase().split(/[\s:]+/).filter(w => w.length > 3));
+  }
+  keywords.push(gameId.replace(/_/g, " ").toLowerCase());
+
+  const searchRoots = getGogSearchRoots();
+  for (const root of searchRoots) {
+    if (!fs.existsSync(root)) continue;
+    try {
+      const entries = fs.readdirSync(root);
+      for (const entry of entries) {
+        const full = path.join(root, entry);
+        if (!fs.statSync(full).isDirectory()) continue;
+        const lower = entry.toLowerCase();
+        if (keywords.some(kw => lower.includes(kw))) {
+          return full;
+        }
+      }
+    } catch {}
   }
   return null;
 }
 
-export function findGogGamePath(gameId: string, gameName?: string): { gamePath: string; source: "heroic" | "manual" } | null {
-  const heroicGames = detectThroughHeroic();
-
-  if (gameName) {
-    const lowerName = gameName.toLowerCase();
-    const keywords = lowerName.split(/[\s:]+/).filter(w => w.length > 3);
-
-    for (const gog of heroicGames) {
-      const title = gog.appTitle.toLowerCase();
-      if (title.includes(lowerName) || keywords.some(k => title.includes(k))) {
-        return { gamePath: gog.installPath, source: "heroic" };
-      }
-    }
-  } else {
-    for (const gog of heroicGames) {
-      const title = gog.appTitle.toLowerCase();
-      if (title.includes(gameId.replace(/_/g, " ").toLowerCase())) {
-        return { gamePath: gog.installPath, source: "heroic" };
-      }
-    }
+export function findGogGamePath(
+  gameId: string,
+  gameName?: string,
+  detectExe?: string,
+  detectExeAlts?: string[],
+): { gamePath: string; source: "gog" } | null {
+  if (detectExe) {
+    const found = detectGogByExe(gameId, detectExe, detectExeAlts);
+    if (found) return { gamePath: found, source: "gog" };
   }
 
-  const commonPath = detectCommonPaths(gameId);
-  if (commonPath) return { gamePath: commonPath, source: "manual" };
+  const found = detectGogByKeyword(gameId, gameName);
+  if (found) return { gamePath: found, source: "gog" };
 
   return null;
 }

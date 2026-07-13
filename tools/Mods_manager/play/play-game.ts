@@ -38,7 +38,7 @@ export async function playGame(
     if (!("gamePath" in detect)) {
       logStep(gameId, "detect", "Jogo não encontrado", "error", { duration_ms: Date.now() - _s1 });
       logEvent(gameId, "play_failed", { reason: "game_not_found" });
-      return detect;
+      return { ...detect, failedStep: "detect" };
     }
     logStep(gameId, "detect", "Jogo detectado", "done", { duration_ms: Date.now() - _s1 });
 
@@ -111,7 +111,7 @@ export async function playGame(
       const errMsg = `Verificacao falhou: ${configsResult.errors.join("; ")}`;
       logEvent(gameId, "play_blocked", { reason: "configs_verification_failed", errors: configsResult.errors });
       send("error", `BLOQUEADO: ${errMsg}`, "error");
-      return { success: false, error: errMsg };
+      return { success: false, error: errMsg, failedStep: "dll" };
     }
 
     // ── Step 5: Frameworks (BepInEx, SMAPI, CET, etc.) ──
@@ -168,7 +168,7 @@ export async function playGame(
         logStep(gameId, "deploy", `Falha: ${deployResult.error || "erro"}`, "error", { duration_ms: Date.now() - _s6 });
         logEvent(gameId, "play_failed", { reason: "deploy_failed", error: deployResult.error });
         send("deploy", `Falha no deploy: ${deployResult.error || "erro desconhecido"}`, "error");
-        return { success: false, error: deployResult.error || "Deploy failed" };
+        return { success: false, error: deployResult.error || "Deploy failed", failedStep: "deploy" };
       }
       logStep(gameId, "deploy", `${deployResult.log?.length || 0} operações`, "done", { duration_ms: Date.now() - _s6 });
       send("deploy", `Mods implantados (${deployResult.log?.length || 0} operações)`, "done");
@@ -177,7 +177,7 @@ export async function playGame(
       logStep(gameId, "deploy", msg, "error", { duration_ms: Date.now() - _s6 });
       logEvent(gameId, "play_failed", { reason: "deploy_exception", error: msg });
       send("deploy", msg, "error");
-      throw new Error(`Falha no deploy: ${msg}`);
+      return { success: false, error: `Falha no deploy: ${msg}`, failedStep: "deploy" };
     }
 
     // ── Step 8: Launch ──
@@ -212,6 +212,6 @@ export async function playGame(
     logStep(gameId, "error", msg, "error", { duration_ms: totalMs });
     logEvent(gameId, "play_failed", { reason: "exception", error: msg, total_duration_ms: totalMs });
     send("error", `Erro interno: ${msg}`, "error");
-    return { success: false, error: msg };
+    return { success: false, error: msg, failedStep: "unknown" };
   }
 }

@@ -32,7 +32,7 @@ export function GameDetectionWizard({ open, onClose, onGameDetected, selectedGam
     try {
       const catalogResult = await window.electron.getGameDllCatalog();
       if (!catalogResult.ok || !catalogResult.data?.games) {
-        setError("Catálogo de jogos não disponível");
+        setError("Catalogo de jogos nao disponivel");
         return;
       }
       const games = catalogResult.data.games;
@@ -54,7 +54,7 @@ export function GameDetectionWizard({ open, onClose, onGameDetected, selectedGam
       if (firstFound) setChosenGameId(firstFound.gameId);
       setStep("result");
     } catch (e: any) {
-      setError(e.message || "Erro na detecção");
+      setError(e.message || "Erro na deteccao");
       setStep("result");
     }
   }, []);
@@ -82,7 +82,7 @@ export function GameDetectionWizard({ open, onClose, onGameDetected, selectedGam
         return;
       }
     }
-    setError("Nenhum jogo reconhecido neste diretório");
+    setError("Nenhum jogo reconhecido neste diretorio");
   };
 
   const handleConfirm = async (gameId: string) => {
@@ -96,11 +96,13 @@ export function GameDetectionWizard({ open, onClose, onGameDetected, selectedGam
   };
 
   const foundCount = detected.filter((g) => g.found).length;
-  const alreadyFound = foundCount > 0 && detected.find((g) => g.found && g.gameId === initialGameId);
+  const selectedGame = detected.find((g) => g.gameId === initialGameId);
+  const selectedNotFound = selectedGame && !selectedGame.found;
+  const allNotFound = detected.length > 0 && foundCount === 0;
 
   const handleRetry = () => {
-    if (alreadyFound) {
-      setInfoMsg("Jogo já encontrado! Selecione abaixo e clique em Configurar Selecionado.");
+    if (selectedNotFound) {
+      setInfoMsg("Jogo ja encontrado! Selecione abaixo e clique em Configurar Selecionado.");
       setTimeout(() => setInfoMsg(null), 3000);
     } else {
       startDetection(initialGameId);
@@ -114,55 +116,78 @@ export function GameDetectionWizard({ open, onClose, onGameDetected, selectedGam
           <div className="detection-wizard__step">
             <h2>Detectando jogos instalados...</h2>
             <div className="detection-wizard__spinner" />
-            <p>Procurando em bibliotecas Steam, GOG e diretórios comuns...</p>
+            <p>Procurando em bibliotecas Steam e GOG...</p>
           </div>
         )}
 
         {step === "result" && (
           <div className="detection-wizard__step">
-            <h2>Jogos Detectados</h2>
-            {error && <p className="detection-wizard__error">⚠️ {error}</p>}
-            {infoMsg && <p className="detection-wizard__info">💡 {infoMsg}</p>}
-            {foundCount > 0 ? (
-              <p>{foundCount} jogo(s) encontrado(s) automaticamente.</p>
-            ) : (
-              <p>Nenhum jogo encontrado automaticamente.</p>
-            )}
-            <div className="detection-wizard__game-list">
-              {detected.map((g) => (
-                <div
-                  key={g.gameId}
-                  className={`detection-wizard__game-item ${g.found ? "detection-wizard__game-item--found" : ""} ${chosenGameId === g.gameId ? "detection-wizard__game-item--selected" : ""}`}
-                  onClick={() => g.found && setChosenGameId(g.gameId)}
-                >
-                  <span className="detection-wizard__game-name">{g.name}</span>
-                  {g.found ? (
-                    <span className="detection-wizard__game-status detection-wizard__game-status--found">✅ {g.source}</span>
-                  ) : (
-                    <span className="detection-wizard__game-status detection-wizard__game-status--missing">❌ Não encontrado</span>
-                  )}
+            {selectedNotFound || allNotFound ? (
+              <>
+                <h2>Jogo nao encontrado</h2>
+                <div className="detection-wizard__alternative-notice">
+                  <p>
+                    <strong>{selectedGame?.name || "O jogo selecionado"}</strong> nao foi encontrado
+                    nas bibliotecas Steam ou GOG do seu sistema.
+                  </p>
+                  <p>
+                    Isso significa que o jogo esta em uma <strong>biblioteca alternativa</strong> (por exemplo, uma instalacao manual, DRM-free, ou outro launcher).
+                  </p>
+                  <p>
+                    Clique em <strong>Configurar</strong> para selecionar manualmente a pasta onde o executavel do jogo esta localizado.
+                  </p>
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <>
+                <h2>Jogos Detectados</h2>
+                <p>{foundCount} jogo(s) encontrado(s) automaticamente.</p>
+              </>
+            )}
+
+            {error && <p className="detection-wizard__error">{error}</p>}
+            {infoMsg && <p className="detection-wizard__info">{infoMsg}</p>}
+
+            {detected.length > 1 && (
+              <div className="detection-wizard__game-list">
+                {detected.map((g) => (
+                  <div
+                    key={g.gameId}
+                    className={`detection-wizard__game-item ${g.found ? "detection-wizard__game-item--found" : ""} ${chosenGameId === g.gameId ? "detection-wizard__game-item--selected" : ""}`}
+                    onClick={() => g.found && setChosenGameId(g.gameId)}
+                  >
+                    <span className="detection-wizard__game-name">{g.name}</span>
+                    {g.found ? (
+                      <span className="detection-wizard__game-status detection-wizard__game-status--found">{g.source}</span>
+                    ) : (
+                      <span className="detection-wizard__game-status detection-wizard__game-status--missing">Nao encontrado</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="detection-wizard__actions">
-              <Button onClick={handleSelectManual}>Selecionar Manualmente</Button>
+              <Button onClick={handleSelectManual}>Configurar</Button>
               <Button onClick={handleRetry}>Buscar Novamente</Button>
-              <Button
-                theme="primary"
-                disabled={!chosenGameId || !detected.find((g) => g.gameId === chosenGameId)?.found}
-                onClick={() => handleConfirm(chosenGameId)}
-              >
-                Configurar Selecionado
-              </Button>
+              {foundCount > 0 && (
+                <Button
+                  theme="primary"
+                  disabled={!chosenGameId || !detected.find((g) => g.gameId === chosenGameId)?.found}
+                  onClick={() => handleConfirm(chosenGameId)}
+                >
+                  Configurar Selecionado
+                </Button>
+              )}
             </div>
           </div>
         )}
 
         {step === "saved" && (
           <div className="detection-wizard__step">
-            <h2>✅ Jogo Configurado!</h2>
-            <p>O jogo foi configurado com paths padrão.</p>
-            <p>Você pode ajustar as configurações no painel de Configurações do Jogo.</p>
+            <h2>Jogo Configurado!</h2>
+            <p>O jogo foi configurado com paths padrao.</p>
+            <p>Voce pode ajustar as configuracoes no painel de Configuracoes do Jogo.</p>
             <Button theme="primary" onClick={onClose}>Concluir</Button>
           </div>
         )}

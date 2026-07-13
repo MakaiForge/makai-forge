@@ -40,10 +40,12 @@ export function detectGame(gameId: string): DetectionResult {
   }
 
   logger.info(`[detect] Trying GOG for ${gameId}...`);
-  const gog = findGogGamePath(gameId, gameInfo?.name);
+  const gog = findGogGamePath(gameId, gameInfo?.name, gameInfo?.detectExe, gameInfo?.detectExeAlts);
   if (gog) {
-    logger.info(`[detect] ${gameId} found via GOG (${gog.source})`);
-    return { gamePath: gog.gamePath, prefixPath: null, source: "gog" };
+    const slug = gameId.toLowerCase().replace(/[\s:/\\]+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const defaultPrefix = path.join(os.homedir(), "Games", "Prefix", slug);
+    logger.info(`[detect] ${gameId} found via GOG at ${gog.gamePath}`);
+    return { gamePath: gog.gamePath, prefixPath: defaultPrefix, source: "gog" };
   }
 
   if (gameInfo?.detectExe) {
@@ -61,31 +63,63 @@ export function detectGame(gameId: string): DetectionResult {
 
 function detectManual(detectExe: string, alts?: string[]): string | null {
   const home = os.homedir();
-  const candidates = [
+  const exes = [detectExe, ...(alts || [])];
+
+  const flatDirs = [
     path.join(home, "Games"),
     path.join(home, "GOG Games"),
+    path.join(home, "GOG"),
     path.join(home, ".local", "share", "Steam", "steamapps", "common"),
     path.join(home, "snap", "steam", "common", ".local", "share", "Steam", "steamapps", "common"),
     path.join(home, ".var", "app", "com.valvesoftware.Steam", "data", "steam", "steamapps", "common"),
-    "/mnt",
-    "/media",
   ];
 
-  const exes = [detectExe, ...(alts || [])];
-  for (const base of candidates) {
-    if (!fs.existsSync(base)) continue;
-    try {
-      const dirs = fs.readdirSync(base);
-      for (const dir of dirs) {
-        const gameDir = path.join(base, dir);
-        if (!fs.statSync(gameDir).isDirectory()) continue;
-        for (const exe of exes) {
-          if (fs.existsSync(path.join(gameDir, exe))) {
-            return gameDir;
-          }
+  for (const base of flatDirs) {
+    const found = scanFlat(base, exes);
+    if (found) return found;
+  }
+
+  const deepDirs = ["/mnt", "/media"];
+  for (const base of deepDirs) {
+    const found = scanDeep(base, exes, 2);
+    if (found) return found;
+  }
+
+  return null;
+}
+
+function scanFlat(dir: string, exes: string[]): string | null {
+  if (!fs.existsSync(dir)) return null;
+  try {
+    const entries = fs.readdirSync(dir);
+    for (const entry of entries) {
+      const gameDir = path.join(dir, entry);
+      if (!fs.statSync(gameDir).isDirectory()) continue;
+      for (const exe of exes) {
+        if (fs.existsSync(path.join(gameDir, exe))) {
+          return gameDir;
         }
       }
-    } catch { continue; }
-  }
+    }
+  } catch {}
+  return null;
+}
+
+function scanDeep(dir: string, exes: string[], maxDepth: number, currentDepth = 0): string | null {
+  if (!fs.existsSync(dir) || currentDepth > maxDepth) return null;
+  try {
+    const entries = fs.readdirSync(dir);
+    for (const entry of entries) {
+      const full = path.join(dir, entry);
+      if (!fs.statSync(full).isDirectory()) continue;
+      for (const exe of exes) {
+        if (fs.existsSync(path.join(full, exe))) {
+          return full;
+        }
+      }
+      const deeper = scanDeep(full, exes, maxDepth, currentDepth + 1);
+      if (deeper) return deeper;
+    }
+  } catch {}
   return null;
 }

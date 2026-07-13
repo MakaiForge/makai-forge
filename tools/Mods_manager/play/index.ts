@@ -28,7 +28,7 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
  * 1. IPC: modPlayGame(gameId, profile?)  ← index.ts
  * 2. Step: detect                        ← steps/01-detect.ts
  *    2a. Busca Steam (appmanifest_*.acf)
- *    2b. Busca GOG (Heroic/install)
+ *    2b. Busca GOG (diretorios ~/GOG Games/, ~/GOG/, ~/Games/)
  *    2c. Fallback: caminho manual
  * 3. Step: proton                        ← steps/02-proton.ts
  *    3a. ProtonRecommendationService.recommend()
