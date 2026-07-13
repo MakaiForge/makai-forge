@@ -1092,8 +1092,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("abortInstall"),
   verifyGameReady: (gameId: string) =>
     ipcRenderer.invoke("verifyGameReady", gameId),
-  scanEnvironment: (gameId: string) =>
-    ipcRenderer.invoke("scanEnvironment", gameId),
+  scanEnvironment: (gameId: string, autoFix?: boolean) =>
+    ipcRenderer.invoke("scanEnvironment", gameId, autoFix),
   onModInstallProgress: (cb: (data: any) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, data: any) => cb(data);
     ipcRenderer.on("mod-install-progress", listener);

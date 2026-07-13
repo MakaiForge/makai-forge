@@ -3,8 +3,6 @@ import { app } from "electron";
 import { ModStorageService, logger } from "@main/services";
 import { getGameModule, getGameInfo } from "@games/registry";
 import { scanEnvironment } from "./environment-scanner";
-import { seedBethesdaRegistry } from "@prefix/core/bethesda-registry";
-import { applyWineDllOverrides } from "@prefix/core/dll-overrides";
 import { launchViaSteam, launchViaProton, getSteamLaunchEnv } from "@games/_shared/launch";
 import { downloadSkse } from "./skse-downloader";
 
@@ -33,9 +31,9 @@ export async function launchGame(
   };
 
   try {
-    // ── Step 0: Scan environment ──
+    // ── Step 0: Scan environment (autoFix: true — corrige DLL overrides, registry, nested pfx) ──
     send("detect", "Verificando ambiente...", "working");
-    const env = scanEnvironment({ gameId });
+    const env = scanEnvironment({ gameId, autoFix: true });
 
     if (!env.gamePath) {
       send("detect", env.errors[0] || "Jogo não encontrado", "error");
@@ -43,6 +41,13 @@ export async function launchGame(
       return { success: false, error: env.errors[0] || "Game not found" };
     }
     send("detect", `Jogo encontrado: ${path.basename(env.gamePath)}`, "done");
+
+    // ── Report what scanner fixed ──
+    if (env.fixed.length > 0) {
+      for (const fix of env.fixed) {
+        send("dll", fix, "done");
+      }
+    }
 
     // ── Step 1: Prefix ──
     send("prefix", "Verificando prefixo Wine...", "working");
@@ -62,45 +67,35 @@ export async function launchGame(
       send("prefix", `Prefixo válido: ${env.prefixPath}`, "done");
     }
 
-    // ── Step 2: DLL Overrides ──
+    // ── Step 2: DLL Overrides (scanner já aplicou se autoFix) ──
     send("dll", "Verificando DLL Overrides...", "working");
-
     const mod = getGameModule(gameId, env.gamePath);
     const overrides = mod.getWineDllOverrides?.();
-
     if (overrides && Object.keys(overrides).length > 0) {
-      const dllList = Object.keys(overrides);
-      if (!env.dllOverridesOk) {
-        send("dll", `Aplicando ${dllList.length} DLL overrides: ${dllList.join(", ")}`, "working");
-        applyWineDllOverrides(env.prefixPath, overrides);
-        send("dll", `${dllList.length} DLL overrides aplicados em user.reg`, "done");
-      } else {
-        send("dll", `${dllList.length} DLL overrides já configurados`, "done");
-      }
+      send("dll",
+        env.dllOverridesOk
+          ? `${Object.keys(overrides).length} DLL overrides já configurados`
+          : `DLL overrides precisam de atenção`,
+        env.dllOverridesOk ? "done" : "error"
+      );
     } else {
       send("dll", "Nenhum DLL override necessário para este jogo", "done");
     }
 
-    // ── Step 3: Registry ──
+    // ── Step 3: Registry (scanner já aplicou se autoFix) ──
     send("registry", "Verificando registro Bethesda...", "working");
-
     if (mod.bethesdaRegistryName) {
-      if (!env.registryOk) {
-        const ok = seedBethesdaRegistry(env.prefixPath, env.gamePath, mod.bethesdaRegistryName);
-        send("registry",
-          ok
-            ? `Registro Bethesda (${mod.bethesdaRegistryName}) configurado em system.reg`
-            : `Falha ao configurar registro Bethesda (${mod.bethesdaRegistryName})`,
-          "done"
-        );
-      } else {
-        send("registry", `Registro Bethesda (${mod.bethesdaRegistryName}) já configurado`, "done");
-      }
+      send("registry",
+        env.registryOk
+          ? `Registro Bethesda (${mod.bethesdaRegistryName}) já configurado`
+          : `Registro Bethesda (${mod.bethesdaRegistryName}) precisa de atenção`,
+        env.registryOk ? "done" : "error"
+      );
     } else {
       send("registry", "Jogo não-Bethesda, pulando registro", "done");
     }
 
-    // ── Step 4: SKSE ──
+    // ── Step 4: SKSE (lento — scanner não baixa) ──
     send("skse", "Verificando script extender...", "working");
 
     const skseLoaderName = mod.getScriptExtenderRelease?.()?.loaderName || "skse64_loader.exe";
@@ -123,7 +118,6 @@ export async function launchGame(
     send("launch", "Iniciando jogo...", "working");
 
     const info = getGameInfo(gameId);
-    const config = ModStorageService.get<any>(`game:${gameId}:config`);
 
     if (hasSkse) {
       send("launch", `Iniciando via ${skseLoaderName}...`, "working");

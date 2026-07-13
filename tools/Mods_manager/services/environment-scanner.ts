@@ -5,6 +5,10 @@
  * Qualquer ação do programa (Instalar, Play, Configurar, Preparar Prefixo)
  * chama scan() para descobrir o estado REAL do ambiente.
  *
+ * Com autoFix: true, corrige automaticamente problemas rápidos e não-destrutivos
+ * (DLL overrides, registry, nested pfx). Problemas destrutivos (recriar prefix)
+ * ou lentos (baixar SKSE/frameworks) são reportados mas não corrigidos.
+ *
  * Regra: o programa nunca "lembra" que o prefixo existe.
  * Ele descobriu novamente, toda vez.
  */
@@ -12,11 +16,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { ModStorageService } from "@main/services";
+import { ModStorageService, logger } from "@main/services";
 import { getGameModule, getGameInfo } from "@games/registry";
+import { applyWineDllOverrides } from "@prefix/core/dll-overrides";
+import { seedBethesdaRegistry } from "@prefix/core/bethesda-registry";
 import { gameDllCatalog } from "./game-dlls-service";
 import { detectGame } from "./detection";
 import { defaultStagingDir, defaultPrefixDir } from "./steam-library";
+import { cleanNestedPfx } from "./prefix-validator";
 
 // ── Types ──
 
@@ -41,6 +48,7 @@ export interface EnvironmentStatus {
   depsMissing: string[]
   ready: boolean
   errors: string[]
+  fixed: string[]
 }
 
 export interface FrameworkStatus {
@@ -51,12 +59,14 @@ export interface FrameworkStatus {
 export interface ScanOptions {
   gameId: string
   profile?: string
+  /** Corrige automaticamente problemas rápidos e não-destrutivos */
+  autoFix?: boolean
 }
 
 // ── Core ──
 
 export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
-  const { gameId } = opts;
+  const { gameId, autoFix = false } = opts;
   const gameModule = getGameModule(gameId, "");
   const gameName = gameModule?.displayName || gameId;
 
@@ -79,6 +89,7 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
     depsMissing: [],
     ready: false,
     errors: [],
+    fixed: [],
   };
 
   // ── 1. Ler config do jogo ──
@@ -90,13 +101,13 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
     const detected = detectGame(gameId);
     if (detected.source && detected.gamePath) {
       rawGamePath = detected.gamePath;
-      // Salvar auto-detecção
       ModStorageService.put(`game:${gameId}:config`, {
         gamePath: rawGamePath,
         stagingDir: gameConfig?.stagingDir || defaultStagingDir(gameId),
         protonPrefix: gameConfig?.protonPrefix || defaultPrefixDir(gameId),
         protonVersion: gameConfig?.protonVersion || "",
       });
+      status.fixed.push(`Game path auto-detectado: ${rawGamePath}`);
     }
   }
   status.gamePath = rawGamePath ? expandHome(rawGamePath) : "";
@@ -133,6 +144,7 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
   if (!fs.existsSync(status.stagingDir)) {
     try {
       fs.mkdirSync(status.stagingDir, { recursive: true });
+      status.fixed.push(`Pasta de mods criada: ${status.stagingDir}`);
     } catch {
       status.errors.push(`Não foi possível criar pasta de mods: ${status.stagingDir}`);
     }
@@ -145,6 +157,15 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
     const resolved = resolvePrefixDir(status.prefixPath);
     status.prefixPath = resolved;
     status.prefixValid = resolved ? isValidPrefix(resolved) : false;
+
+    // Auto-fix: limpar nested pfx (rápido, não-destrutivo)
+    if (autoFix && resolved) {
+      const hadNested = fs.existsSync(path.join(resolved, "pfx"));
+      cleanNestedPfx(resolved);
+      if (hadNested) {
+        status.fixed.push("Nested pfx/ removido");
+      }
+    }
   }
 
   if (!rawPrefix) {
@@ -174,13 +195,40 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
     status.dllOverridesOk = dllOverridesMatch(status.prefixPath, dllOverrides);
     if (!status.dllOverridesOk) {
       status.dllOverridesMissing = Object.keys(dllOverrides);
-      status.errors.push(`DLL overrides não aplicados: ${status.dllOverridesMissing.join(", ")}`);
+
+      // Auto-fix: aplicar DLL overrides (rápido, não-destrutivo)
+      if (autoFix && status.prefixValid) {
+        try {
+          applyWineDllOverrides(status.prefixPath, dllOverrides);
+          status.dllOverridesOk = true;
+          status.dllOverridesMissing = [];
+          status.fixed.push(`DLL overrides aplicados: ${Object.keys(dllOverrides).join(", ")}`);
+        } catch (err) {
+          status.errors.push(`Falha ao aplicar DLL overrides: ${err}`);
+        }
+      } else {
+        status.errors.push(`DLL overrides não aplicados: ${status.dllOverridesMissing.join(", ")}`);
+      }
     }
   }
 
   // ── 7. Registry (Bethesda) ──
   if (status.prefixPath && status.prefixValid) {
     status.registryOk = checkRegistry(status.prefixPath, gameId, gameName);
+
+    // Auto-fix: seed registry Bethesda (rápido, não-destrutivo)
+    if (autoFix && !status.registryOk && gameModule?.bethesdaRegistryName) {
+      try {
+        const ok = seedBethesdaRegistry(status.prefixPath, status.gamePath, gameModule.bethesdaRegistryName);
+        if (ok) {
+          status.registryOk = true;
+          status.fixed.push(`Registry Bethesda (${gameModule.bethesdaRegistryName}) aplicado`);
+        }
+      } catch (err) {
+        status.errors.push(`Falha ao aplicar registry Bethesda: ${err}`);
+      }
+    }
+
     if (!status.registryOk) {
       status.errors.push("Registry Bethesda não aplicado");
     }
@@ -234,17 +282,19 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
     && status.dllOverridesOk
     && status.registryOk;
 
+  if (autoFix && status.fixed.length > 0) {
+    logger.log(`[EnvironmentScanner] auto-fix applied for ${gameId}: ${status.fixed.join("; ")}`);
+  }
+
   return status;
 }
 
 // ── Helpers ──
 
 function readProtonFromStore(): string {
-  // 1. In-memory cache (ModStorageService)
   const cached = ModStorageService.get<string>("proton_binary");
   if (cached) return cached;
 
-  // 2. Direct disk read (fallback para cache stale)
   try {
     const storePath = path.join(os.homedir(), ".config", "makai-forger", "mods-store.json");
     const raw = fs.readFileSync(storePath, "utf-8");
@@ -300,11 +350,10 @@ function dllOverridesMatch(prefixPath: string, required: Record<string, string>)
   }
 }
 
-function checkRegistry(prefixPath: string, gameId: string, gameName: string): boolean {
-  // Para jogos Bethesda, verificar se o registry foi seedado
+function checkRegistry(prefixPath: string, gameId: string, _gameName: string): boolean {
   const BethesdaGames = ["skyrim", "skyrim-se", "skyrim-ae", "fallout4", "oblivion", "morrowind"];
   if (!BethesdaGames.some(bg => gameId.toLowerCase().includes(bg))) {
-    return true; // Não-Bethesda: sem registry obrigatório
+    return true;
   }
 
   const pfx = resolvePrefixDir(prefixPath);
@@ -350,7 +399,7 @@ function checkDepInstalled(dep: string, sys32: string): boolean {
 
 export function registerEnvironmentScanner() {
   const { registerEvent } = require("@main/events/register-event");
-  registerEvent("scanEnvironment", async (_event: any, gameId: string) => {
-    return scanEnvironment({ gameId });
+  registerEvent("scanEnvironment", async (_event: any, gameId: string, autoFix?: boolean) => {
+    return scanEnvironment({ gameId, autoFix });
   });
 }

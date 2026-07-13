@@ -21,7 +21,7 @@ export interface Check {
 }
 
 export function verifyGameReady(gameId: string): CheckResult {
-  const env = scanEnvironment({ gameId });
+  const env = scanEnvironment({ gameId, autoFix: true });
   const checks = mapToChecks(env);
   const allOk = checks.every(c => c.ok);
   return { ok: allOk, checks };

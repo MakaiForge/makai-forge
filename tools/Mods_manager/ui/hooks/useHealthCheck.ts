@@ -26,7 +26,7 @@ export function useHealthCheck({
     (async () => {
       setHealthBanner({ status: "loading", message: "Verificando ambiente..." });
       try {
-        const env = await (window.electron as any).scanEnvironment(selectedGame);
+        const env = await (window.electron as any).scanEnvironment(selectedGame, true);
         if (cancelled) return;
 
         if (env?.ready) {

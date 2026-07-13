@@ -32,7 +32,7 @@ export async function playGame(
     // ── Step 0: Scan environment (única fonte de verdade) ──
     logStep(gameId, "scan", "Verificando ambiente...", "working");
     const _s0 = Date.now();
-    const env = scanEnvironment({ gameId });
+    const env = scanEnvironment({ gameId, autoFix: true });
     logStep(gameId, "scan", env.ready ? "Ambiente pronto" : `${env.errors.length} problema(s) encontrado(s)`, env.ready ? "done" : "error", {
       duration_ms: Date.now() - _s0,
       gamePath: env.gamePath || "",
