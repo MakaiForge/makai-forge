@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { logger } from "@main/services";
 import { findAllSteamLibraries } from "@prefix/core/steam-paths";
-import { setSteamGameProton } from "@main/services/steam-config-vdf";
+import { setSteamGameProton, setSteamGameLaunchOptions } from "@main/services/steam-config-vdf";
 
 /**
  * Bridge between our custom prefix and Steam's compatdata system.
@@ -60,6 +60,12 @@ export async function bridgePrefixToSteam(
     const pfxPath = path.join(compatDataDir, "pfx");
     const resolvedCustom = path.resolve(customPrefixPath);
 
+    // Safety: prevent circular symlink (pfx pointing to itself)
+    if (path.resolve(pfxPath) === resolvedCustom) {
+      result.error = `pfx path equals custom prefix — circular symlink prevented: ${pfxPath}`;
+      return result;
+    }
+
     // Step 1: Create symlink if needed
     if (fs.existsSync(pfxPath)) {
       // Check if it's already a symlink to our prefix
@@ -108,6 +114,15 @@ export async function bridgePrefixToSteam(
       }
     } else {
       result.configUpdated = true; // No proton to set
+    }
+
+    // Step 3: Inject LaunchOptions so Steam uses our custom prefix via STEAM_COMPAT_DATA_PATH
+    const launchOpt = `STEAM_COMPAT_DATA_PATH=${resolvedCustom} %command%`;
+    const launchOk = await setSteamGameLaunchOptions(steamAppId, launchOpt);
+    if (launchOk) {
+      logger.info(`[SteamPrefixBridge] Set LaunchOptions: ${launchOpt}`);
+    } else {
+      logger.warn(`[SteamPrefixBridge] Failed to set LaunchOptions for ${steamAppId}`);
     }
 
     result.success = true;

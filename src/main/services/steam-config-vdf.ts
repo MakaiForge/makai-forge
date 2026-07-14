@@ -191,6 +191,131 @@ export async function setSteamGameProton(
   }
 }
 
+export async function setSteamGameLaunchOptions(
+  appId: string,
+  launchOptions: string | null,
+): Promise<boolean> {
+  const steamPath = await getSteamLocation().catch(() => null);
+  if (!steamPath) return false;
+
+  const vdfPath = configVdfPath(steamPath);
+  logger.info(`setSteamGameLaunchOptions: vdfPath=${vdfPath}, appId=${appId}, launchOptions=${launchOptions}`);
+  if (!fs.existsSync(vdfPath)) {
+    logger.error(`config.vdf not found at ${vdfPath}`);
+    return false;
+  }
+
+  try {
+    let raw = fs.readFileSync(vdfPath, "utf-8");
+    const nl = detectLineEnding(raw);
+    const normalized = raw.replace(/\r\n/g, "\n");
+
+    // Find the Steam block
+    const steamIdx = normalized.indexOf('"Steam"');
+    if (steamIdx === -1) {
+      logger.error("Cannot find Steam block in config.vdf");
+      return false;
+    }
+    const steamBrace = normalized.indexOf("{", steamIdx);
+    if (steamBrace === -1) return false;
+    const steamEndBrace = findMatchingBrace(normalized, steamBrace);
+    if (steamEndBrace === -1) return false;
+
+    const isUndefined = launchOptions === null || launchOptions.trim() === "";
+
+    // Find or create the "Apps" block inside Steam
+    const steamInner = normalized.slice(steamBrace + 1, steamEndBrace);
+    const appsKeyIdx = steamInner.indexOf('"Apps"');
+
+    if (appsKeyIdx === -1) {
+      // Need to create the Apps block inside Steam (before closing brace)
+      if (isUndefined) return true;
+
+      const indent = "\t\t\t";
+      const entryIndent = "\t\t\t\t";
+      const fieldIndent = "\t\t\t\t\t";
+      const appsEntry = makeLaunchOptionsEntry(appId, launchOptions, entryIndent, fieldIndent, "\n");
+      const appsBlock = `${indent}"Apps"\n${indent}{\n${appsEntry}\n${indent}}`;
+      // Insert before the Steam closing brace
+      const beforeContent = normalized.slice(steamBrace + 1, steamEndBrace).trimEnd();
+      raw =
+        normalized.slice(0, steamBrace + 1) +
+        "\n" +
+        beforeContent +
+        "\n\n" +
+        appsBlock +
+        "\n" +
+        normalized.slice(steamEndBrace);
+      raw = raw.replace(/\r?\n/g, nl);
+      logger.info(`Created new Apps block with LaunchOptions for ${appId}`);
+      fs.writeFileSync(vdfPath, raw, "utf-8");
+      return true;
+    }
+
+    // Find the Apps { } block boundaries
+    const appsBlockOpen = steamBrace + 1 + steamInner.indexOf("{", appsKeyIdx);
+    const appsBlockClose = findMatchingBrace(normalized, appsBlockOpen);
+    if (appsBlockClose === -1) return false;
+
+    // Look for existing entry for this appId inside the Apps block
+    const existingAppEntry = findEntry(normalized, appsBlockOpen, appsBlockClose, appId);
+
+    if (existingAppEntry) {
+      const appsBefore = normalized.slice(0, appsBlockOpen + 1);
+      let appsInner = normalized.slice(appsBlockOpen + 1, appsBlockClose);
+      const appsAfter = normalized.slice(appsBlockClose);
+
+      const entryBefore = appsInner.slice(0, existingAppEntry.start);
+      const entryAfter = appsInner.slice(existingAppEntry.end);
+
+      if (isUndefined) {
+        appsInner = trimTrailingEmptyLines(entryBefore + entryAfter);
+      } else {
+        const newEntry = makeLaunchOptionsEntry(appId, launchOptions, "\t\t\t\t", "\t\t\t\t\t", "\n");
+        appsInner = entryBefore + newEntry + entryAfter;
+      }
+
+      appsInner = appsInner.replace(/\n{3,}/g, "\n\n");
+      raw = appsBefore + appsInner + appsAfter;
+    } else {
+      if (isUndefined) return true;
+      // Append new entry to the Apps block
+      const appsBefore = normalized.slice(0, appsBlockOpen + 1);
+      let appsInner = normalized.slice(appsBlockOpen + 1, appsBlockClose);
+      const appsAfter = normalized.slice(appsBlockClose);
+
+      const newEntry = makeLaunchOptionsEntry(appId, launchOptions, "\t\t\t\t", "\t\t\t\t\t", "\n");
+      appsInner = appsInner.trimEnd() + "\n" + newEntry + "\n";
+      raw = appsBefore + appsInner + appsAfter;
+    }
+    raw = raw.replace(/\r?\n/g, nl);
+
+    logger.info(`Writing ${vdfPath}: ${raw.length}b`);
+    fs.writeFileSync(vdfPath, raw, "utf-8");
+    const verified = fs.readFileSync(vdfPath, "utf-8");
+    logger.info(`Verified: has ${appId}=${verified.includes(appId)}`);
+    return true;
+  } catch (err) {
+    logger.error("Failed to write Steam config.vdf (LaunchOptions)", err);
+    return false;
+  }
+}
+
+function makeLaunchOptionsEntry(
+  appId: string,
+  launchOptions: string,
+  entryIndent: string,
+  fieldIndent: string,
+  nl: string,
+): string {
+  return (
+    `${entryIndent}"${appId}"${nl}` +
+    `${entryIndent}{${nl}` +
+    `${fieldIndent}"LaunchOptions"${"\t\t"}"${launchOptions}"${nl}` +
+    `${entryIndent}}`
+  );
+}
+
 function makeEntry(
   appId: string,
   protonName: string,

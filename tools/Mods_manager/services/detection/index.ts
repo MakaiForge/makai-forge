@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { findSteamAppPath, steamCompatDataPath } from "../steam-library";
+import { findSteamAppPath, steamCompatDataPath, defaultPrefixDir } from "../steam-library";
 import { findGogGamePath } from "../gog-detection";
 import { gameDllCatalog } from "../game-dlls-service";
 import { logger } from "@main/services";
@@ -22,7 +22,8 @@ export function detectGame(gameId: string): DetectionResult {
       logger.info(`[detect] Trying Steam AppID ${steamId}...`);
       const steam = findSteamAppPath(steamId);
       if (steam) {
-        const prefixPath = steamCompatDataPath(steam.libraryPath, steamId);
+        // Prefixo do wrapper ~/Games/Prefix/{gameId}/ sempre
+        const prefixPath = defaultPrefixDir(gameId);
         logger.info(`[detect] ${gameId} found via Steam AppID ${steamId} at ${steam.gamePath}`);
         return { gamePath: steam.gamePath, prefixPath, source: "steam", steamAppId: steamId };
       }
@@ -34,8 +35,9 @@ export function detectGame(gameId: string): DetectionResult {
     logger.info(`[detect] No steamIds, trying fallback with gameId "${gameId}"`);
     const steam = findSteamAppPath(gameId);
     if (steam) {
+      const prefixPath = defaultPrefixDir(gameId);
       logger.info(`[detect] ${gameId} found via Steam (fallback ID)`);
-      return { gamePath: steam.gamePath, prefixPath: null, source: "steam" };
+      return { gamePath: steam.gamePath, prefixPath, source: "steam" };
     }
   }
 

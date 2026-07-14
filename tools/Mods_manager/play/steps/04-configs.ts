@@ -237,16 +237,36 @@ function isPythonUnavailable(stderr: string): boolean {
 }
 
 /**
- * Fallback: install deps via winetricks directly (without Python wrapper).
- * Maps dep names to winetricks verbs and runs winetricks with the correct env.
+ * Fallback: install deps via bundled Makaitricks directly (without Python wrapper).
+ * Maps dep names to winetricks verbs and runs Makaitricks with the correct env.
  */
+function getMakaitricksPath(): string {
+  // 1. Bundled Makaitricks — derive path from this file's location
+  //    04-configs.ts → play/steps/ → play/ → Mods_manager/ → tools/ → project root
+  const projectRoot = path.resolve(__dirname, "..", "..", "..", "..");
+  const bundled = path.join(projectRoot, "data", "install-api", "Makaitricks");
+  if (fs.existsSync(bundled)) return bundled;
+
+  // 2. Electron packaged path
+  try {
+    const appPath = require("electron").app.getAppPath();
+    const packaged = path.join(appPath, "data", "install-api", "Makaitricks");
+    if (fs.existsSync(packaged)) return packaged;
+  } catch {}
+
+  // 3. Fallback: system winetricks
+  for (const candidate of ["/usr/bin/winetricks", "/usr/local/bin/winetricks"]) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return "";
+}
+
 function runWinetricksDirect(
   prefixPath: string,
   protonPath: string,
   deps: string[],
   send: SendProgress,
 ): boolean {
-  // Dep → winetricks verb mapping
   const DEP_TO_VERB: Record<string, string> = {
     vcredist: "vcrun2022",
     d3dcompiler_47: "d3dcompiler_47",
@@ -256,17 +276,9 @@ function runWinetricksDirect(
   const verbs = deps.map(d => DEP_TO_VERB[d] || d).filter(Boolean);
   if (verbs.length === 0) return false;
 
-  // Try to find winetricks on the system
-  let winetricksPath = "";
-  for (const candidate of ["/usr/bin/winetricks", "/usr/local/bin/winetricks"]) {
-    if (fs.existsSync(candidate)) {
-      winetricksPath = candidate;
-      break;
-    }
-  }
-
+  const winetricksPath = getMakaitricksPath();
   if (!winetricksPath) {
-    send("dll", `⚠️ winetricks nao encontrado — ${deps.join(", ")} nao instalados`, "done");
+    send("dll", `⚠️ Makaitricks/winetricks nao encontrado — ${deps.join(", ")} nao instalados`, "done");
     return false;
   }
 
@@ -275,18 +287,19 @@ function runWinetricksDirect(
       ...process.env,
       WINEPREFIX: prefixPath,
       WINETRICKS_SUPERVISOR_NOCHOICE: "1",
+      WINETRICKS_NO_INTERACTIVE: "1",
     };
     for (const verb of verbs) {
-      execSync(`${winetricksPath} -q ${verb}`, {
+      execSync(`"${winetricksPath}" -q ${verb}`, {
         env,
         stdio: "pipe",
         timeout: 120000,
       });
     }
-    send("dll", `Dependencias instaladas via winetricks: ${deps.join(", ")}`, "done");
+    send("dll", `Dependencias instaladas via Makaitricks: ${deps.join(", ")}`, "done");
     return true;
   } catch (err) {
-    send("dll", `⚠️ Falha no winetricks fallback: ${String(err).slice(0, 80)}`, "done");
+    send("dll", `⚠️ Falha no Makaitricks fallback: ${String(err).slice(0, 80)}`, "done");
     return false;
   }
 }

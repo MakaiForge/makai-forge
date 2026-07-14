@@ -79,7 +79,11 @@ export async function downloadSkse(gameId: string, gamePath: string): Promise<bo
     const srcDir = extractedFolder ? path.join(tmpDir, extractedFolder) : tmpDir;
     const files = fs.readdirSync(srcDir);
     for (const file of files) {
-      fs.cpSync(path.join(srcDir, file), path.join(gamePath, file), { recursive: true, force: true });
+      const src = path.join(srcDir, file);
+      const dst = path.join(gamePath, file);
+      fs.cpSync(src, dst, { recursive: true, force: true });
+      // Garantir que usuario pode escrever (corrige permissao 444 vinda do archive)
+      try { fs.chmodSync(dst, 0o755); } catch { /* skip */ }
     }
     fs.rmSync(tmpDir, { recursive: true, force: true });
     return fs.existsSync(loaderPath);

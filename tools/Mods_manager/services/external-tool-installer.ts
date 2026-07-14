@@ -187,6 +187,7 @@ function copyRecursive(src: string, dst: string): void {
     } else if (entry.isFile()) {
       fs.mkdirSync(path.dirname(dstPath), { recursive: true });
       fs.copyFileSync(srcPath, dstPath);
+      try { fs.chmodSync(dstPath, 0o755); } catch { /* skip */ }
     }
   }
 }

@@ -40,35 +40,34 @@ function trackProcess(child: ChildProcess): void {
 }
 
 /**
- * Returns true if the prefix is inside Steam's compatdata directory
- * (e.g. steamapps/compatdata/72850/pfx). Custom prefixes like
- * ~/Games/Prefix/skyrim/ return false.
+ * Build the environment variables for launching a proton process.
+ *
+ * For all prefixes (Steam compatdata, custom wrapper, etc), Proton expects
+ * STEAM_COMPAT_DATA_PATH pointing to the directory that contains the pfx/ subdir.
+ * The wrapper layout is:
+ *   /home/cas/Games/Prefix/skyrim/   ← STEAM_COMPAT_DATA_PATH
+ *   /home/cas/Games/Prefix/skyrim/pfx/ ← prefix real com user.reg, drive_c, etc
+ *
+ * Proton gerenciará o prefix dentro de pfx/ — não tentamos gerenciar fora.
  */
-function isSteamCompatPrefix(prefixPath: string): boolean {
-  return prefixPath.includes(path.sep + "compatdata" + path.sep);
-}
-
 function buildLaunchEnv(
   steamAppId: string | undefined,
   gamePath: string,
-  prefixPath: string,
+  compatDataPath: string,
   protonPath: string,
   _libraryPath?: string,
 ): Record<string, string> {
   const env: Record<string, string> = {
-    WINEPREFIX: prefixPath,
     PROTONPATH: protonPath,
   };
 
-  // STEAM_COMPAT_DATA_PATH: for Steam compatdata, use the parent of pfx/.
-  // For custom prefixes, do NOT set this — Proton overrides WINEPREFIX when
-  // STEAM_COMPAT_DATA_PATH is set, computing prefix_dir = value + "/pfx/",
-  // which would break our custom prefix layout (files at root, not in pfx/).
-  if (isSteamCompatPrefix(prefixPath)) {
-    if (path.basename(prefixPath) === "pfx") {
-      env.STEAM_COMPAT_DATA_PATH = path.dirname(prefixPath);
+  // STEAM_COMPAT_DATA_PATH: Proton usa isso para achar pfx/ dentro.
+  // O valor deve ser o diretório que CONTÉM o pfx/, não o pfx em si.
+  if (compatDataPath) {
+    if (path.basename(compatDataPath) === "pfx") {
+      env.STEAM_COMPAT_DATA_PATH = path.dirname(compatDataPath);
     } else {
-      env.STEAM_COMPAT_DATA_PATH = prefixPath;
+      env.STEAM_COMPAT_DATA_PATH = compatDataPath;
     }
   }
 
@@ -146,28 +145,7 @@ function ensureProtonSymlink(protonPath: string): void {
 }
 
 /**
- * Launch via steam://rungameid — only for games using Steam's own compatdata prefix.
- * For custom prefixes, use launchCustomPrefix() instead.
- */
-async function launchViaSteam(
-  steamAppId: string,
-  send: SendProgress,
-): Promise<PlayResult> {
-  const info = getGameInfo(undefined);
-  logger.info(`[Launch] Launching via Steam: steam://rungameid/${steamAppId}`);
-  send("launch", "Iniciando via Steam...", "working");
-
-  spawn("steam", [`steam://rungameid/${steamAppId}`], {
-    stdio: "ignore",
-    detached: true,
-  }).unref();
-
-  send("launch", `${info?.name || steamAppId} iniciado via Steam!`, "done");
-  return { success: true, method: "steam" };
-}
-
-/**
- * Launch a game with a CUSTOM prefix via proton run or umu-run directly.
+ * Launch a game with the app-managed prefix via proton run or umu-run directly.
  *
  * This is the key fix for the Skyrim prefix issue: when the user has a custom
  * prefix (e.g. ~/Games/Prefix/skyrim/), we MUST launch via proton run with
@@ -192,17 +170,10 @@ async function launchCustomPrefix(
   const gameDir = path.dirname(launchExe);
   const env = buildLaunchEnv(steamAppId, gamePath, prefixPath, protonPath);
 
-  // Get game-specific env (e.g. Skyrim sets __CV0NDEBUG etc.)
+  // Obter env do modulo do jogo, se houver
   const mod = getGameModule(gameId, gamePath);
   const customEnv = mod.getLaunchEnv?.(gamePath, prefixPath, protonPath);
   if (customEnv) Object.assign(env, customEnv);
-
-  // For custom prefixes, never use Steam's compatdata — our prefix is standalone.
-  // getLaunchEnv may set STEAM_COMPAT_DATA_PATH to the Steam compatdata dir,
-  // which makes Proton wrap WINEPREFIX with /pfx/ and break our prefix layout.
-  if (!isSteamCompatPrefix(prefixPath)) {
-    delete env.STEAM_COMPAT_DATA_PATH;
-  }
 
   logger.info(`[Launch] === CUSTOM PREFIX LAUNCH ===`);
   logger.info(`[Launch] gameId: ${gameId}`);
@@ -317,27 +288,15 @@ export async function launchGame(
   const isSkseLaunch = hasSkse && sksePath != null;
   const launchArgs = isSkseLaunch ? [] : (mod.getLaunchArgs?.() || []);
 
-  // ── Custom prefix: launch via proton run directly ──
-  // When the user has a custom prefix (not inside Steam's compatdata),
-  // we MUST launch via proton run with WINEPREFIX set to the custom prefix.
-  // steam://rungameid/ would ignore our prefix and use Steam's own compatdata,
-  // losing all DLL overrides, registry entries, and mod deployments.
-  const customPrefix = !isSteamCompatPrefix(prefixPath);
-  if (customPrefix && launchExe && fs.existsSync(launchExe)) {
-    logger.info(`[Launch] Custom prefix detected: ${prefixPath}`);
-    logger.info(`[Launch] Launching via proton run to use custom prefix`);
+  // ── Launch via proton run or umu-run com nosso prefixo gerenciado ──
+  // O prefixo é sempre o wrapper gerenciado pelo app (~/Games/Prefix/{gameId}/),
+  // nunca o compatdata do Steam. Proton recebe STEAM_COMPAT_DATA_PATH e
+  // acha pfx/ dentro.
+  if (launchExe && fs.existsSync(launchExe)) {
     return launchCustomPrefix(
       gameId, gamePath, prefixPath, steamAppId, protonPath,
       launchExe, launchArgs, send,
     );
-  }
-
-  // ── Steam compatdata prefix: launch via steam://rungameid/ ──
-  // When the prefix IS inside Steam's compatdata, use steam://rungameid/
-  // so Steam manages the Proton runtime and prefix.
-  if (steamAppId) {
-    ensureSteamAppIdFile(gamePath, steamAppId);
-    return launchViaSteam(steamAppId, send);
   }
 
   // ── Fallback: Direct Proton/umu-run (non-Steam games without prefix) ──

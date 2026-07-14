@@ -22,8 +22,7 @@ import { applyWineDllOverrides } from "@prefix/core/dll-overrides";
 import { seedBethesdaRegistry } from "@prefix/core/bethesda-registry";
 import { gameDllCatalog } from "./game-dlls-service";
 import { detectGame } from "./detection";
-import { defaultStagingDir, defaultPrefixDir, steamCompatDataPath } from "./steam-library";
-import { findAllSteamLibraries } from "@prefix/core/steam-paths";
+import { defaultStagingDir, defaultPrefixDir } from "./steam-library";
 import { resolvePrefixDir, isValidPrefix, dllOverridesMatch, cleanNestedPfx } from "./prefix-validator";
 
 // ── Types ──
@@ -392,28 +391,10 @@ function checkDepInstalled(dep: string, sys32: string): boolean {
  * 2. Default prefix dir (~/Games/Prefix/{slug}/)
  * Retorna o caminho do prefix se encontrado, null caso contrario.
  */
-function findExistingPrefix(gameId: string, steamAppId?: string, libraryPath?: string): string | null {
-  // 1. Steam compatdata — o mais provavel para jogos Steam
-  if (steamAppId && libraryPath) {
-    const compatPrefix = steamCompatDataPath(libraryPath, steamAppId);
-    if (compatPrefix) return compatPrefix;
-  }
-
-  // 2. Scan todas as Steam libraries procurando compatdata
-  if (steamAppId) {
-    try {
-      const libraries = findAllSteamLibraries();
-      for (const lib of libraries) {
-        const compatPrefix = steamCompatDataPath(lib, steamAppId);
-        if (compatPrefix) return compatPrefix;
-      }
-    } catch { /* ignore */ }
-  }
-
-  // 3. Default prefix dir
+function findExistingPrefix(gameId: string, _steamAppId?: string, _libraryPath?: string): string | null {
+  // Sempre wrapper ~/Games/Prefix/{gameId}/ — unico prefixo que o app gerencia
   const defaultPrefix = defaultPrefixDir(gameId);
   const resolved = resolvePrefixDir(defaultPrefix);
   if (resolved) return resolved;
-
   return null;
 }
