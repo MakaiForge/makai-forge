@@ -67,6 +67,22 @@ export interface ScanOptions {
 
 export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
   const { gameId, autoFix = false } = opts;
+
+  // Guard: gameId vazio nunca deveria ser escaneado
+  if (!gameId) {
+    return {
+      gameId: "",
+      gamePath: "", gamePathExists: false, stagingDir: "",
+      prefixPath: null, prefixValid: false,
+      protonPath: "", protonExists: false,
+      dllOverridesOk: true, dllOverridesMissing: [],
+      registryOk: true, skseInstalled: false, skseName: "",
+      frameworks: [], depsInstalled: [], depsMissing: [],
+      ready: false, errors: ["gameId vazio — selecione um jogo primeiro"],
+      fixed: [],
+    };
+  }
+
   const gameModule = getGameModule(gameId, "");
   const gameName = gameModule?.displayName || gameId;
 

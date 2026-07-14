@@ -2,10 +2,13 @@ import type { ModlistEntry, GameEntry } from "../types/mod.types";
 
 export function mergeGames(bridgeGames: GameEntry[], configGames: GameEntry[]): GameEntry[] {
   const map = new Map<string, GameEntry>();
-  for (const g of bridgeGames) map.set(g.gameId || g.name, g);
+  for (const g of bridgeGames) {
+    const key = g.gameId || g.name;
+    if (key) map.set(key, g);
+  }
   for (const g of configGames) {
     const key = g.gameId || g.name;
-    if (!map.has(key)) map.set(key, g);
+    if (key && !map.has(key)) map.set(key, g);
   }
   return Array.from(map.values());
 }

@@ -122,7 +122,8 @@ registerEvent("listGameConfigs", async () => {
     .map((e) => ({
       name: e.key.slice("game:".length, -":config".length),
       config: e.value,
-    }));
+    }))
+    .filter((e) => e.name !== "");
   for (const c of configs) {
     logPlay(c.name, "listGameConfigs", { gamePath: c.config.gamePath, stagingDir: c.config.stagingDir });
   }
