@@ -23,7 +23,7 @@ import { seedBethesdaRegistry } from "@prefix/core/bethesda-registry";
 import { gameDllCatalog } from "./game-dlls-service";
 import { detectGame } from "./detection";
 import { defaultStagingDir, defaultPrefixDir } from "./steam-library";
-import { cleanNestedPfx } from "./prefix-validator";
+import { resolvePrefixDir, isValidPrefix, dllOverridesMatch, cleanNestedPfx } from "./prefix-validator";
 
 // ── Types ──
 
@@ -94,6 +94,15 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
 
   // ── 1. Ler config do jogo ──
   let gameConfig = ModStorageService.get<any>(`game:${gameId}:config`);
+
+  // Limpar ghost entry "game::config" (gameId vazio)
+  if (gameId) {
+    const ghost = ModStorageService.get<any>("game::config");
+    if (ghost) {
+      ModStorageService.delete("game::config");
+      status.fixed.push("Removida config fantasma game::config");
+    }
+  }
 
   // ── 2. Game path ──
   let rawGamePath = gameConfig?.gamePath || "";
@@ -305,45 +314,7 @@ function expandHome(p: string): string {
   return p;
 }
 
-function resolvePrefixDir(prefixPath: string): string | null {
-  if (!prefixPath) return null;
-  prefixPath = expandHome(prefixPath);
-  if (fs.existsSync(path.join(prefixPath, "user.reg"))) return prefixPath;
-  if (fs.existsSync(path.join(prefixPath, "pfx", "user.reg"))) return path.join(prefixPath, "pfx");
-  return null;
-}
 
-function isValidPrefix(pfxPath: string): boolean {
-  return (
-    fs.existsSync(path.join(pfxPath, "user.reg")) &&
-    fs.existsSync(path.join(pfxPath, "system.reg")) &&
-    fs.existsSync(path.join(pfxPath, "drive_c")) &&
-    fs.existsSync(path.join(pfxPath, "dosdevices"))
-  );
-}
-
-function dllOverridesMatch(prefixPath: string, required: Record<string, string>): boolean {
-  const actualPfx = resolvePrefixDir(prefixPath);
-  if (!actualPfx) return false;
-  const userRegPath = path.join(actualPfx, "user.reg");
-  if (!fs.existsSync(userRegPath)) return false;
-  try {
-    const content = fs.readFileSync(userRegPath, "utf-8");
-    const sectionStart = content.indexOf("[Software\\\\Wine\\\\DllOverrides]");
-    if (sectionStart < 0) return false;
-    const sectionEnd = content.indexOf("\n[", sectionStart + 1);
-    const section = sectionEnd >= 0
-      ? content.slice(sectionStart, sectionEnd)
-      : content.slice(sectionStart);
-    for (const [dll, mode] of Object.entries(required)) {
-      const search = `"${dll.toLowerCase()}"="${mode}"`;
-      if (!section.includes(search)) return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function checkRegistry(prefixPath: string, gameId: string, _gameName: string): boolean {
   const BethesdaGames = ["skyrim", "skyrim-se", "skyrim-ae", "fallout4", "oblivion", "morrowind"];
@@ -388,13 +359,4 @@ function checkDepInstalled(dep: string, sys32: string): boolean {
     default:
       return true;
   }
-}
-
-// ── IPC Registration ──
-
-export function registerEnvironmentScanner() {
-  const { registerEvent } = require("@main/events/register-event");
-  registerEvent("scanEnvironment", async (_event: any, gameId: string, autoFix?: boolean) => {
-    return scanEnvironment({ gameId, autoFix });
-  });
 }
