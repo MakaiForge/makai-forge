@@ -16,7 +16,7 @@ function defaultPrefixDir(_gameId: string, gameName: string): string {
   return `${home}/Games/Prefix/${slug}`;
 }
 
-async function autoDetectGamePath(gameId: string): Promise<string | null> {
+async function autoDetectGamePath(gameId: string): Promise<{ gamePath: string; prefixPath?: string | null } | null> {
   try {
     return await window.electron.modDetectGamePath(gameId);
   } catch { return null; }
@@ -68,19 +68,19 @@ export function useGameConfig() {
       const existing = await window.electron.getGameConfig(selectedGame);
       if (existing?.gamePath) return;
 
-      const detectedPath = await autoDetectGamePath(selectedGame);
-      if (detectedPath) {
+      const detected = await autoDetectGamePath(selectedGame);
+      if (detected?.gamePath) {
         const name = currentGame?.name || selectedGame;
         const staging = defaultStagingDir(selectedGame, name);
-        const prefix = defaultPrefixDir(selectedGame, name);
+        const prefix = detected.prefixPath || defaultPrefixDir(selectedGame, name);
         await window.electron.saveGameConfig(selectedGame, {
-          gamePath: detectedPath,
+          gamePath: detected.gamePath,
           stagingDir: staging,
           protonPrefix: prefix,
           protonVersion: "",
         });
         setGames(prev => prev.map(g =>
-          gameIdFor(g) === selectedGame ? { ...g, path: detectedPath } : g
+          gameIdFor(g) === selectedGame ? { ...g, path: detected.gamePath } : g
         ));
       }
     })();
@@ -131,7 +131,9 @@ export function useGameConfig() {
       if (result.ok && Array.isArray(result.data)) {
         for (const g of result.data) {
           const sd = defaultStagingDir(g.game_id, g.name);
-          const pp = defaultPrefixDir(g.game_id, g.name);
+          // Tentar detectar prefix existente
+          const detected = await autoDetectGamePath(g.game_id);
+          const pp = detected?.prefixPath || defaultPrefixDir(g.game_id, g.name);
           await window.electron.saveGameConfig(g.game_id, {
             gamePath: g.path,
             stagingDir: sd,

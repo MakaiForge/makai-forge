@@ -41,12 +41,12 @@ export function GameDetectionWizard({ open, onClose, onGameDetected, selectedGam
         : games;
       const found: DetectionAttempt[] = [];
       for (const game of scanTarget) {
-        const path = await window.electron.modDetectGamePath(game.gameId);
+        const result = await window.electron.modDetectGamePath(game.gameId);
         found.push({
           gameId: game.gameId,
           name: game.name,
-          source: path ? "Steam/GOG" : "",
-          found: !!path,
+          source: result?.gamePath ? "Steam/GOG" : "",
+          found: !!result?.gamePath,
         });
       }
       setDetected(found);
@@ -88,9 +88,9 @@ export function GameDetectionWizard({ open, onClose, onGameDetected, selectedGam
   const handleConfirm = async (gameId: string) => {
     const game = detected.find((g) => g.gameId === gameId);
     if (!game || !game.found || !game.source) return;
-    const path = await window.electron.modDetectGamePath(gameId);
-    if (path) {
-      onGameDetected(gameId, path);
+    const result = await window.electron.modDetectGamePath(gameId);
+    if (result?.gamePath) {
+      onGameDetected(gameId, result.gamePath);
     }
     setStep("saved");
   };

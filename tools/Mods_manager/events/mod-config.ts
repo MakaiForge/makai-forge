@@ -82,8 +82,8 @@ registerEvent("getModGameInfo", async (_event, gameId: string) => {
 
 registerEvent("modDetectGamePath", async (_event, gameId: string) => {
   const detected = detectGame(gameId);
-  logPlay(gameId, "modDetectGamePath", detected.source ? { source: detected.source, gamePath: detected.gamePath || "" } : { source: "not_found" });
-  if (detected.source) return detected.gamePath;
+  logPlay(gameId, "modDetectGamePath", detected.source ? { source: detected.source, gamePath: detected.gamePath || "", prefixPath: detected.prefixPath || "" } : { source: "not_found" });
+  if (detected.source) return { gamePath: detected.gamePath, prefixPath: detected.prefixPath };
   return null;
 });
 
@@ -102,7 +102,9 @@ registerEvent("detectGameManual", async (_event, gameId: string, selectedPath: s
   }
 
   const staging = defaultStagingDir(gameId);
-  const prefix = defaultPrefixDir(gameId);
+  // Tentar detectar prefix existente antes de usar default
+  const detected = detectGame(gameId);
+  const prefix = detected.prefixPath || defaultPrefixDir(gameId);
   ModStorageService.put(`game:${gameId}:config`, {
     gamePath: expandHome(selectedPath),
     stagingDir: expandHome(staging),
@@ -140,10 +142,22 @@ registerEvent("getGameDllInfo", async (_event, gameId: string) => {
 });
 
 registerEvent("prefixHealthCheck", async (_event, gameId: string) => {
-  const config = ModStorageService.get<any>(`game:${gameId}:config`);
+  let config = ModStorageService.get<any>(`game:${gameId}:config`);
   if (!config?.gamePath || !config?.protonPrefix) {
-    logPlay(gameId, "prefixHealthCheck", { error: "jogo_nao_configurado" });
-    return { ok: false, error: "Jogo não configurado. Detecte ou configure manualmente primeiro." };
+    // Tentar detectar automaticamente antes de dar erro
+    const detected = detectGame(gameId);
+    if (detected.source && detected.gamePath) {
+      config = {
+        gamePath: detected.gamePath,
+        stagingDir: config?.stagingDir || defaultStagingDir(gameId),
+        protonPrefix: detected.prefixPath || config?.protonPrefix || defaultPrefixDir(gameId),
+        protonVersion: config?.protonVersion || "",
+      };
+      ModStorageService.put(`game:${gameId}:config`, config);
+    } else {
+      logPlay(gameId, "prefixHealthCheck", { error: "jogo_nao_configurado" });
+      return { ok: false, error: "Jogo não configurado. Detecte ou configure manualmente primeiro." };
+    }
   }
   const report = checkPrefixHealth(gameId, config.gamePath, config.protonPrefix);
   logPlay(gameId, "prefixHealthCheck", {

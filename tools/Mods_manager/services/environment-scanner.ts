@@ -22,7 +22,8 @@ import { applyWineDllOverrides } from "@prefix/core/dll-overrides";
 import { seedBethesdaRegistry } from "@prefix/core/bethesda-registry";
 import { gameDllCatalog } from "./game-dlls-service";
 import { detectGame } from "./detection";
-import { defaultStagingDir, defaultPrefixDir } from "./steam-library";
+import { defaultStagingDir, defaultPrefixDir, steamCompatDataPath } from "./steam-library";
+import { findAllSteamLibraries } from "@prefix/core/steam-paths";
 import { resolvePrefixDir, isValidPrefix, dllOverridesMatch, cleanNestedPfx } from "./prefix-validator";
 
 // ── Types ──
@@ -122,14 +123,16 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
 
   // ── 2. Game path ──
   let rawGamePath = gameConfig?.gamePath || "";
+  let detectedPrefixFromDetection: string | null = null;
   if (!rawGamePath) {
     const detected = detectGame(gameId);
     if (detected.source && detected.gamePath) {
       rawGamePath = detected.gamePath;
+      detectedPrefixFromDetection = detected.prefixPath;
       gameConfig = {
         gamePath: rawGamePath,
         stagingDir: gameConfig?.stagingDir || defaultStagingDir(gameId),
-        protonPrefix: gameConfig?.protonPrefix || defaultPrefixDir(gameId),
+        protonPrefix: gameConfig?.protonPrefix || detectedPrefixFromDetection || defaultPrefixDir(gameId),
         protonVersion: gameConfig?.protonVersion || "",
       };
       ModStorageService.put(`game:${gameId}:config`, gameConfig);
@@ -179,13 +182,16 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
   // ── 4. Prefix ──
   let rawPrefix = gameConfig?.protonPrefix || "";
   if (!rawPrefix) {
-    const defaultPrefix = defaultPrefixDir(gameId);
-    const resolved = resolvePrefixDir(defaultPrefix);
+    // Buscar prefix existente em有多locais conocidos
+    rawPrefix = findExistingPrefix(gameId, status.steamAppId, status.libraryPath) || defaultPrefixDir(gameId);
+    const resolved = resolvePrefixDir(rawPrefix);
     if (resolved) {
-      rawPrefix = defaultPrefix;
       gameConfig = { ...gameConfig, protonPrefix: rawPrefix };
       ModStorageService.put(`game:${gameId}:config`, gameConfig);
       status.fixed.push(`Prefix auto-detectado no disco: ${rawPrefix}`);
+    } else if (rawPrefix !== defaultPrefixDir(gameId)) {
+      // O prefix encontrado pelo detection nao e valido, usar default
+      rawPrefix = defaultPrefixDir(gameId);
     }
   }
   status.prefixPath = rawPrefix ? expandHome(rawPrefix) : null;
@@ -375,4 +381,36 @@ function checkDepInstalled(dep: string, sys32: string): boolean {
     default:
       return true;
   }
+}
+
+/**
+ * Busca prefix existente em有多locais conocidos:
+ * 1. Steam compatdata (se steamAppId e libraryPath sao conhecidos)
+ * 2. Default prefix dir (~/Games/Prefix/{slug}/)
+ * Retorna o caminho do prefix se encontrado, null caso contrario.
+ */
+function findExistingPrefix(gameId: string, steamAppId?: string, libraryPath?: string): string | null {
+  // 1. Steam compatdata — o mais provavel para jogos Steam
+  if (steamAppId && libraryPath) {
+    const compatPrefix = steamCompatDataPath(libraryPath, steamAppId);
+    if (compatPrefix) return compatPrefix;
+  }
+
+  // 2. Scan todas as Steam libraries procurando compatdata
+  if (steamAppId) {
+    try {
+      const libraries = findAllSteamLibraries();
+      for (const lib of libraries) {
+        const compatPrefix = steamCompatDataPath(lib, steamAppId);
+        if (compatPrefix) return compatPrefix;
+      }
+    } catch { /* ignore */ }
+  }
+
+  // 3. Default prefix dir
+  const defaultPrefix = defaultPrefixDir(gameId);
+  const resolved = resolvePrefixDir(defaultPrefix);
+  if (resolved) return resolved;
+
+  return null;
 }
