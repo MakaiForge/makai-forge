@@ -21,7 +21,7 @@ export function createFallout3Module(): GameModule {
     detect: (gp) => FO3_EXE_NAMES.some(e => fs.existsSync(path.join(gp, e))),
     getDeployTarget: (gp) => path.join(gp, "Data"),
     shouldWritePluginsTxt: () => true,
-    getPluginExtensions: () => [".esp", ".esm", ".esl"],
+    getPluginExtensions: () => [".esp", ".esm"],
     getWineDllOverrides: () => ({ ...FO3_DLL_OVERRIDES }),
     getAutoInstallDeps: () => ["vcredist", "d3dcompiler_47"],
     getWinetricksComponents: () => ["d3dx9", "xact", "vcrun2019"],

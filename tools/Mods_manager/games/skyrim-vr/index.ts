@@ -37,6 +37,7 @@ export function createSkyrimVRModule(): GameModule {
     getMyGamesSubpath: () => "Skyrim VR",
 
     getWineDllOverrides: () => ({ ...SKYRIM_VR_DLL_OVERRIDES }),
+    getWinetricksComponents: () => [],
 
     getFrameworks: () => ({
       "Script Extender": "sksevr_loader.exe",

@@ -37,6 +37,7 @@ export function createSkyrimSEModule(): GameModule {
     getMyGamesSubpath: () => "Skyrim Special Edition",
 
     getWineDllOverrides: () => ({ ...SKYRIM_SE_DLL_OVERRIDES }),
+    getWinetricksComponents: () => [],
 
     getFrameworks: () => ({
       "Script Extender": "skse64_loader.exe",

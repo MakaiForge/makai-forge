@@ -46,6 +46,7 @@ export function createEnderalSEModule(): GameModule {
       return require("node:path").join(gamePath, "skse64_loader.exe");
     },
     getWineDllOverrides: () => ({ ...ENDERAL_SE_DLL_OVERRIDES }),
+    getWinetricksComponents: () => [],
     getArchiveInvalidationConfig: () => ({
       enabled: true,
       bsaName: null,

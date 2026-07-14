@@ -20,7 +20,8 @@ export function createCyberpunk2077Module(): GameModule {
     detect: (gp) => CYBERPUNK_EXE_NAMES.some(e => fs.existsSync(path.join(gp, e))),
     filemapCasing: "lower",
     getWineDllOverrides: () => ({ ...CYBERPUNK_DLL_OVERRIDES }),
-    getWinetricksComponents: () => ["vcrun2022"],
+    getAutoInstallDeps: () => ["vcredist", "d3dcompiler_47"],
+    getWinetricksComponents: () => ["d3dcompiler_47"],
     getCustomRoutingRules: (prefixPath?: string) => getCustomRoutingRules(prefixPath),
     getFrameworks: () => ({
       "RED4ext": "red4ext/win64/red4ext.dll",

@@ -694,3 +694,11 @@ KeyboardInterrupt
 [14/07/2026, 11:06:22] init ready
 [14/07/2026, 11:06:22] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
   warnings.warn(
+[14/07/2026, 11:20:25] init spawning server.py...
+[14/07/2026, 11:20:25] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 11:20:25] spawn executando server.py --stdio...
+[14/07/2026 11:20:26] API started --stdio
+[14/07/2026, 11:20:26] spawn READY
+[14/07/2026, 11:20:26] init ready
+[14/07/2026, 11:20:26] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
 import { getGameModule, getGameInfo } from "@games/registry";
 import { findPrefixUsername } from "@games/_shared/filemap";
 import { applyWineDllOverrides, verifyDllOverrides } from "@prefix/core/dll-overrides";
@@ -52,7 +53,7 @@ export async function applyGameConfigs(
     send("dll", "Nenhum DLL override necessario", "done");
   }
 
-  // ── Auto Install Deps (via Python Makaitricks) ──
+  // ── Auto Install Deps (via Python Makaitricks, fallback: winetricks) ──
   const deps = mod.getAutoInstallDeps?.();
   const makaitricksVerbs = mod.getWinetricksComponents?.();
 
@@ -64,8 +65,15 @@ export async function applyGameConfigs(
     );
     if (resultCmd.success) {
       send("dll", `Dependencias instaladas: ${deps.join(", ")}`, "done");
+    } else if (isPythonUnavailable(resultCmd.stderr)) {
+      // Fallback: try winetricks directly
+      const fallbackOk = runWinetricksDirect(prefixPath, protonPath, deps, send);
+      if (!fallbackOk) {
+        result.errors.push(`Dependencias nao instaladas (Python e winetricks indisponiveis): ${deps.join(", ")}`);
+      }
     } else {
-      send("dll", `Falha ao instalar algumas dependencias: ${resultCmd.stderr.slice(0, 100)}`, "done");
+      result.errors.push(`Dependencias: falha parcial — ${resultCmd.stderr.slice(0, 80)}`);
+      send("dll", `Falha ao instalar dependencias: ${resultCmd.stderr.slice(0, 100)}`, "done");
     }
   }
 
@@ -77,8 +85,10 @@ export async function applyGameConfigs(
     );
     if (resultCmd.success) {
       send("dll", `Componentes wine instalados: ${makaitricksVerbs.join(", ")}`, "done");
+    } else if (isPythonUnavailable(resultCmd.stderr)) {
+      runWinetricksDirect(prefixPath, protonPath, makaitricksVerbs, send);
     } else {
-      send("dll", `Falha ao instalar alguns componentes: ${resultCmd.stderr.slice(0, 100)}`, "done");
+      send("dll", `Falha ao instalar componentes: ${resultCmd.stderr.slice(0, 100)}`, "done");
     }
   }
 
@@ -217,4 +227,66 @@ function findSteamMyGamesInis(
     return Object.keys(inis).length > 0 ? inis : null;
   }
   return null;
+}
+
+/** Check if Python/venv is unavailable (missing binary or CLI) */
+function isPythonUnavailable(stderr: string): boolean {
+  return stderr.includes("Python bin not found") ||
+    stderr.includes("CLI not found") ||
+    stderr.includes("ENOENT");
+}
+
+/**
+ * Fallback: install deps via winetricks directly (without Python wrapper).
+ * Maps dep names to winetricks verbs and runs winetricks with the correct env.
+ */
+function runWinetricksDirect(
+  prefixPath: string,
+  protonPath: string,
+  deps: string[],
+  send: SendProgress,
+): boolean {
+  // Dep → winetricks verb mapping
+  const DEP_TO_VERB: Record<string, string> = {
+    vcredist: "vcrun2022",
+    d3dcompiler_47: "d3dcompiler_47",
+    dxvk: "dxvk",
+  };
+
+  const verbs = deps.map(d => DEP_TO_VERB[d] || d).filter(Boolean);
+  if (verbs.length === 0) return false;
+
+  // Try to find winetricks on the system
+  let winetricksPath = "";
+  for (const candidate of ["/usr/bin/winetricks", "/usr/local/bin/winetricks"]) {
+    if (fs.existsSync(candidate)) {
+      winetricksPath = candidate;
+      break;
+    }
+  }
+
+  if (!winetricksPath) {
+    send("dll", `⚠️ winetricks nao encontrado — ${deps.join(", ")} nao instalados`, "done");
+    return false;
+  }
+
+  try {
+    const env = {
+      ...process.env,
+      WINEPREFIX: prefixPath,
+      WINETRICKS_SUPERVISOR_NOCHOICE: "1",
+    };
+    for (const verb of verbs) {
+      execSync(`${winetricksPath} -q ${verb}`, {
+        env,
+        stdio: "pipe",
+        timeout: 120000,
+      });
+    }
+    send("dll", `Dependencias instaladas via winetricks: ${deps.join(", ")}`, "done");
+    return true;
+  } catch (err) {
+    send("dll", `⚠️ Falha no winetricks fallback: ${String(err).slice(0, 80)}`, "done");
+    return false;
+  }
 }
