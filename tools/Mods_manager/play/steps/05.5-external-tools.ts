@@ -26,7 +26,7 @@ export async function ensureGameExternalTools(
     return { installed: [], skipped: [], failed: [] };
   }
 
-  const missing = downloadable.filter(t => !isToolInstalled(gamePath, t));
+  const missing = downloadable.filter(t => !isToolInstalled(gameId, t));
   if (missing.length === 0) {
     const names = downloadable.map(t => t.name).join(", ");
     send("tools", `✅ Todas as tools já instaladas: ${names}`, "done");
@@ -37,7 +37,7 @@ export async function ensureGameExternalTools(
     };
   }
 
-  const result = await ensureExternalTools(gamePath, downloadable, (step, msg, type) => {
+  const result = await ensureExternalTools(gameId, downloadable, (step, msg, type) => {
     send(step, msg, type);
   });
 

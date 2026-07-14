@@ -12,13 +12,22 @@ import type { InstallConfig, InstallProgress, InstallStage } from "@types/instal
 import path from "node:path";
 import fs from "node:fs";
 
-registerEvent("checkModExists", async (_event, archivePath: string, gameId: string) => {
+registerEvent("checkModExists", async (_event, archivePath: string, gameId: string, profile?: string) => {
   const modName = path.basename(archivePath).replace(/\.(zip|7z|rar|fomod|tar\.gz)$/i, "");
   const config = ModStorageService.get<any>(`game:${gameId}:config`);
   const baseDir = config?.stagingDir || getStagingDir(gameId);
   const stagingPath = path.join(baseDir, modName);
   const exists = fs.existsSync(stagingPath);
-  return { exists, modName, stagingPath };
+
+  // Check if mod is already in the active profile's modlist
+  let inProfile = false;
+  if (exists && profile) {
+    const modlistKey = mkMlKey(gameId, profile);
+    const modlist: Array<{ name: string }> = ModStorageService.get(modlistKey) || [];
+    inProfile = modlist.some((m) => m.name === modName);
+  }
+
+  return { exists, modName, stagingPath, inProfile };
 });
 
 registerEvent("deployMods", async (_event, gameId: string, profile: string) => {

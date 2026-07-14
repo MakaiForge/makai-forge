@@ -7,46 +7,72 @@ import { get7zPath } from "@mods/play/sevenz";
 import type { ExternalToolDef } from "@games/_shared/types";
 
 /**
- * Check if an external tool is already installed in the game directory.
+ * Base directory for all external tools: ~/.config/makai-forger/tools/
  */
-export function isToolInstalled(gamePath: string, tool: ExternalToolDef): boolean {
-  if (tool.detector?.folder) {
-    return fs.existsSync(path.join(gamePath, tool.detector.folder));
-  }
-  if (tool.detector?.file) {
-    return fs.existsSync(path.join(gamePath, tool.detector.file));
-  }
-  return fs.existsSync(path.join(gamePath, tool.exeName));
+function getToolsBaseDir(): string {
+  return path.join(os.homedir(), ".config", "makai-forger", "tools");
 }
 
 /**
- * Resolve the real executable path for a tool (may be inside a subfolder).
+ * Get the install directory for a specific tool of a specific game.
+ * e.g. ~/.config/makai-forger/tools/skyrim/LOOT/
  */
-export function resolveToolPath(gamePath: string, tool: ExternalToolDef): string | null {
+export function getToolInstallDir(gameId: string, toolName: string): string {
+  const safeName = toolName.replace(/[\/\\]/g, "_");
+  return path.join(getToolsBaseDir(), gameId, safeName);
+}
+
+/**
+ * Get the tools directory for a game (all tools).
+ * e.g. ~/.config/makai-forger/tools/skyrim/
+ */
+export function getGameToolsDir(gameId: string): string {
+  return path.join(getToolsBaseDir(), gameId);
+}
+
+/**
+ * Check if an external tool is already installed.
+ */
+export function isToolInstalled(gameId: string, tool: ExternalToolDef): boolean {
+  const toolDir = getToolInstallDir(gameId, tool.name);
+  if (tool.detector?.folder) {
+    return fs.existsSync(path.join(toolDir, tool.detector.folder));
+  }
   if (tool.detector?.file) {
-    const p = path.join(gamePath, tool.detector.file);
+    return fs.existsSync(path.join(toolDir, tool.detector.file));
+  }
+  return fs.existsSync(path.join(toolDir, tool.exeName));
+}
+
+/**
+ * Resolve the real executable path for a tool.
+ */
+export function resolveToolPath(gameId: string, tool: ExternalToolDef): string | null {
+  const toolDir = getToolInstallDir(gameId, tool.name);
+  if (tool.detector?.file) {
+    const p = path.join(toolDir, tool.detector.file);
     if (fs.existsSync(p)) return p;
   }
   if (tool.detector?.folder) {
-    const p = path.join(gamePath, tool.detector.folder, tool.exeName);
+    const p = path.join(toolDir, tool.detector.folder, tool.exeName);
     if (fs.existsSync(p)) return p;
   }
-  const p = path.join(gamePath, tool.exeName);
+  const p = path.join(toolDir, tool.exeName);
   if (fs.existsSync(p)) return p;
   return null;
 }
 
 /**
- * Download and install an external tool into the game directory.
- * Uses curl for download and 7z for extraction.
+ * Download and install an external tool into its game-specific directory.
  */
 export async function installTool(
-  gamePath: string,
+  gameId: string,
   tool: ExternalToolDef,
   send?: (step: string, msg: string, type: string) => void,
 ): Promise<boolean> {
   if (!tool.downloadUrl) return false;
 
+  const toolDir = getToolInstallDir(gameId, tool.name);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `tool-${tool.name.replace(/\s+/g, "_")}-`));
 
   try {
@@ -81,8 +107,6 @@ export async function installTool(
         sourceDir = innerPath;
       }
     } else {
-      // Auto-detect: if extract root has exactly 1 subfolder and 0 files,
-      // use that subfolder as source (e.g. LOOT extracts to loot_version/)
       const entries = fs.readdirSync(extractDir, { withFileTypes: true });
       const dirs = entries.filter(e => e.isDirectory());
       const files = entries.filter(e => e.isFile());
@@ -92,11 +116,12 @@ export async function installTool(
     }
 
     send?.("tools", `📋 Instalando ${tool.name}...`, "working");
-    copyRecursive(sourceDir, gamePath);
+    fs.mkdirSync(toolDir, { recursive: true });
+    copyRecursive(sourceDir, toolDir);
 
-    const installed = isToolInstalled(gamePath, tool);
+    const installed = isToolInstalled(gameId, tool);
     if (installed) {
-      send?.("tools", `✅ ${tool.name} instalado com sucesso`, "done");
+      send?.("tools", `✅ ${tool.name} instalado em ${toolDir}`, "done");
     } else {
       send?.("tools", `⚠️ ${tool.name} instalado mas exe não encontrado`, "done");
     }
@@ -116,7 +141,7 @@ export async function installTool(
  * Ensure all external tools with downloadUrl are installed.
  */
 export async function ensureExternalTools(
-  gamePath: string,
+  gameId: string,
   tools: ExternalToolDef[],
   send?: (step: string, msg: string, type: string) => void,
 ): Promise<{ installed: string[]; skipped: string[]; failed: string[] }> {
@@ -130,13 +155,13 @@ export async function ensureExternalTools(
   }
 
   for (const tool of downloadable) {
-    if (isToolInstalled(gamePath, tool)) {
+    if (isToolInstalled(gameId, tool)) {
       send?.("tools", `✅ ${tool.name} já instalado`, "done");
       skipped.push(tool.name);
       continue;
     }
 
-    const ok = await installTool(gamePath, tool, send);
+    const ok = await installTool(gameId, tool, send);
     if (ok) {
       installed.push(tool.name);
     } else {

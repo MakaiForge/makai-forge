@@ -12,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 function posixToWinePath(p: string): string {
-  return "Z:" + p.replace(/\//g, "\\");
+  return "Z:" + p.replace(/\//g, "\\\\");
 }
 
 /**
@@ -35,11 +35,6 @@ export function seedBethesdaRegistryWithProton(
   const winePath = posixToWinePath(gamePath);
   const marker = path.join(prefixPath, ".bethesda_registry_seeded");
 
-  if (fs.existsSync(marker)) {
-    console.log(`Registro Bethesda (${registryName}) já configurado (marcador)`);
-    return true;
-  }
-
   // Resolve the actual prefix directory (may have pfx/ subpath)
   let pfxDir = prefixPath;
   if (!fs.existsSync(path.join(prefixPath, "user.reg"))) {
@@ -48,6 +43,22 @@ export function seedBethesdaRegistryWithProton(
     } else {
       console.error(`seedBethesdaRegistryWithProton: user.reg não encontrado em ${prefixPath}`);
       return false;
+    }
+  }
+
+  // Even if marker exists, verify the registry is actually correct
+  // Proton can overwrite system.reg after seeding, corrupting the paths
+  if (fs.existsSync(marker)) {
+    const systemRegPath = path.join(pfxDir, "system.reg");
+    if (fs.existsSync(systemRegPath)) {
+      const content = fs.readFileSync(systemRegPath, "utf-8");
+      const section = `[Software\\\\Bethesda Softworks\\\\${registryName}]`;
+      if (content.includes(section) && content.includes(`"Installed Path"="${winePath}"`)) {
+        console.log(`Registro Bethesda (${registryName}) já configurado (marcador)`);
+        return true;
+      }
+      // Registry is corrupted or missing — re-seed below
+      console.log(`Registro Bethesda (${registryName}) marker existe mas registry corrompido — re-smeando`);
     }
   }
 

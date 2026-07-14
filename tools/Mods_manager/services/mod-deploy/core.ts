@@ -78,6 +78,56 @@ function scanExistingSymlinks(dataDir: string): Record<string, string> {
 }
 
 /**
+ * Remove all symlinks/hardlinks in dataDir that point to files inside stagingDir.
+ * This is called before deploy to ensure switching profiles doesn't leave stale mods.
+ */
+function cleanStagingLinks(dataDir: string, stagingDir: string): number {
+  let cleaned = 0;
+  const resolvedStaging = path.resolve(stagingDir);
+
+  const walk = (dir: string) => {
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+    catch { return; }
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isSymbolicLink()) {
+        try {
+          const linkTarget = fs.readlinkSync(fullPath);
+          const resolvedTarget = path.resolve(path.dirname(fullPath), linkTarget);
+          if (resolvedTarget.startsWith(resolvedStaging)) {
+            fs.unlinkSync(fullPath);
+            cleaned++;
+          }
+        } catch { /* skip */ }
+      } else if (entry.isFile()) {
+        // Hardlinks: check if nlink === 1 (only this reference) and inode is in staging
+        try {
+          const stat = fs.statSync(fullPath);
+          if (stat.nlink === 1) {
+            // Check if this file's inode exists in staging
+            const relativePath = path.relative(dataDir, fullPath);
+            const stagingEquivalent = path.join(stagingDir, relativePath);
+            if (fs.existsSync(stagingEquivalent)) {
+              const stagingStat = fs.statSync(stagingEquivalent);
+              if (stagingStat.ino === stat.ino && stagingStat.dev === stat.dev) {
+                fs.unlinkSync(fullPath);
+                cleaned++;
+              }
+            }
+          }
+        } catch { /* skip */ }
+      }
+    }
+  };
+
+  if (fs.existsSync(dataDir)) walk(dataDir);
+  return cleaned;
+}
+
+/**
  * Tenta linkar um arquivo: hardlink → symlink → copy.
  * Retorna o método usado.
  */
@@ -338,6 +388,11 @@ export async function deploy(
   }
 
   log.push(`Target: ${dataDir}`);
+
+  // ── Clean: remove all symlinks/hardlinks pointing to THIS staging dir ──
+  // This ensures switching profiles doesn't leave stale mods from previous deploy
+  const cleanedCount = cleanStagingLinks(dataDir, stagingDir);
+  if (cleanedCount > 0) log.push(`Cleaned ${cleanedCount} stale links from previous deploy`);
 
   const preExistingSymlinks = scanExistingSymlinks(dataDir);
   log.push(`Saved manifest: ${Object.keys(preExistingSymlinks).length} pre-existing symlinks`);

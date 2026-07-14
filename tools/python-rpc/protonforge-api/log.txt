@@ -334,3 +334,363 @@ KeyboardInterrupt
 [13/07/2026, 17:05:14] init ready
 [13/07/2026, 17:05:14] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
   warnings.warn(
+[13/07/2026, 17:20:12] init spawning server.py...
+[13/07/2026, 17:20:12] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 17:20:12] spawn executando server.py --stdio...
+[13/07/2026 17:20:13] API started --stdio
+[13/07/2026, 17:20:13] spawn READY
+[13/07/2026, 17:20:13] init ready
+[13/07/2026, 17:20:13] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 17:24:49] init spawning server.py...
+[13/07/2026, 17:24:49] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 17:24:49] spawn executando server.py --stdio...
+[13/07/2026 17:24:49] API started --stdio
+[13/07/2026, 17:24:49] spawn READY
+[13/07/2026, 17:24:49] init ready
+[13/07/2026, 17:24:49] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 17:36:59] init spawning server.py...
+[13/07/2026, 17:36:59] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 17:36:59] spawn executando server.py --stdio...
+[13/07/2026 17:36:59] API started --stdio
+[13/07/2026, 17:36:59] spawn READY
+[13/07/2026, 17:36:59] init ready
+[13/07/2026, 17:36:59] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 17:39:18] init spawning server.py...
+[13/07/2026, 17:39:18] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 17:39:18] spawn executando server.py --stdio...
+[13/07/2026 17:39:18] API started --stdio
+[13/07/2026, 17:39:18] spawn READY
+[13/07/2026, 17:39:18] init ready
+[13/07/2026, 17:39:18] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 17:52:47] init spawning server.py...
+[13/07/2026, 17:52:47] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 17:52:47] spawn executando server.py --stdio...
+[13/07/2026 17:52:47] API started --stdio
+[13/07/2026, 17:52:47] spawn READY
+[13/07/2026, 17:52:47] init ready
+[13/07/2026, 17:52:47] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 18:03:11] init spawning server.py...
+[13/07/2026, 18:03:11] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 18:03:11] spawn executando server.py --stdio...
+[13/07/2026 18:03:11] API started --stdio
+[13/07/2026, 18:03:11] spawn READY
+[13/07/2026, 18:03:11] init ready
+[13/07/2026, 18:03:11] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 18:04:10] init spawning server.py...
+[13/07/2026, 18:04:10] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 18:04:10] spawn executando server.py --stdio...
+[13/07/2026 18:04:10] API started --stdio
+[13/07/2026, 18:04:10] spawn READY
+[13/07/2026, 18:04:10] init ready
+[13/07/2026, 18:04:10] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 18:15:55] init spawning server.py...
+[13/07/2026, 18:15:55] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 18:15:55] spawn executando server.py --stdio...
+[13/07/2026 18:15:55] API started --stdio
+[13/07/2026, 18:15:55] spawn READY
+[13/07/2026, 18:15:55] init ready
+[13/07/2026, 18:15:55] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 18:49:07] init spawning server.py...
+[13/07/2026, 18:49:07] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 18:49:07] spawn executando server.py --stdio...
+[13/07/2026 18:49:07] API started --stdio
+[13/07/2026, 18:49:07] spawn READY
+[13/07/2026, 18:49:07] init ready
+[13/07/2026, 18:49:07] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 18:59:02] init spawning server.py...
+[13/07/2026, 18:59:02] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 18:59:02] spawn executando server.py --stdio...
+[13/07/2026 18:59:02] API started --stdio
+[13/07/2026, 18:59:02] spawn READY
+[13/07/2026, 18:59:02] init ready
+[13/07/2026, 18:59:02] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 19:03:14] init spawning server.py...
+[13/07/2026, 19:03:14] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:03:14] spawn executando server.py --stdio...
+[13/07/2026 19:03:14] API started --stdio
+[13/07/2026, 19:03:14] spawn READY
+[13/07/2026, 19:03:14] init ready
+[13/07/2026, 19:03:14] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 19:03:33] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 19:03:33] OK create_prefix 1
+[13/07/2026, 19:08:40] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 19:08:40] OK create_prefix 2
+[13/07/2026 19:10:59] API single-shot
+[13/07/2026 19:10:59] RPC_ERROR create_prefix 1 missing_param game_id and proton_path are required
+[13/07/2026 19:11:14] API single-shot
+[13/07/2026 19:11:14] OK create_prefix 1
+[13/07/2026, 19:12:02] init spawning server.py...
+[13/07/2026, 19:12:02] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:12:02] spawn executando server.py --stdio...
+[13/07/2026 19:12:02] API started --stdio
+[13/07/2026, 19:12:02] spawn READY
+[13/07/2026, 19:12:02] init ready
+[13/07/2026, 19:12:02] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 19:12:17] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 19:12:17] OK create_prefix 1
+[13/07/2026, 19:15:55] init spawning server.py...
+[13/07/2026, 19:15:55] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:15:55] spawn executando server.py --stdio...
+[13/07/2026 19:15:55] API started --stdio
+[13/07/2026, 19:15:55] spawn READY
+[13/07/2026, 19:15:55] init ready
+[13/07/2026, 19:15:55] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 19:26:09] init spawning server.py...
+[13/07/2026, 19:26:09] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:26:09] spawn executando server.py --stdio...
+[13/07/2026 19:26:09] API started --stdio
+[13/07/2026, 19:26:09] spawn READY
+[13/07/2026, 19:26:09] init ready
+[13/07/2026, 19:26:09] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 19:26:23] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 19:26:23] OK create_prefix 1
+[13/07/2026, 19:27:04] init spawning server.py...
+[13/07/2026, 19:27:04] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:27:04] spawn executando server.py --stdio...
+[13/07/2026 19:27:04] API started --stdio
+[13/07/2026, 19:27:04] spawn READY
+[13/07/2026, 19:27:04] init ready
+[13/07/2026, 19:27:04] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 19:30:34] init spawning server.py...
+[13/07/2026, 19:30:34] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:30:34] spawn executando server.py --stdio...
+[13/07/2026 19:30:34] API started --stdio
+[13/07/2026, 19:30:34] spawn READY
+[13/07/2026, 19:30:34] init ready
+[13/07/2026, 19:30:34] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 19:32:52] init spawning server.py...
+[13/07/2026, 19:32:52] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:32:52] spawn executando server.py --stdio...
+[13/07/2026 19:32:53] API started --stdio
+[13/07/2026, 19:32:53] spawn READY
+[13/07/2026, 19:32:53] init ready
+[13/07/2026, 19:32:53] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 19:45:11] init spawning server.py...
+[13/07/2026, 19:45:11] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:45:11] spawn executando server.py --stdio...
+[13/07/2026 19:45:12] API started --stdio
+[13/07/2026, 19:45:12] spawn READY
+[13/07/2026, 19:45:12] init ready
+[13/07/2026, 19:45:12] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 19:52:03] init spawning server.py...
+[13/07/2026, 19:52:03] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:52:03] spawn executando server.py --stdio...
+[13/07/2026, 19:52:03] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026 19:52:03] API started --stdio
+[13/07/2026, 19:52:03] spawn READY
+[13/07/2026, 19:52:03] init ready
+[13/07/2026, 19:54:06] init spawning server.py...
+[13/07/2026, 19:54:06] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 19:54:06] spawn executando server.py --stdio...
+[13/07/2026 19:54:07] API started --stdio
+[13/07/2026, 19:54:07] spawn READY
+[13/07/2026, 19:54:07] init ready
+[13/07/2026, 19:54:07] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 20:15:25] init spawning server.py...
+[13/07/2026, 20:15:25] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 20:15:25] spawn executando server.py --stdio...
+[13/07/2026 20:15:25] API started --stdio
+[13/07/2026, 20:15:25] spawn READY
+[13/07/2026, 20:15:25] init ready
+[13/07/2026, 20:15:25] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 20:18:26] init spawning server.py...
+[13/07/2026, 20:18:26] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 20:18:26] spawn executando server.py --stdio...
+[13/07/2026 20:18:27] API started --stdio
+[13/07/2026, 20:18:27] spawn READY
+[13/07/2026, 20:18:27] init ready
+[13/07/2026, 20:18:27] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 20:44:56] init spawning server.py...
+[13/07/2026, 20:44:56] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 20:44:56] spawn executando server.py --stdio...
+[13/07/2026 20:44:56] API started --stdio
+[13/07/2026, 20:44:56] spawn READY
+[13/07/2026, 20:44:56] init ready
+[13/07/2026, 20:44:56] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 20:59:35] init spawning server.py...
+[13/07/2026, 20:59:35] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 20:59:35] spawn executando server.py --stdio...
+[13/07/2026 20:59:35] API started --stdio
+[13/07/2026, 20:59:35] spawn READY
+[13/07/2026, 20:59:35] init ready
+[13/07/2026, 20:59:35] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 21:00:17] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:17] OK create_prefix 1
+[13/07/2026, 21:00:20] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:20] OK create_prefix 2
+[13/07/2026, 21:00:21] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:21] OK create_prefix 3
+[13/07/2026, 21:00:22] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:22] OK create_prefix 4
+[13/07/2026, 21:00:22] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:22] OK create_prefix 5
+[13/07/2026, 21:00:22] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:22] OK create_prefix 6
+[13/07/2026, 21:00:22] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:22] OK create_prefix 7
+[13/07/2026, 21:00:23] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:23] OK create_prefix 8
+[13/07/2026, 21:00:23] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:23] OK create_prefix 9
+[13/07/2026, 21:00:23] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:23] OK create_prefix 10
+[13/07/2026, 21:00:23] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:23] OK create_prefix 11
+[13/07/2026, 21:00:23] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:23] OK create_prefix 12
+[13/07/2026, 21:00:23] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:23] OK create_prefix 13
+[13/07/2026, 21:00:24] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:24] OK create_prefix 14
+[13/07/2026, 21:00:24] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:24] OK create_prefix 15
+[13/07/2026, 21:00:24] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:24] OK create_prefix 16
+[13/07/2026, 21:00:24] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:24] OK create_prefix 17
+[13/07/2026, 21:00:24] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:24] OK create_prefix 18
+[13/07/2026, 21:00:25] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:25] OK create_prefix 19
+[13/07/2026, 21:00:25] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:25] OK create_prefix 20
+[13/07/2026, 21:00:25] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:25] OK create_prefix 21
+[13/07/2026, 21:00:25] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:25] OK create_prefix 22
+[13/07/2026, 21:00:25] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:25] OK create_prefix 23
+[13/07/2026, 21:00:26] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:26] OK create_prefix 24
+[13/07/2026, 21:00:26] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:26] OK create_prefix 25
+[13/07/2026, 21:00:26] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:00:26] OK create_prefix 26
+[13/07/2026, 21:01:19] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.config/makai-forger/compat-tools/compatibilitytools.d/GE-Proton-6.21-GE-2","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["
+[13/07/2026 21:01:19] OK create_prefix 27
+[13/07/2026, 21:01:34] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.config/makai-forger/compat-tools/compatibilitytools.d/GE-Proton-6.21-GE-2","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["
+[13/07/2026 21:01:34] OK create_prefix 28
+[13/07/2026, 21:17:11] init spawning server.py...
+[13/07/2026, 21:17:11] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 21:17:11] spawn executando server.py --stdio...
+[13/07/2026 21:17:11] API started --stdio
+[13/07/2026, 21:17:11] spawn READY
+[13/07/2026, 21:17:11] init ready
+[13/07/2026, 21:17:11] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 21:18:07] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.config/makai-forger/compat-tools/compatibilitytools.d/GE-Proton-6.21-GE-2","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["
+[13/07/2026 21:18:07] OK create_prefix 1
+[13/07/2026, 21:33:52] init spawning server.py...
+[13/07/2026, 21:33:52] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 21:33:52] spawn executando server.py --stdio...
+[13/07/2026 21:33:52] API started --stdio
+[13/07/2026, 21:33:52] spawn READY
+[13/07/2026, 21:33:52] init ready
+[13/07/2026, 21:33:52] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 21:44:35] init spawning server.py...
+[13/07/2026, 21:44:35] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 21:44:35] spawn executando server.py --stdio...
+[13/07/2026 21:44:35] API started --stdio
+[13/07/2026, 21:44:35] spawn READY
+[13/07/2026, 21:44:35] init ready
+[13/07/2026, 21:44:35] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 21:45:07] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.steam/steam/compatibilitytools.d/UMU-Proton-10.0-4","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2022","d3dcompiler
+[13/07/2026 21:45:07] OK create_prefix 1
+[13/07/2026, 21:56:59] init spawning server.py...
+[13/07/2026, 21:56:59] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 21:56:59] spawn executando server.py --stdio...
+[13/07/2026 21:57:00] API started --stdio
+[13/07/2026, 21:57:00] spawn READY
+[13/07/2026, 21:57:00] init ready
+[13/07/2026, 21:57:00] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 22:17:14] init spawning server.py...
+[13/07/2026, 22:17:14] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 22:17:14] spawn executando server.py --stdio...
+[13/07/2026, 22:17:14] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026 22:17:14] API started --stdio
+[13/07/2026, 22:17:14] spawn READY
+[13/07/2026, 22:17:14] init ready
+[13/07/2026, 22:31:50] init spawning server.py...
+[13/07/2026, 22:31:50] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 22:31:50] spawn executando server.py --stdio...
+[13/07/2026 22:31:50] API started --stdio
+[13/07/2026, 22:31:50] spawn READY
+[13/07/2026, 22:31:50] init ready
+[13/07/2026, 22:31:50] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 22:38:18] init spawning server.py...
+[13/07/2026, 22:38:18] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 22:38:18] spawn executando server.py --stdio...
+[13/07/2026 22:38:18] API started --stdio
+[13/07/2026, 22:38:18] spawn READY
+[13/07/2026, 22:38:18] init ready
+[13/07/2026, 22:38:18] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 22:40:23] init spawning server.py...
+[13/07/2026, 22:40:23] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 22:40:23] spawn executando server.py --stdio...
+[13/07/2026 22:40:23] API started --stdio
+[13/07/2026, 22:40:23] spawn READY
+[13/07/2026, 22:40:23] init ready
+[13/07/2026, 22:40:23] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 22:41:24] init spawning server.py...
+[13/07/2026, 22:41:24] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 22:41:24] spawn executando server.py --stdio...
+[13/07/2026 22:41:25] API started --stdio
+[13/07/2026, 22:41:25] spawn READY
+[13/07/2026, 22:41:25] init ready
+[13/07/2026, 22:41:25] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[13/07/2026, 23:11:18] init spawning server.py...
+[13/07/2026, 23:11:18] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[13/07/2026, 23:11:18] spawn executando server.py --stdio...
+[13/07/2026 23:11:19] API started --stdio
+[13/07/2026, 23:11:19] spawn READY
+[13/07/2026, 23:11:19] init ready
+[13/07/2026, 23:11:19] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 10:48:50] init spawning server.py...
+[14/07/2026, 10:48:50] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 10:48:50] spawn executando server.py --stdio...
+[14/07/2026 10:48:50] API started --stdio
+[14/07/2026, 10:48:50] spawn READY
+[14/07/2026, 10:48:50] init ready
+[14/07/2026, 10:48:50] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 11:06:21] init spawning server.py...
+[14/07/2026, 11:06:21] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 11:06:21] spawn executando server.py --stdio...
+[14/07/2026 11:06:22] API started --stdio
+[14/07/2026, 11:06:22] spawn READY
+[14/07/2026, 11:06:22] init ready
+[14/07/2026, 11:06:22] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(

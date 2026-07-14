@@ -1084,8 +1084,8 @@ contextBridge.exposeInMainWorld("electron", {
 
   deployMods: (gameId: string, profile: string) =>
     ipcRenderer.invoke("deployMods", gameId, profile),
-  checkModExists: (archivePath: string, gameId: string) =>
-    ipcRenderer.invoke("checkModExists", archivePath, gameId),
+  checkModExists: (archivePath: string, gameId: string, profile?: string) =>
+    ipcRenderer.invoke("checkModExists", archivePath, gameId, profile),
   installModOrchestrated: (archivePath: string, config: any) =>
     ipcRenderer.invoke("installModOrchestrated", archivePath, config),
   abortInstall: () =>

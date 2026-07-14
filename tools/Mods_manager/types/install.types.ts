@@ -13,6 +13,7 @@ export type InstallStage =
   | "extracting"
   | "verifying"
   | "analyzing"
+  | "preparing"
   | "saving"
   | "ready"
   | "error";

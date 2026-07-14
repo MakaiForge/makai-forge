@@ -52,12 +52,12 @@ registerEvent("installExternalTool", async (_event, gameId: string, toolName: st
     return { ok: false, error: `Tool "${toolName}" not found or no download URL` };
   }
 
-  const ok = await installTool(gamePath, toolDef);
+  const ok = await installTool(gameId, toolDef);
   if (!ok) {
     return { ok: false, error: `Failed to install ${toolName}` };
   }
 
-  const exePath = resolveToolPath(gamePath, toolDef);
+  const exePath = resolveToolPath(gameId, toolDef);
   if (exePath) {
     const entry: ToolEntry = {
       name: toolDef.name,
@@ -138,7 +138,7 @@ registerEvent("scanExternalTools", async (_event, gameId: string) => {
 
   const found: { name: string; exePath: string; args: string }[] = [];
   for (const toolDef of toolDefs) {
-    const exePath = resolveToolPath(gamePath, toolDef);
+    const exePath = resolveToolPath(gameId, toolDef);
     if (exePath) {
       found.push({ name: toolDef.name, exePath, args: toolDef.args || "" });
     }

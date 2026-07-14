@@ -316,9 +316,12 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
   }
 
   // ── 11. Ready ──
+  // Proton só bloqueia se o prefixo NÃO existe.
+  // Se o prefixo já é válido, o Proton será resolvido em runtime (ensureProton no Play).
+  const protonBlocking = status.prefixValid ? true : status.protonExists;
   status.ready = status.gamePathExists
     && status.prefixValid
-    && status.protonExists
+    && protonBlocking
     && status.dllOverridesOk
     && status.registryOk;
 

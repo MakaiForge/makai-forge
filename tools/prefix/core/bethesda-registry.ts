@@ -3,7 +3,7 @@ import path from "node:path";
 import { logger } from "@main/services";
 
 function posixToWinePath(p: string): string {
-  return "Z:" + p.replace(/\//g, "\\");
+  return "Z:" + p.replace(/\//g, "\\\\");
 }
 
 function resolvePfxDir(prefixPath: string): string | null {
@@ -93,7 +93,7 @@ export function verifyBethesdaRegistry(
   if (!content.includes(section)) return false;
 
   if (gamePath) {
-    const expected = `"Installed Path"="Z:${gamePath.replace(/\//g, "\\")}`;
+    const expected = `"Installed Path"="Z:${gamePath.replace(/\//g, "\\\\")}`;
     if (!content.includes(expected)) return false;
   }
 

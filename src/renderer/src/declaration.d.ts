@@ -855,6 +855,12 @@ declare global {
     parseFomod: (stagingDir: string) => Promise<FomodConfig | null>;
     installFomod: (stagingDir: string, targetDir: string, selections: Record<string, string[]>) => Promise<{ success: boolean; log: string[]; filesCopied: number }>;
     deployMods: (gameId: string, profile: string) => Promise<DeploymentResult>;
+    checkModExists: (archivePath: string, gameId: string, profile?: string) => Promise<{
+      exists: boolean;
+      modName: string;
+      stagingPath: string;
+      inProfile: boolean;
+    }>;
     installModOrchestrated: (archivePath: string, config: {
       gameId: string;
       profile: string;

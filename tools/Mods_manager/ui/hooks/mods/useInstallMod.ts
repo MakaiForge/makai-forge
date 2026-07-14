@@ -24,6 +24,7 @@ interface ModExistsCheck {
   exists: boolean;
   modName: string;
   stagingPath: string;
+  inProfile: boolean;
 }
 
 export function useInstallMod(
@@ -71,10 +72,18 @@ export function useInstallMod(
       const archivePath = result.filePaths[0];
       addLog(`Selected: ${archivePath}`);
 
-      const { exists, modName, stagingPath } = await window.electron.checkModExists(archivePath, gameId);
-      if (exists) {
+      const { exists, modName, stagingPath, inProfile } = await window.electron.checkModExists(archivePath, gameId, profile);
+      if (exists && inProfile) {
+        // Mod exists AND is in current profile → show overwrite modal
         setPendingMod({ archivePath, modName });
         setShowOverwriteModal(true);
+        return modName;
+      }
+
+      if (exists && !inProfile) {
+        // Mod exists on disk but NOT in this profile → just add to modlist, skip extraction
+        addLog(`Mod "${modName}" already installed in staging, adding to profile "${profile}"...`);
+        await doInstall(archivePath, modName);
         return modName;
       }
 

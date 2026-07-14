@@ -25,6 +25,13 @@ import { writeModMeta } from "./meta-writer";
 import { checkOverwrite } from "./overwrite-check";
 import { deploy } from "../mod-deploy/core";
 import { mkInvKey, mkMlKey } from "../storage-keys";
+import { scanEnvironment } from "../environment-scanner";
+import { ensurePrefix } from "../../play/steps/03-prefix";
+import { applyGameConfigs } from "../../play/steps/04-configs";
+import { ensureGameFrameworks } from "../../play/steps/05-frameworks";
+import { ensureSkse } from "../../play/steps/06-skse";
+import { bridgePrefixToSteam } from "../steam-prefix-bridge";
+import type { SendProgress } from "../../play/types";
 import type {
   InstallStage,
   InstallProgress,
@@ -100,6 +107,102 @@ export class InstallOrchestrator {
 
       // ── Overwrite check (antes de extrair) ──
       const overwriteInfo = checkOverwrite(config.gameId, config.profile, this.progress.modName, stagingDir);
+
+      if (overwriteInfo.exists && !overwriteInfo.inProfile) {
+        // Mod exists on disk but NOT in this profile → skip extraction, just add to modlist
+        this.updateProgress(10, `Mod "${this.progress.modName}" already in staging — adding to profile "${config.profile}"...`);
+        this.targetDir = overwriteInfo.existingDir;
+
+        // Inventory existing mod
+        const inventory = inventoryMod(this.targetDir, this.progress.modName, pluginExts);
+        const inventoryKey = mkInvKey(config.gameId, this.progress.modName);
+        ModStorageService.put(inventoryKey, { ...inventory });
+
+        // Detect mod type from existing files
+        const modType = detectModType(this.targetDir, pluginExts);
+        const bainDetected = hasBain(this.targetDir);
+
+        // Write meta if needed
+        if (config.writeMetadata !== false && !fs.existsSync(path.join(this.targetDir, "meta.ini"))) {
+          writeModMeta({
+            gameId: config.gameId,
+            modName: this.progress.modName,
+            modDir: this.targetDir,
+            archivePath,
+            hasFomod: modType.hasFomod,
+            hasBain: bainDetected,
+            plugins: inventory.pluginFiles,
+          });
+        }
+
+        // Add to modlist
+        const modlistKey = mkMlKey(config.gameId, config.profile);
+        const existing: ModlistEntry[] = ModStorageService.get(modlistKey) || [];
+        const existingIdx = existing.findIndex((m) => m.name === this.progress.modName);
+        const newMod: ModlistEntry = {
+          name: this.progress.modName,
+          enabled: true,
+          locked: false,
+          version: "",
+          priority: existingIdx >= 0 ? existing[existingIdx].priority : existing.length,
+          isSeparator: false,
+          stagingDir: this.targetDir,
+          plugins: inventory.pluginFiles,
+          hasFomod: modType.hasFomod,
+          hasSkse: modType.hasSkse,
+        };
+        if (existingIdx >= 0) {
+          existing[existingIdx] = newMod;
+        } else {
+          existing.push(newMod);
+        }
+        ModStorageService.put(modlistKey, existing);
+
+        // Deploy
+        let deployed = false;
+        let deployLog: string[] = [];
+        if (gamePath) {
+          this.updateProgress(94, `[${gameName}] Implantando mods no jogo...`);
+          try {
+            const deployResult = await deploy(config.gameId, config.profile);
+            deployed = deployResult.success;
+            deployLog = deployResult.log || [];
+          } catch { /* ignore */ }
+        }
+
+        this.updateProgress(100, "Mod adicionado ao perfil");
+        await this.transitionTo("ready");
+
+        return {
+          success: true,
+          modName: this.progress.modName,
+          gameName,
+          gameId: config.gameId,
+          stagingDir: this.targetDir,
+          archiveInfo: this.progress.archiveInfo || {
+            path: archivePath,
+            name: path.basename(archivePath),
+            totalSize: 0,
+            totalFiles: 0,
+            compressedSize: 0,
+            format: "zip",
+            isPasswordProtected: false,
+            entries: [],
+          },
+          extractedFiles: [],
+          verified: true,
+          plugins: inventory.pluginFiles,
+          hasFomod: modType.hasFomod,
+          hasBain: bainDetected,
+          hasSkse: modType.hasSkse,
+          category: modType.category,
+          alreadyExists: false,
+          deployed,
+          deployLog,
+          durationMs: Date.now() - this.progress.startTime,
+        };
+      }
+
       if (overwriteInfo.exists && !config.overwriteExisting) {
         await this.transitionTo("ready");
         return {
@@ -192,6 +295,18 @@ export class InstallOrchestrator {
       if (fomodConfig?.required_files && fomodConfig.required_files.length > 0) {
         fomodFiles = resolveFomodFiles(fomodConfig, {});
         this.updateProgress(77, `FOMOD: ${fomodFiles.length} arquivos obrigatórios`);
+      }
+
+      // ── Stage 5: Prepare Game Environment ──
+      // Ensure prefix, DLL overrides, registry, frameworks, SKSE are ready.
+      // All failures are non-fatal — the mod is extracted and can be deployed later via Play.
+      await this.transitionTo("preparing");
+      this.updateProgress(80, `[${gameName}] Preparando ambiente do jogo...`);
+      try {
+        await this.prepareGameEnvironment(config, gameConfig, gamePath, gameModule);
+        this.updateProgress(88, `[${gameName}] Ambiente preparado`);
+      } catch (envErr) {
+        this.updateProgress(88, `[${gameName}] Preparação do ambiente ignorada: ${String(envErr).slice(0, 100)}`);
       }
 
       // ── Stage 6: Save ──
@@ -347,6 +462,64 @@ export class InstallOrchestrator {
     }));
 
     return { rootDir: innerDir, extractedFiles: adjusted };
+  }
+
+  /**
+   * Prepare game environment: prefix, DLL overrides, registry, frameworks, SKSE.
+   * All failures are non-fatal — logs and continues.
+   */
+  private async prepareGameEnvironment(
+    config: InstallConfig,
+    gameConfig: any,
+    gamePath: string,
+    gameModule: ReturnType<typeof getGameModule>,
+  ): Promise<void> {
+    const send: SendProgress = (step, message, status) => {
+      const icon = status === "error" ? "❌" : status === "working" ? "⏳" : "✅";
+      this.updateProgress(this.progress.percent, `[${step}] ${icon} ${message}`);
+    };
+
+    const env = scanEnvironment({ gameId: config.gameId, autoFix: true });
+
+    const prefixPath = env.prefixPath || gameConfig?.protonPrefix || "";
+    const protonPath = env.protonPath || "";
+    const steamAppId = env.steamAppId;
+    const libraryPath = env.libraryPath;
+
+    // ── Prefix ──
+    if (prefixPath && !env.prefixValid && protonPath) {
+      try {
+        await ensurePrefix(config.gameId, prefixPath, protonPath, steamAppId, gamePath, libraryPath, send);
+      } catch (err) {
+        this.updateProgress(this.progress.percent, `[prefix] Prefixo ignorado: ${String(err).slice(0, 100)}`);
+      }
+    }
+
+    // ── Bridge to Steam ──
+    if (steamAppId && prefixPath) {
+      try {
+        await bridgePrefixToSteam(config.gameId, prefixPath, steamAppId);
+      } catch { /* ignore */ }
+    }
+
+    // ── DLL overrides + registry + winetricks ──
+    if (prefixPath && protonPath) {
+      try {
+        await applyGameConfigs(config.gameId, gamePath, prefixPath, protonPath, send, steamAppId, libraryPath);
+      } catch (err) {
+        this.updateProgress(this.progress.percent, `[configs] Configs ignoradas: ${String(err).slice(0, 100)}`);
+      }
+    }
+
+    // ── Frameworks (BepInEx, SMAPI, CET, etc.) ──
+    try {
+      await ensureGameFrameworks(config.gameId, gamePath, send);
+    } catch { /* ignore */ }
+
+    // ── SKSE ──
+    try {
+      await ensureSkse(config.gameId, gamePath, send);
+    } catch { /* ignore */ }
   }
 
   abort(): void {

@@ -91,21 +91,28 @@ function mapToChecks(env: EnvironmentStatus): Check[] {
   }
 
   // ── 4. Proton ──
+  // Proton só bloqueia se o prefixo NÃO existe.
+  // Se o prefixo já é válido, o Proton será resolvido em runtime (ensureProton no Play).
+  const prefixOk = checks.find(c => c.id === "prefix")?.ok ?? false;
   if (!env.protonPath) {
     checks.push({
       id: "proton",
       label: "Proton",
-      ok: false,
-      message: "Proton não configurado. Clique em 'Preparar Prefixo' para configurar.",
-      action: "install_proton",
+      ok: prefixOk,
+      message: prefixOk
+        ? "Proton não configurado — será resolvido ao iniciar o jogo"
+        : "Proton não configurado. Clique em 'Preparar Prefixo' para configurar.",
+      ...(prefixOk ? {} : { action: "install_proton" as const }),
     });
   } else if (!env.protonExists) {
     checks.push({
       id: "proton",
       label: "Proton",
-      ok: false,
-      message: `Proton não encontrado: ${env.protonPath}`,
-      action: "install_proton",
+      ok: prefixOk,
+      message: prefixOk
+        ? `Proton não encontrado: ${env.protonPath} — será resolvido ao iniciar`
+        : `Proton não encontrado: ${env.protonPath}`,
+      ...(prefixOk ? {} : { action: "install_proton" as const }),
     });
   } else {
     checks.push({

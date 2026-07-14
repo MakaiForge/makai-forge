@@ -13,8 +13,10 @@ import { mkMlKey } from "../storage-keys";
 import type { ModlistEntry } from "../../types/install.types";
 
 export interface OverwriteInfo {
-  /** Se o mod já existe */
+  /** Se o mod já existe no disco */
   exists: boolean;
+  /** Se o mod está na modlist do perfil ativo */
+  inProfile: boolean;
   /** Nome do mod existente */
   existingName: string;
   /** Diretório do mod existente no staging */
@@ -39,8 +41,13 @@ export function checkOverwrite(
   const modDir = path.join(stagingDir, modName);
 
   if (!fs.existsSync(modDir)) {
-    return { exists: false, existingName: modName, existingDir: modDir };
+    return { exists: false, inProfile: false, existingName: modName, existingDir: modDir };
   }
+
+  // Check if mod is in the active profile's modlist
+  const modlistKey = mkMlKey(gameId, profile);
+  const modlist: Array<{ name: string }> = ModStorageService.get(modlistKey) || [];
+  const inProfile = modlist.some((m) => m.name === modName);
 
   // Ler metadata existente
   const meta = readModMeta(modDir);
@@ -63,6 +70,7 @@ export function checkOverwrite(
 
   return {
     exists: true,
+    inProfile,
     existingName: modName,
     existingDir: modDir,
     installedAt: meta?.["General.installed"],
