@@ -56,6 +56,15 @@ def _default_staging_dir(game_id: str) -> str:
     return os.path.join(home, "Games", "Mods", slug, "staging")
 
 
+def _is_bethesda(game_id: str) -> bool:
+    return game_id in {
+        "skyrim", "skyrim_se", "skyrim_vr",
+        "enderal", "enderal_se",
+        "fallout3", "falloutnv", "fallout4", "fallout4_vr",
+        "oblivion", "morrowind", "starfield",
+    }
+
+
 # ─── Play Game ─────────────────────────────────────────────────
 
 def play_game(game_id: str, profile: str = "Default") -> dict:
@@ -168,6 +177,15 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
         dll_overrides = _get_dll_overrides(game_id)
         if dll_overrides:
             apply_dll_overrides(prefix_path, dll_overrides)
+
+        # Bethesda registry (caminho do jogo no registro)
+        if _is_bethesda(game_id) and proton_path:
+            _emit("progress", step="configs", message="Registro Bethesda...", percent=53)
+            try:
+                from core.engine.registry import register_bethesda_game_path
+                register_bethesda_game_path(prefix_path, proton_path, game_id, game_path, steam_app_id or None)
+            except Exception as e:
+                _emit("log", level="warn", message=f"Registro Bethesda: {e}")
 
         # Makaitricks
         winetricks_components = _get_winetricks_components(game_id)
