@@ -87,19 +87,20 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
         _emit("progress", step="detect", message="Carregando configuração...", percent=5)
 
         # ── Step 2: Detect game ──
+        detected_steam_app_id = None
         if not game_path or not os.path.isdir(os.path.expanduser(game_path)):
             _emit("progress", step="detect", message="Detectando jogo...", percent=10)
             detection = detect_game(game_id)
             if detection.get("gamePath"):
                 game_path = detection["gamePath"]
-                steam_app_id = detection.get("steamAppId")
+                detected_steam_app_id = detection.get("steamAppId")
                 # Salva config detectada
                 storage.put(f"game:{game_id}:config", {
                     "gamePath": game_path,
                     "stagingDir": staging_dir,
                     "protonPrefix": prefix_path,
                     "protonVersion": proton_version,
-                    "steamAppId": steam_app_id or config.get("steamAppId", ""),
+                    "steamAppId": detected_steam_app_id or config.get("steamAppId", ""),
                 })
                 _emit("progress", step="detect",
                       message=f"Jogo encontrado: {os.path.basename(game_path)}",
@@ -111,7 +112,8 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
             game_path = os.path.expanduser(game_path)
             _emit("progress", step="detect", message=f"Jogo: {os.path.basename(game_path)}", percent=15)
 
-        steam_app_id = str(config.get("steamAppId", "")) or ""
+        # steam_app_id: prioridade para detectado, depois config, depois vazio
+        steam_app_id = detected_steam_app_id or str(config.get("steamAppId", "") or "")
 
         # ── Step 3: Ensure Proton ──
         _emit("progress", step="proton", message="Verificando Proton...", percent=20)
