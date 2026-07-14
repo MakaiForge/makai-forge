@@ -14,17 +14,6 @@ MAKAITRICKS_PATH = os.path.expanduser(
 
 
 def run(component: str, prefix_path: str, proton_path: str) -> dict:
-    """
-    Executa um componente do Makaitricks no prefixo.
-
-    Args:
-        component: Nome do componente (ex: "vcrun2022", "dxvk", "d3dcompiler_47")
-        prefix_path: Caminho do wrapper (~/Games/Prefix/{game_id}/)
-        proton_path: Caminho do Proton
-
-    Returns:
-        dict com success, output, error
-    """
     if not os.path.isfile(MAKAITRICKS_PATH):
         return {"success": False, "error": f"Makaitricks não encontrado em {MAKAITRICKS_PATH}"}
 
@@ -52,17 +41,6 @@ def run(component: str, prefix_path: str, proton_path: str) -> dict:
 
 
 def run_multiple(components: list[str], prefix_path: str, proton_path: str) -> dict:
-    """
-    Executa múltiplos componentes sequencialmente.
-
-    Args:
-        components: Lista de componentes
-        prefix_path: Caminho do wrapper
-        proton_path: Caminho do Proton
-
-    Returns:
-        dict com overall success e log de cada componente
-    """
     results = []
     all_ok = True
 
@@ -76,5 +54,4 @@ def run_multiple(components: list[str], prefix_path: str, proton_path: str) -> d
 
 
 def is_available() -> bool:
-    """Verifica se o Makaitricks está instalado."""
     return os.path.isfile(MAKAITRICKS_PATH)

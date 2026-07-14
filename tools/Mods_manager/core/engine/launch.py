@@ -55,28 +55,7 @@ def launch_game(
     if env_overrides:
         env.update(env_overrides)
 
-    # Tenta umu-run primeiro
-    umu = _find_umu()
-    if umu:
-        try:
-            env_umu = env.copy()
-            if steam_app_id:
-                env_umu["GAMEID"] = steam_app_id
-                env_umu["STORE"] = "steam"
-            proc = subprocess.Popen(
-                [umu, "run", full_exe],
-                env=env_umu,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-            return {"success": True, "pid": proc.pid, "method": "umu-run"}
-        except FileNotFoundError:
-            pass
-        except Exception as e:
-            return {"success": False, "error": f"umu-run error: {e}", "method": "umu-run"}
-
-    # Fallback: Proton run
+    # Tenta Proton run primeiro (Makai Forge gerencia Proton + prefixo)
     if proton_path and os.path.isfile(proton_path):
         try:
             env_proton = env.copy()
@@ -92,6 +71,24 @@ def launch_game(
             return {"success": True, "pid": proc.pid, "method": "proton"}
         except FileNotFoundError as e:
             return {"success": False, "error": str(e), "method": "proton"}
+
+    # Fallback: umu-run (se Proton não foi encontrado)
+    umu = _find_umu()
+    if umu:
+        try:
+            env_umu = env.copy()
+            proc = subprocess.Popen(
+                [umu, full_exe],
+                env=env_umu,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            return {"success": True, "pid": proc.pid, "method": "umu-run"}
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            return {"success": False, "error": f"umu-run error: {e}", "method": "umu-run"}
 
     return {"success": False, "error": "No launch method available", "method": None}
 

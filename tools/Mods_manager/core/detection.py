@@ -9,7 +9,9 @@ import glob
 import re
 
 from core import storage
-from core.engine.prefix import default_prefix_dir
+def __default_prefix_dir(game_id: str) -> str:
+    home = os.path.expanduser("~")
+    return os.path.join(home, "Games", "Prefix", game_id)
 
 
 def detect_game(game_id: str) -> dict:
@@ -33,7 +35,7 @@ def detect_game(game_id: str) -> dict:
             steam = find_steam_app_path(steam_app_id)
             if steam:
                 result["gamePath"] = steam["gamePath"]
-                result["prefixPath"] = default_prefix_dir(game_id)
+                result["prefixPath"] = _default_prefix_dir(game_id)
                 result["source"] = "steam"
                 result["steamAppId"] = steam_app_id
                 return result
@@ -44,7 +46,7 @@ def detect_game(game_id: str) -> dict:
         steam = find_steam_app_path(app_id)
         if steam:
             result["gamePath"] = steam["gamePath"]
-            result["prefixPath"] = default_prefix_dir(game_id)
+            result["prefixPath"] = _default_prefix_dir(game_id)
             result["source"] = "steam"
             result["steamAppId"] = app_id
             return result
@@ -53,7 +55,7 @@ def detect_game(game_id: str) -> dict:
     gog_path = find_gog_game_path(game_id)
     if gog_path:
         result["gamePath"] = gog_path
-        result["prefixPath"] = default_prefix_dir(game_id)
+        result["prefixPath"] = _default_prefix_dir(game_id)
         result["source"] = "gog"
         return result
 
@@ -63,7 +65,7 @@ def detect_game(game_id: str) -> dict:
         manual = scan_manual(exe)
         if manual:
             result["gamePath"] = manual
-            result["prefixPath"] = default_prefix_dir(game_id)
+            result["prefixPath"] = _default_prefix_dir(game_id)
             result["source"] = "manual"
             return result
 

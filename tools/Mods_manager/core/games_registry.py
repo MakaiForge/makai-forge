@@ -374,8 +374,14 @@ def get_script_extender_info(game_id: str) -> dict | None:
 def check_script_extender(game_path: str, se_info: dict) -> str | None:
     exe_name = se_info.get("loader_exe", "")
     exe_path = os.path.join(game_path, exe_name)
-    if os.path.exists(exe_path):
+    if os.path.isfile(exe_path) and os.path.getsize(exe_path) > 0:
         return exe_path
+    # Remove arquivo corrompido se existir
+    if os.path.lexists(exe_path):
+        try:
+            os.unlink(exe_path)
+        except OSError:
+            pass
     return None
 
 
@@ -392,10 +398,16 @@ def install_script_extender(game_path: str, se_info: dict) -> str | None:
     if not release_url:
         raise NotImplementedError("URL de download não configurada para este Script Extender")
 
-    # Verifica se já está instalado
+    # Verifica se já está instalado (com conteúdo válido)
     loader_path = os.path.join(game_path, loader_exe)
-    if os.path.exists(loader_path):
+    if os.path.isfile(loader_path) and os.path.getsize(loader_path) > 0:
         return loader_path
+    # Remove arquivo corrompido se existir
+    if os.path.lexists(loader_path):
+        try:
+            os.unlink(loader_path)
+        except OSError:
+            pass
 
     # Cria diretório temporário
     with tempfile.TemporaryDirectory(prefix="skse_") as tmpdir:
@@ -486,11 +498,20 @@ def swap_launcher(game_path: str, game_id: str, se_loader_exe: str) -> bool:
     backup   = os.path.join(game_path, launcher_name + ".bak")
     se       = os.path.join(game_path, se_loader_exe)
 
-    if not os.path.isfile(se):
-        _emit_log("warn", f"SE loader não encontrado: {se}")
+    if not os.path.isfile(se) or os.path.getsize(se) == 0:
+        _emit_log("warn", f"SE loader inválido ou vazio: {se}")
         return False
 
-    if os.path.isfile(launcher):
+    # Já está swappado? Se o launcher é o mesmo arquivo que o SE, skip
+    if os.path.samefile(launcher, se):
+        _emit_log("info", f"Swap já ativo: {launcher_name} -> {se_loader_exe}")
+        return True
+
+    # Se o backup já existe, o launcher atual é o SE (swap anterior)
+    # Não sobrescreve o backup original
+    if os.path.isfile(backup):
+        _emit_log("info", f"Backup existe, pulando rename: {launcher_name}.bak preservado")
+    elif os.path.isfile(launcher):
         os.rename(launcher, backup)
         _emit_log("info", f"Renomeado {launcher_name} -> {launcher_name}.bak")
 
