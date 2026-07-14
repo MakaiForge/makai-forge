@@ -65,6 +65,17 @@ def _is_bethesda(game_id: str) -> bool:
     }
 
 
+def _is_native_linux(game_id: str) -> bool:
+    """Jogos nativos Linux (sem Proton/prefixo)."""
+    return game_id in {
+        "minecraft", "rimworld", "factorio",
+        "valheim", "subnautica",
+        "stardewvalley", "terraria",
+        "projectzomboid", "thelongdark",
+        "kerbalspaceprogram",
+    }
+
+
 # ─── Play Game ─────────────────────────────────────────────────
 
 def play_game(game_id: str, profile: str = "Default") -> dict:
@@ -124,78 +135,81 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
         # steam_app_id: prioridade para detectado, depois config, depois vazio
         steam_app_id = detected_steam_app_id or str(config.get("steamAppId", "") or "")
 
-        # ── Step 3: Ensure Proton ──
-        _emit("progress", step="proton", message="Verificando Proton...", percent=20)
-        proton_path = find_proton(proton_version) if proton_version else None
-        if not proton_path:
-            # Tenta via Steam (config_info.vdf)
-            if steam_app_id:
-                from core.engine.proton import find_compatibility_tool_path
-                proton_path = find_compatibility_tool_path(game_path, steam_app_id)
-            # Se ainda não achou, procura qualquer Proton disponível
-            if not proton_path:
-                from core.engine.proton import find_any_proton
-                proton_path = find_any_proton()
-            if not proton_path:
-                _emit("error", step="proton", message="Proton não encontrado")
-                return {"success": False, "error": "Proton não encontrado", "failedStep": "proton"}
+        native = _is_native_linux(game_id)
+        proton_path = None
+        has_umu = False
 
-        _emit("progress", step="proton", message=f"Proton: {os.path.basename(os.path.dirname(proton_path))}", percent=25)
+        if not native:
+            # ── Step 3: Ensure Proton ──
+            _emit("progress", step="proton", message="Verificando Proton...", percent=20)
+            proton_path = find_proton(proton_version) if proton_version else None
+            if not proton_path:
+                if steam_app_id:
+                    from core.engine.proton import find_compatibility_tool_path
+                    proton_path = find_compatibility_tool_path(game_path, steam_app_id)
+                if not proton_path:
+                    from core.engine.proton import find_any_proton
+                    proton_path = find_any_proton()
+                if not proton_path:
+                    _emit("error", step="proton", message="Proton não encontrado")
+                    return {"success": False, "error": "Proton não encontrado", "failedStep": "proton"}
 
-        # ── Step 4: Ensure prefix (opcional) ──
-        # Se tiver umu-run, ele gerencia o prefixo automaticamente.
-        # Só criamos manualmente se for usar Proton direto.
-        has_umu = find_umu_run() is not None
-        if not has_umu or not steam_app_id:
-            _emit("progress", step="prefix", message="Verificando prefixo...", percent=30)
-            if not is_valid_prefix(prefix_path):
-                _emit("progress", step="prefix", message="Criando prefixo...", percent=35)
-                result = create_prefix(prefix_path, proton_path, game_id, steam_app_id or None)
-                if not result.get("created"):
-                    _emit("error", step="prefix", message=result.get("error", "Falha ao criar prefixo"))
-                    return {"success": False, "error": result.get("error"), "failedStep": "prefix"}
-                _emit("progress", step="prefix", message="Prefixo criado", percent=40)
+            _emit("progress", step="proton", message=f"Proton: {os.path.basename(os.path.dirname(proton_path))}", percent=25)
+
+            # ── Step 4: Ensure prefix ──
+            has_umu = find_umu_run() is not None
+            if not has_umu or not steam_app_id:
+                _emit("progress", step="prefix", message="Verificando prefixo...", percent=30)
+                if not is_valid_prefix(prefix_path):
+                    _emit("progress", step="prefix", message="Criando prefixo...", percent=35)
+                    result = create_prefix(prefix_path, proton_path, game_id, steam_app_id or None)
+                    if not result.get("created"):
+                        _emit("error", step="prefix", message=result.get("error", "Falha ao criar prefixo"))
+                        return {"success": False, "error": result.get("error"), "failedStep": "prefix"}
+                    _emit("progress", step="prefix", message="Prefixo criado", percent=40)
+                else:
+                    _emit("progress", step="prefix", message="Prefixo válido", percent=40)
             else:
-                _emit("progress", step="prefix", message="Prefixo válido", percent=40)
+                _emit("progress", step="prefix", message="Prefixo gerenciado pelo umu-run", percent=40)
+
+            # ── Step 5: Bridge to Steam ──
+            if not has_umu and steam_app_id:
+                _emit("progress", step="bridge", message="Conectando ao Steam...", percent=45)
+                try:
+                    from core.engine.bridge import bridge_prefix_to_steam
+                    bridge_prefix_to_steam(
+                        game_id, prefix_path, steam_app_id,
+                        os.path.basename(os.path.dirname(proton_path))
+                    )
+                except Exception as e:
+                    _emit("log", level="warn", message=f"Bridge ignorado: {e}")
+
+            # ── Step 6: Apply configs ──
+            _emit("progress", step="configs", message="Aplicando configurações...", percent=50)
+            dll_overrides = _get_dll_overrides(game_id)
+            if dll_overrides:
+                apply_dll_overrides(prefix_path, dll_overrides)
+
+            if _is_bethesda(game_id) and proton_path:
+                _emit("progress", step="configs", message="Registro Bethesda...", percent=53)
+                try:
+                    from core.engine.registry import register_bethesda_game_path
+                    register_bethesda_game_path(prefix_path, proton_path, game_id, game_path, steam_app_id or None)
+                except Exception as e:
+                    _emit("log", level="warn", message=f"Registro Bethesda: {e}")
+
+            winetricks_components = _get_winetricks_components(game_id)
+            if winetricks_components:
+                _emit("progress", step="configs", message="Makaitricks...", percent=55)
+                mt_result = run_makaitricks(prefix_path, winetricks_components, proton_path)
+                if not mt_result.get("success"):
+                    _emit("log", level="warn", message="Makaitricks teve falhas", results=mt_result.get("results"))
+
+            _emit("progress", step="configs", message="Configurações aplicadas", percent=60)
         else:
-            _emit("progress", step="prefix", message="Prefixo gerenciado pelo umu-run", percent=40)
-
-        # ── Step 5: Bridge to Steam (só se criamos prefixo manual) ──
-        if not has_umu and steam_app_id:
-            _emit("progress", step="bridge", message="Conectando ao Steam...", percent=45)
-            try:
-                from core.engine.bridge import bridge_prefix_to_steam
-                bridge_prefix_to_steam(
-                    game_id, prefix_path, steam_app_id,
-                    os.path.basename(os.path.dirname(proton_path))
-                )
-            except Exception as e:
-                _emit("log", level="warn", message=f"Bridge ignorado: {e}")
-
-        # ── Step 6: Apply configs ──
-        _emit("progress", step="configs", message="Aplicando configurações...", percent=50)
-        dll_overrides = _get_dll_overrides(game_id)
-        if dll_overrides:
-            apply_dll_overrides(prefix_path, dll_overrides)
-
-        # Bethesda registry (caminho do jogo no registro)
-        if _is_bethesda(game_id) and proton_path:
-            _emit("progress", step="configs", message="Registro Bethesda...", percent=53)
-            try:
-                from core.engine.registry import register_bethesda_game_path
-                register_bethesda_game_path(prefix_path, proton_path, game_id, game_path, steam_app_id or None)
-            except Exception as e:
-                _emit("log", level="warn", message=f"Registro Bethesda: {e}")
-
-        # Makaitricks
-        winetricks_components = _get_winetricks_components(game_id)
-        if winetricks_components:
-            _emit("progress", step="configs", message="Makaitricks...", percent=55)
-            mt_result = run_makaitricks(prefix_path, winetricks_components, proton_path)
-            if not mt_result.get("success"):
-                _emit("log", level="warn", message="Makaitricks teve falhas", results=mt_result.get("results"))
-
-        _emit("progress", step="configs", message="Configurações aplicadas", percent=60)
+            _emit("progress", step="proton", message="Jogo nativo Linux — pulando Proton", percent=25)
+            _emit("progress", step="prefix", message="Jogo nativo Linux — pulando prefixo", percent=40)
+            _emit("progress", step="configs", message="Jogo nativo Linux — pulando configs Wine", percent=60)
 
         # ── Step 7: Frameworks ──
         _emit("progress", step="frameworks", message="Verificando frameworks...", percent=65)
