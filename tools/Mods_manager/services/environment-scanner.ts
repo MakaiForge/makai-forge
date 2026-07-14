@@ -93,7 +93,7 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
   };
 
   // ── 1. Ler config do jogo ──
-  const gameConfig = ModStorageService.get<any>(`game:${gameId}:config`);
+  let gameConfig = ModStorageService.get<any>(`game:${gameId}:config`);
 
   // ── 2. Game path ──
   let rawGamePath = gameConfig?.gamePath || "";
@@ -101,12 +101,13 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
     const detected = detectGame(gameId);
     if (detected.source && detected.gamePath) {
       rawGamePath = detected.gamePath;
-      ModStorageService.put(`game:${gameId}:config`, {
+      gameConfig = {
         gamePath: rawGamePath,
         stagingDir: gameConfig?.stagingDir || defaultStagingDir(gameId),
         protonPrefix: gameConfig?.protonPrefix || defaultPrefixDir(gameId),
         protonVersion: gameConfig?.protonVersion || "",
-      });
+      };
+      ModStorageService.put(`game:${gameId}:config`, gameConfig);
       status.fixed.push(`Game path auto-detectado: ${rawGamePath}`);
     }
   }
@@ -151,7 +152,17 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
   }
 
   // ── 4. Prefix ──
-  const rawPrefix = gameConfig?.protonPrefix || "";
+  let rawPrefix = gameConfig?.protonPrefix || "";
+  if (!rawPrefix) {
+    const defaultPrefix = defaultPrefixDir(gameId);
+    const resolved = resolvePrefixDir(defaultPrefix);
+    if (resolved) {
+      rawPrefix = defaultPrefix;
+      gameConfig = { ...gameConfig, protonPrefix: rawPrefix };
+      ModStorageService.put(`game:${gameId}:config`, gameConfig);
+      status.fixed.push(`Prefix auto-detectado no disco: ${rawPrefix}`);
+    }
+  }
   status.prefixPath = rawPrefix ? expandHome(rawPrefix) : null;
   if (status.prefixPath) {
     const resolved = resolvePrefixDir(status.prefixPath);
@@ -177,9 +188,7 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
   }
 
   // ── 5. Proton ──
-  const protonPath = gameConfig?.protonVersion
-    || readProtonFromStore()
-    || "";
+  const protonPath = gameConfig?.protonVersion || "";
   status.protonPath = protonPath;
   status.protonExists = protonPath ? fs.existsSync(path.join(protonPath, "proton")) : false;
 
@@ -290,20 +299,6 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
 }
 
 // ── Helpers ──
-
-function readProtonFromStore(): string {
-  const cached = ModStorageService.get<string>("proton_binary");
-  if (cached) return cached;
-
-  try {
-    const storePath = path.join(os.homedir(), ".config", "makai-forger", "mods-store.json");
-    const raw = fs.readFileSync(storePath, "utf-8");
-    const store = JSON.parse(raw);
-    return store.proton_binary || "";
-  } catch {
-    return "";
-  }
-}
 
 function expandHome(p: string): string {
   if (p.startsWith("~")) return p.replace("~", os.homedir());
