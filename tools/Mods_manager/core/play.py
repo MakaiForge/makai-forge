@@ -119,10 +119,14 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
         _emit("progress", step="proton", message="Verificando Proton...", percent=20)
         proton_path = find_proton(proton_version) if proton_version else None
         if not proton_path:
-            # Tenta encontrar automaticamente
+            # Tenta via Steam (config_info.vdf)
             if steam_app_id:
                 from core.engine.proton import find_compatibility_tool_path
                 proton_path = find_compatibility_tool_path(game_path, steam_app_id)
+            # Se ainda não achou, procura qualquer Proton disponível
+            if not proton_path:
+                from core.engine.proton import find_any_proton
+                proton_path = find_any_proton()
             if not proton_path:
                 _emit("error", step="proton", message="Proton não encontrado")
                 return {"success": False, "error": "Proton não encontrado", "failedStep": "proton"}

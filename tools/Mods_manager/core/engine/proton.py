@@ -59,6 +59,23 @@ def find_proton(proton_version: str | None) -> str | None:
     return None
 
 
+def find_any_proton() -> str | None:
+    """Retorna o primeiro Proton disponível no sistema."""
+    for tools_dir in STEAM_COMPAT_TOOLS_DIRS:
+        resolved = os.path.realpath(tools_dir)
+        if not os.path.isdir(resolved):
+            continue
+        try:
+            entries = sorted(os.listdir(resolved))
+        except PermissionError:
+            continue
+        for entry in entries:
+            candidate = os.path.join(resolved, entry, "proton")
+            if os.path.isfile(candidate):
+                return candidate
+    return None
+
+
 def find_umu_run() -> str | None:
     """Localiza o binário umu-run."""
     import shutil
