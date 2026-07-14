@@ -79,6 +79,7 @@ export function useInstallOrchestrator(
   const installingRef = useRef(false);
 
   useEffect(() => {
+    gameIdRef.current = gameId;
     configRef.current = { gameId, profile, stagingDir };
   }, [gameId, profile, stagingDir]);
 
