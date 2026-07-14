@@ -1,4 +1,4 @@
-import { spawn, execFileSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
 import { app } from "electron";
@@ -17,34 +17,12 @@ function getCliPath(): string {
     : path.join(app.getAppPath(), "tools", "prefix", "python", "cli.py");
 }
 
-export function getPythonBin(): string | null {
-  const candidates = [
-    process.env.PROTONFORGE_UMU_PYTHON,
-    process.env.HYDRA_UMU_PYTHON,
-    getVenvPythonPath(),
-    "/usr/bin/python3",
-    "python3",
-  ];
-
-  for (const c of candidates) {
-    if (!c) continue;
-    try {
-      const resolved = fs.realpathSync(c);
-      execFileSync(resolved, ["--version"], { stdio: "pipe" });
-      return resolved;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
 export async function runPythonCommand(
   pyCommand: string,
   pyArgs: string[],
   env?: Record<string, string>,
 ): Promise<PythonResult> {
-  const pythonBin = getPythonBin();
+  const pythonBin = getVenvPythonPath();
   if (!pythonBin) {
     return { success: false, stdout: "", stderr: "Python bin not found", returncode: -1 };
   }

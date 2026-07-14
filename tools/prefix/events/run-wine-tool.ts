@@ -1,35 +1,12 @@
 import { createWineToolRunner, WineTool } from "@main/services/wine-tools";
 import { registerEvent } from "@main/events/register-event";
-import { spawn, execFileSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { app } from "electron";
 import path from "node:path";
-import fs from "node:fs";
 import { logsPath } from "@main/constants";
 import type { GameShop } from "@types";
 import { getVenvPythonPath } from "@prefix/core/venv";
 import { logOperation } from "../activity-logger";
-
-const getPythonBin = (): string | null => {
-  const candidates = [
-    process.env.PROTONFORGE_UMU_PYTHON,
-    process.env.HYDRA_UMU_PYTHON,
-    getVenvPythonPath(),
-    "/usr/bin/python3",
-    "python3",
-  ];
-
-  for (const c of candidates) {
-    if (!c) continue;
-    try {
-      const resolved = fs.realpathSync(c);
-      execFileSync(resolved, ["--version"], { stdio: "pipe" });
-      return resolved;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-};
 
 const getGUIScriptPath = () =>
   app.isPackaged
@@ -46,7 +23,7 @@ const runWineTool = async (
   const _start = Date.now();
   try {
     if (tool === "winelog") {
-      const pythonBin = getPythonBin();
+      const pythonBin = getVenvPythonPath();
       const guiScript = getGUIScriptPath();
       if (pythonBin && guiScript) {
         const umuLogPath = path.join(logsPath, "umu.log");

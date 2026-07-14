@@ -24,7 +24,7 @@ const binaryNameByPlatform: Partial<Record<NodeJS.Platform, string>> = {
   linux: "protonforge-python-rpc",
 };
 
-const VENV_PYTHON = getVenvPythonPath() || "python3";
+const VENV_PYTHON = getVenvPythonPath();
 
 type PythonRpcMethod = "status" | "seed_status" | "torrent_files" | "action";
 
@@ -401,26 +401,14 @@ export class PythonRPC {
       return this.pythonExecutable;
     }
 
-    const candidates = [
-      process.env.PROTONFORGE_PYTHON_BIN,
-      VENV_PYTHON,
-    ].filter((value): value is string => Boolean(value));
-
-    for (const candidate of candidates) {
-      if (!fs.existsSync(candidate)) continue;
-      const check = cp.spawnSync(candidate, ["--version"], {
-        stdio: "ignore",
-      });
-
-      if (!check.error) {
-        this.pythonExecutable = candidate;
-        return candidate;
-      }
+    if (!VENV_PYTHON) {
+      throw new Error(
+        "Venv não encontrado. Execute 'npm run reinstall' para configurar o ambiente Python."
+      );
     }
 
-    throw new Error(
-      "Venv não encontrado. Execute 'npm run reinstall' para configurar o ambiente Python."
-    );
+    this.pythonExecutable = VENV_PYTHON;
+    return VENV_PYTHON;
   }
 
   public static kill() {

@@ -4,12 +4,11 @@ import fs from "fs";
 
 import { app } from "electron";
 import { bridgeContextToPayload } from "./bridge-context";
+import { getVenvPythonPath } from "@prefix/core/venv";
 
 const startDir = app.getAppPath();
 const BRIDGE_DIR = path.join(startDir, "data", "install-api", "proton_recommended", "python", "bridge");
-const VENV_PYTHON = app.isPackaged
-  ? path.join(process.resourcesPath, "venv", "bin", "python")
-  : path.join(app.getAppPath(), "tools", "venv", "bin", "python");
+const VENV_PYTHON = getVenvPythonPath();
 const BRIDGE_SCRIPT = path.join(BRIDGE_DIR, "bridge.py");
 
 interface BridgeResponse {
@@ -28,6 +27,11 @@ function spawnBridge(): void {
 
   if (!fs.existsSync(BRIDGE_SCRIPT)) {
     console.warn("[ModBridge] Bridge script not found at", BRIDGE_SCRIPT, "- skipping ModBridge initialization");
+    return;
+  }
+
+  if (!VENV_PYTHON) {
+    console.warn("[ModBridge] Venv Python não encontrado - skipping ModBridge initialization");
     return;
   }
 

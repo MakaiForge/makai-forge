@@ -88,7 +88,12 @@ export class ProtonForgeRPC {
     this.readyPromise = new Promise<void>((resolve) => { this.readyResolve = resolve; });
     this.buf = "";
 
-    const python = getVenvPythonPath() || "python3";
+    const python = getVenvPythonPath();
+    if (!python) {
+      const err = "Venv Python não encontrado. Execute 'npm run reinstall' para configurar o ambiente Python.";
+      log("spawn", "FAIL", err);
+      throw new Error(err);
+    }
     const script = path.join(app.getAppPath(), "tools", "python-rpc", "protonforge-api", "server.py");
 
     log("spawn", "python=" + python, "script=" + script);

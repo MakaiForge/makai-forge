@@ -2,12 +2,14 @@ import { registerEvent } from "@main/events/register-event";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { app } from "electron";
+import { getVenvPythonPath } from "@prefix/core/venv";
 
 registerEvent("eslify", async (_event, pluginPath: string, dryRun: boolean = false, safeCheck: boolean = true) => {
   try {
-    const venvPython = app.isPackaged
-      ? path.join(process.resourcesPath, "venv", "bin", "python")
-      : path.join(__dirname, "..", "..", "..", "tools", "venv", "bin", "python");
+    const venvPython = getVenvPythonPath();
+    if (!venvPython) {
+      return { success: false, error: "Venv Python não encontrado. Execute 'npm run reinstall' para configurar o ambiente Python." };
+    }
 
     const script = path.join(
       app.getAppPath(), "data", "install-api", "proton_recommended", "python", "Utils", "eslifier.py"

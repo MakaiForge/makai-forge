@@ -7,16 +7,14 @@ import { app } from "electron";
  * Works in both dev and packaged mode.
  */
 export function getVenvPythonPath(): string | null {
+  const venvDir = app.isPackaged
+    ? path.join(process.resourcesPath, "venv")
+    : path.join(app.getAppPath(), "tools", "venv");
+
   const candidates = [
-    process.env.PROTONFORGE_PYTHON,
-    process.env.HYDRA_UMU_PYTHON,
-    app.isPackaged
-      ? path.join(process.resourcesPath, "venv", "bin", "python3")
-      : path.join(app.getAppPath(), "tools", "venv", "bin", "python3"),
-    app.isPackaged
-      ? path.join(process.resourcesPath, "venv", "bin", "python")
-      : path.join(app.getAppPath(), "tools", "venv", "bin", "python"),
-  ].filter((v): v is string => Boolean(v));
+    path.join(venvDir, "bin", "python3"),
+    path.join(venvDir, "bin", "python"),
+  ];
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return candidate;

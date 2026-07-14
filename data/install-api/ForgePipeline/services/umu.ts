@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import readline from "node:readline";
 import { app } from "electron";
 import { is } from "@electron-toolkit/utils";
@@ -11,6 +11,7 @@ import type { ProtonVersion } from "@types";
 import { resolveLaunchCommand } from "@main/helpers/resolve-launch-command";
 import { ensureVenv } from "@bootstrap/venv";
 import { findToolByFolder } from "@proton/main/services/tools";
+import { getVenvPythonPath } from "@prefix/core/venv";
 
 const isValidProtonDirectory = (directoryPath: string) => {
   const protonFilePath = path.join(directoryPath, "proton");
@@ -33,60 +34,8 @@ const getUmuBinaryPath = () =>
     : path.join(__dirname, "..", "..", "..", "resources", "binaries", "umu-run");
 
 
-const parsePythonVersion = (versionText: string): [number, number] | null => {
-  const match = versionText.trim().match(/^(\d+)\.(\d+)$/);
-  if (!match) return null;
-
-  return [Number(match[1]), Number(match[2])];
-};
-
-const hasSupportedPythonVersion = (version: [number, number]) => {
-  const [major, minor] = version;
-  return major > 3 || (major === 3 && minor >= 10);
-};
-
 const getCompatiblePythonPath = (): string | null => {
-  const venvPath = app.isPackaged
-    ? path.join(process.resourcesPath, "venv", "bin", "python")
-    : path.join(__dirname, "..", "..", "..", "..", "tools", "venv", "bin", "python");
-
-  const candidates = [
-    process.env.PROTONFORGE_UMU_PYTHON,
-    process.env.HYDRA_UMU_PYTHON,
-    venvPath,
-    "/usr/bin/python3",
-    "python3",
-  ]
-    .filter((value): value is string => Boolean(value))
-    .filter((value, index, arr) => arr.indexOf(value) === index);
-
-  for (const candidate of candidates) {
-    try {
-      const result = spawnSync(
-        candidate,
-        [
-          "-c",
-          "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')",
-        ],
-        {
-          stdio: ["ignore", "pipe", "ignore"],
-          encoding: "utf8",
-          shell: false,
-        }
-      );
-
-      if (result.status !== 0) continue;
-
-      const version = parsePythonVersion(result.stdout);
-      if (!version || !hasSupportedPythonVersion(version)) continue;
-
-      return candidate;
-    } catch {
-      continue;
-    }
-  }
-
-  return null;
+  return getVenvPythonPath();
 };
 
 const ensureExecutablePermission = (binaryPath: string) => {

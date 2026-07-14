@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
@@ -14,9 +14,6 @@ export class WineToolRunner {
   private objectId: string;
   private protonPath: string | null;
 
-  // Cache para evitar spawnSync a cada chamada
-  private static _pythonPathCache: string | null | undefined = undefined;
-
   constructor(prefix: string, objectId: string, protonPath?: string | null) {
     this.prefix = prefix;
     this.objectId = objectId;
@@ -27,38 +24,6 @@ export class WineToolRunner {
     return app.isPackaged
       ? path.join(process.resourcesPath, "umu-run")
       : path.join(__dirname, "..", "..", "resources", "binaries", "umu-run");
-  }
-
-  private getVenvPython(): string | null {
-    if (WineToolRunner._pythonPathCache !== undefined) {
-      return WineToolRunner._pythonPathCache;
-    }
-
-    const centralized = getVenvPythonPath();
-    const candidates = [
-      process.env.PROTONFORGE_UMU_PYTHON,
-      process.env.HYDRA_UMU_PYTHON,
-      centralized,
-      "/usr/bin/python3",
-      "python3",
-    ].filter((v): v is string => Boolean(v));
-
-    for (const candidate of candidates) {
-      try {
-        const result = spawnSync(candidate, ["--version"], {
-          stdio: ["ignore", "pipe", "ignore"],
-          encoding: "utf8",
-        });
-        if (result.status === 0) {
-          WineToolRunner._pythonPathCache = candidate;
-          return candidate;
-        }
-      } catch {
-        continue;
-      }
-    }
-    WineToolRunner._pythonPathCache = null;
-    return null;
   }
 
   private spawnNativeTool(toolName: string, toolArgs: string[]): boolean {
@@ -95,7 +60,7 @@ export class WineToolRunner {
       return;
     }
 
-    const pythonPath = this.getVenvPython();
+    const pythonPath = getVenvPythonPath();
     const executableToSpawn = pythonPath ?? umuBinary;
     const executableArgs = pythonPath
       ? [umuBinary, ...args]
