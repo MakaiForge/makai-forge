@@ -1,9 +1,11 @@
 import path from "node:path";
+import { spawn } from "node:child_process";
+import fs from "node:fs";
 import { app } from "electron";
 import { ModStorageService, logger } from "@main/services";
 import { getGameModule, getGameInfo } from "@games/registry";
 import { scanEnvironment } from "./environment-scanner";
-import { launchViaSteam, launchViaProton, getSteamLaunchEnv } from "@games/_shared/launch";
+import { launchViaSteam, launchViaProton, getSteamLaunchEnv, findSteamCompatData } from "@games/_shared/launch";
 import { downloadSkse } from "./skse-downloader";
 
 export type LaunchStep = "detect" | "prefix" | "dll" | "registry" | "skse" | "launch";
@@ -122,9 +124,27 @@ export async function launchGame(
     if (hasSkse) {
       send("launch", `Iniciando via ${skseLoaderName}...`, "working");
       const sksePath = path.join(env.gamePath, skseLoaderName);
-      const env2 = getSteamLaunchEnv(env.steamAppId, env.gamePath, env.prefixPath);
-      const protonPath = env.protonPath || path.join(app.getAppPath(), "tools", "prefix", "umu-run");
-      launchViaProton(sksePath, protonPath, env2);
+      const gameDir = path.dirname(sksePath);
+      const compatDataPath = env.steamAppId ? findSteamCompatData(env.gamePath, env.steamAppId) : null;
+      const launchPrefix = compatDataPath ? compatDataPath + "/pfx" : env.prefixPath;
+      const protonDir = env.protonPath || "";
+      const bundledUmu = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
+      const umuBin = fs.existsSync(bundledUmu) ? bundledUmu : "umu-run";
+      const launchEnv: Record<string, string> = {
+        WINEPREFIX: launchPrefix,
+        SteamAppId: env.steamAppId || "",
+        STEAM_COMPAT_DATA_PATH: compatDataPath || launchPrefix,
+        STEAM_COMPAT_INSTALL_PATH: env.gamePath,
+        GAMEID: env.steamAppId ? `umu-${env.steamAppId}` : "",
+        STORE: "steam",
+        PROTONPATH: protonDir,
+      };
+      spawn(umuBin, [sksePath], {
+        cwd: gameDir,
+        env: { ...process.env, ...launchEnv },
+        stdio: "ignore",
+        detached: true,
+      }).unref();
       send("launch", `${info?.name || gameId} iniciado!`, "done");
       return { success: true, method: "skse" };
     }

@@ -13,7 +13,7 @@ export interface LaunchOptions {
   launchCommand?: string[] | null
 }
 
-function findSteamCompatData(gamePath: string, steamAppId: string): string | null {
+export function findSteamCompatData(gamePath: string, steamAppId: string): string | null {
   const commonDir = path.dirname(gamePath); // .../steamapps/common
   const steamappsDir = path.dirname(commonDir); // .../steamapps
   const compatData = path.join(steamappsDir, "compatdata", steamAppId);
