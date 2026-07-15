@@ -1,0 +1,16 @@
+# Copyright 2018-2021 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
+.*.sw?
+.tarball-version
+/.cache
+/.mypy_cache
+/_build*
+/build/
+/builddir/
+/helpers/_generated_*/
+/obj-*/
+/pressure-vessel-[0-9]*.tar.gz
+/relocatable-install/
+/tests/sysroots/
+__pycache__/

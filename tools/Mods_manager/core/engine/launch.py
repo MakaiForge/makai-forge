@@ -128,7 +128,32 @@ def _launch_with_proton(
         env.setdefault("GAMEID", f"umu-{steam_app_id}")
         env.setdefault("STORE", "steam")
 
-    # Attempt 1: managed Steam Runtime + Proton
+    # Attempt 1: custom bwrap container
+    try:
+        import sys as _sys
+        _prefix_lib = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "tools", "prefix", "python")
+        if _prefix_lib not in _sys.path:
+            _sys.path.insert(0, _prefix_lib)
+        from prefix.container import build_bwrap_cmd, _find_runtime_root
+        rt = _find_runtime_root()
+        if rt:
+            proc = subprocess.Popen(
+                build_bwrap_cmd(
+                    [expanded_proton, "waitforexitandrun", full_exe],
+                    game_path=os.path.dirname(full_exe),
+                    prefix_path=env.get("WINEPREFIX"),
+                    proton_path=expanded_proton,
+                    env_extra=env,
+                ),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            return {"success": True, "pid": proc.pid, "method": "bwrap"}
+    except (ImportError, RuntimeError, FileNotFoundError):
+        pass
+
+    # Attempt 2: managed Steam Runtime + Proton
     runtime_dir = _find_managed_runtime()
     if runtime_dir:
         entry = os.path.join(runtime_dir, "_v2-entry-point")
@@ -145,7 +170,7 @@ def _launch_with_proton(
         except FileNotFoundError:
             pass
 
-    # Attempt 2: external umu-run
+    # Attempt 3: external umu-run
     umu = _find_umu()
     if umu:
         try:
@@ -160,7 +185,7 @@ def _launch_with_proton(
         except FileNotFoundError:
             pass
 
-    # Attempt 3: direct Proton
+    # Attempt 4: direct Proton
     try:
         proc = subprocess.Popen(
             [expanded_proton, "run", full_exe],

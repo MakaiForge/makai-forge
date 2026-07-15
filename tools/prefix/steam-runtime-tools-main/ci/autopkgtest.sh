@@ -1,0 +1,105 @@
+#!/bin/sh
+# Copyright 2022 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
+set -eux
+
+# Intentionally word-splitting build-dependencies:
+# shellcheck disable=SC2086
+apt-get install -y --no-install-recommends \
+apt-utils \
+build-essential \
+ca-certificates \
+debhelper \
+devscripts \
+dpkg-dev \
+git \
+libdpkg-perl \
+procps \
+rsync \
+${BUILD_DEPENDENCIES} \
+${NULL+}
+
+# Optional
+apt-get install -y --no-install-recommends eatmydata || :
+dbus-uuidgen --ensure || :
+
+tempdir="$(mktemp -d)"
+
+# shellcheck source=/dev/null
+case "$(. /usr/lib/os-release; echo "${VERSION_CODENAME-${VERSION}}")" in
+    (scout)
+        # Ensure that each of these projects has
+        # CI/CD Settings -> Job token permissions -> Allowlist ->
+        #   steamrt/steam-runtime-tools -> Fine-grained -> Repositories -> Read
+        # This can be dropped if we stop running autopkgtest in scout.
+        git clone --branch steam/for-ci "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.steamos.cloud/steamrt/packaging/autopkgtest.git" "$tempdir/autopkgtest"
+        git clone --branch debian/buster "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.steamos.cloud/steamrt/packaging/chardet.git" "$tempdir/chardet"
+        git clone --branch debian/buster "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.steamos.cloud/steamrt/packaging/python-debian.git" "$tempdir/python-debian"
+        git clone --branch debian/buster "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.steamos.cloud/steamrt/packaging/six.git" "$tempdir/six"
+
+        export PYTHONPATH="$tempdir/chardet:$tempdir/python-debian/lib:$tempdir/six"
+        set -- python3.5 "$tempdir/autopkgtest/runner/autopkgtest"
+        ;;
+
+    (*)
+        apt-get install -y python3-debian autopkgtest
+        set -- autopkgtest
+        ;;
+esac
+
+# We need up-to-date packages for the relocatable install to
+# be able to get its source code
+apt-get -y dist-upgrade
+
+primary_arch="$(dpkg --print-architecture)"
+
+case "$primary_arch" in
+    (amd64|i386)
+        x86=yes
+        ;;
+    (*)
+        x86=
+        ;;
+esac
+
+# Install the packages under test. We're not too worried about
+# minimal dependencies here
+dpkg -i \
+debian/tmp/artifacts/build/libsteam-runtime-tools-0-0_*.deb \
+debian/tmp/artifacts/build/libsteam-runtime-tools-0-0-dbgsym_*_*.*deb \
+debian/tmp/artifacts/build/libsteam-runtime-tools-0-dev_*.deb \
+debian/tmp/artifacts/build/libsteam-runtime-tools-0-helpers_*.deb \
+debian/tmp/artifacts/build/libsteam-runtime-tools-0-helpers-dbgsym_*_*.*deb \
+debian/tmp/artifacts/build/libsteam-runtime-tools-0-tests_*_"$primary_arch".deb \
+debian/tmp/artifacts/build/pressure-vessel-relocatable_*_"$primary_arch".deb \
+debian/tmp/artifacts/build/pressure-vessel-relocatable-dbgsym_*_"$primary_arch".*deb \
+${x86:+debian/tmp/artifacts/build/pressure-vessel-libs*.deb} \
+debian/tmp/artifacts/build/steam-runtime-tools-bin_*_"$primary_arch".deb \
+debian/tmp/artifacts/build/steam-runtime-tools-bin-dbgsym_*_"$primary_arch".*deb \
+debian/tmp/artifacts/build/steam-runtime-tools-minimal_*_"$primary_arch".deb \
+debian/tmp/artifacts/build/steam-runtime-tools-minimal-dbgsym_*_"$primary_arch".*deb \
+${NULL+}
+apt-get -y -f install
+
+e=0
+
+# autopkgtest doesn't like it if this is a pre-existing directory,
+# so don't pre-create it!
+set -- "$@" --output-dir="$(pwd)/debian/tmp/artifacts/autopkgtest"
+
+set -- "$@" --no-built-binaries
+set -- "$@" debian/tmp/artifacts/build/*.deb
+set -- "$@" debian/tmp/artifacts/source/*.dsc
+
+"$@" -- null || e=$?
+
+case "$e" in
+    (0|2|8)
+        # OK: 0 means total success, 2 means at least one test
+        # was skipped, 8 means all tests were skipped
+        ;;
+    (*)
+        exit "$e"
+        ;;
+esac

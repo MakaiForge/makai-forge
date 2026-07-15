@@ -1,0 +1,5 @@
+/*
+ * Copyright 2019-2021 Collabora Ltd.
+ * SPDX-License-Identifier: MIT
+ */
+#define G_LOG_DOMAIN "@project_name@"

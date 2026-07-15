@@ -1,0 +1,19 @@
+{
+    "file_format_version" : "1.0.0",
+    "layer" : {
+        "name": "VK_LAYER_STEAM_RUNTIME_TOOLS_failing_dynamic_string_tokens",
+        "type": "GLOBAL",
+        "library_path": "/usr/${LIB}/doesnotexist.so",
+        "api_version": "1.0",
+        "implementation_version": "1",
+        "description": "A layer whose library does not exist",
+        "functions": {
+        },
+        "enable_environment": {
+            "MOCK_LAYER": "1"
+        },
+        "disable_environment": {
+            "DISABLE_MOCK_LAYER": "1"
+        }
+    }
+}

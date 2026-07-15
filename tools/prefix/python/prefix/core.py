@@ -4,6 +4,8 @@ Prefix management: create, delete, clean, validate.
 Aligned with tools/prefix/core/init.ts createPrefix() strategy.
 """
 
+import ctypes
+import hashlib
 import os
 import shutil
 import stat
@@ -11,12 +13,25 @@ import subprocess
 import tarfile
 import urllib.request
 from pathlib import Path
+from secrets import token_urlsafe
 
 from .makaitricks import install_recommended_dlls
 
 DEFAULT_PREFIX_BASE = os.path.expanduser("~/games/proton-forger")
 STEAM_RUNTIME_DIR = os.path.expanduser("~/.local/share/makaiforge/steamrt4")
-STEAM_RUNTIME_URL = "https://repo.steampowered.com/steamrt4/images/latest-public-beta/SteamLinuxRuntime_4.tar.xz"
+STEAM_RUNTIME_CACHE = os.path.expanduser("~/.cache/makaiforge/steamrt4")
+STEAM_RUNTIME_BASE = "https://repo.steampowered.com/steamrt4/images/latest-public-beta"
+
+try:
+    _libc = ctypes.CDLL(None)
+    _libc.renameat2.argtypes = [
+        ctypes.c_int, ctypes.c_char_p,
+        ctypes.c_int, ctypes.c_char_p,
+        ctypes.c_uint,
+    ]
+    _HAS_RENAMEAT2 = True
+except (OSError, AttributeError, FileNotFoundError):
+    _HAS_RENAMEAT2 = False
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -111,54 +126,69 @@ def build_env(prefix_path: str, compat_data_path: str | None = None) -> dict:
     return env
 
 
-# ── Steam Runtime ─────────────────────────────────────────────────────────────
+# ── Steam Runtime helpers ──────────────────────────────────────────────────────
 
-def ensure_steam_runtime(on_progress=None) -> str | None:
-    """Baixa e extrai o Steam Linux Runtime se ausente em STEAM_RUNTIME_DIR."""
-    emit = on_progress or (lambda m: None)
-    runtime_dir = Path(STEAM_RUNTIME_DIR)
-    entry_point = runtime_dir / "_v2-entry-point"
+def _fetch_url_text(url: str) -> str:
+    with urllib.request.urlopen(url, timeout=30) as resp:
+        return resp.read().decode().strip()
 
-    if entry_point.is_file():
-        emit("Steam Runtime já presente")
-        return str(runtime_dir)
 
-    emit("Steam Runtime não encontrado. Baixando... (~200MB)")
-    runtime_dir.mkdir(parents=True, exist_ok=True)
-    tmp = runtime_dir / "download.tmp"
+def _fetch_sha256() -> str | None:
+    """Fetch SHA256 do archive do SHA256SUMS remoto."""
+    with urllib.request.urlopen(
+        f"{STEAM_RUNTIME_BASE}/SHA256SUMS?t={token_urlsafe(16)}", timeout=30,
+    ) as resp:
+        for line in resp:
+            parts = line.decode().strip().split()
+            if len(parts) >= 2 and parts[1].endswith("SteamLinuxRuntime_4.tar.xz"):
+                return parts[0]
+    return None
+
+
+def _download_with_resume(
+    parts_file: Path, url: str, expected_hash: str, emit,
+) -> Path | None:
+    """Baixa archive com suporte a resume. Retorna path do arquivo completo."""
+    existing = parts_file.stat().st_size if parts_file.is_file() else 0
+
+    if existing > 0:
+        emit(f"Retomando download de {existing // 1024 // 1024}MB...")
+
+    headers = {}
+    if existing > 0:
+        headers["Range"] = f"bytes={existing}-"
+
+    req = urllib.request.Request(url, headers=headers)
 
     try:
-        urllib.request.urlretrieve(STEAM_RUNTIME_URL, tmp)
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            with open(parts_file, "ab") as f:
+                while chunk := resp.read(64 * 1024):
+                    f.write(chunk)
     except Exception as e:
-        emit(f"Falha ao baixar Steam Runtime: {e}")
-        shutil.rmtree(runtime_dir, ignore_errors=True)
+        emit(f"Download falhou: {e}")
         return None
 
-    emit("Extraindo Steam Runtime...")
-    try:
-        with tarfile.open(tmp, "r:xz") as tar:
-            tar.extractall(path=runtime_dir)
-    except Exception as e:
-        emit(f"Falha ao extrair Steam Runtime: {e}")
-        shutil.rmtree(runtime_dir, ignore_errors=True)
+    # SHA256 verification
+    actual = hashlib.sha256()
+    with open(parts_file, "rb") as f:
+        while chunk := f.read(64 * 1024):
+            actual.update(chunk)
+
+    if actual.hexdigest() != expected_hash:
+        emit("SHA256 mismatch — download corrompido")
+        parts_file.unlink(missing_ok=True)
         return None
 
-    tmp.unlink(missing_ok=True)
+    emit("SHA256 OK")
+    final = parts_file.parent / parts_file.name.removesuffix(".parts")
+    parts_file.rename(final)
+    return final
 
-    # O tarball extrai para SteamLinuxRuntime_4/
-    extracted = runtime_dir / "SteamLinuxRuntime_4"
-    if extracted.is_dir():
-        for item in list(extracted.iterdir()):
-            shutil.move(str(item), str(runtime_dir / item.name))
-        extracted.rmdir()
 
-    # Valida que temos os arquivos necessários
-    if not entry_point.is_file():
-        emit("_v2-entry-point não encontrado após extração")
-        return None
-
-    # Cria umu-shim (configura DISPLAY para gamescope)
-    shim = runtime_dir / "umu-shim"
+def _create_shim_and_symlinks(target_dir: Path):
+    """Cria umu-shim + symlink umu → _v2-entry-point no diretório."""
+    shim = target_dir / "umu-shim"
     shim.write_text(
         "#!/bin/sh\n"
         'if [ "${XDG_CURRENT_DESKTOP}" = "gamescope" ] || [ "${XDG_SESSION_DESKTOP}" = "gamescope" ]; then\n'
@@ -172,8 +202,131 @@ def ensure_steam_runtime(on_progress=None) -> str | None:
     )
     shim.chmod(0o700)
 
-    # Cria symlink umu → _v2-entry-point
-    (runtime_dir / "umu").symlink_to("_v2-entry-point")
+    if not (target_dir / "umu").exists():
+        (target_dir / "umu").symlink_to("_v2-entry-point")
+
+
+def _exchange_dirs(src: Path, dest: Path):
+    """Troca src → dest atomicamente. Usa renameat2 se disponível."""
+    if not dest.exists():
+        src.rename(dest)
+        return
+
+    if _HAS_RENAMEAT2:
+        try:
+            RENAME_EXCHANGE = 2
+            src_fd = os.open(src.parent, os.O_DIRECTORY | os.O_CLOEXEC)
+            dest_fd = os.open(dest.parent, os.O_DIRECTORY | os.O_CLOEXEC)
+            ret = _libc.renameat2(
+                src_fd, src.name.encode(),
+                dest_fd, dest.name.encode(),
+                RENAME_EXCHANGE,
+            )
+            os.close(src_fd)
+            os.close(dest_fd)
+            if ret == 0:
+                shutil.rmtree(src, ignore_errors=True)
+                return
+        except OSError:
+            pass
+
+    # Fallback: move dest → backup, move src → dest, remove backup
+    backup = dest.parent / f".{dest.name}.bak"
+    shutil.rmtree(backup, ignore_errors=True)
+    dest.rename(backup)
+    try:
+        src.rename(dest)
+    except Exception:
+        backup.rename(dest)
+        raise
+    shutil.rmtree(backup, ignore_errors=True)
+
+
+# ── ensure_steam_runtime ──────────────────────────────────────────────────────
+
+def ensure_steam_runtime(on_progress=None) -> str | None:
+    """Baixar/atualizar Steam Runtime com resume, SHA256 e swap atômico."""
+    emit = on_progress or (lambda m: None)
+    runtime_dir = Path(STEAM_RUNTIME_DIR)
+    entry_point = runtime_dir / "_v2-entry-point"
+
+    # ── Buscar metadados do servidor ──────────────────────────────────────
+    try:
+        build_id = _fetch_url_text(f"{STEAM_RUNTIME_BASE}/BUILD_ID.txt?t={token_urlsafe(16)}")
+        version_data = _fetch_url_text(f"{STEAM_RUNTIME_BASE}/VERSION.txt?t={token_urlsafe(16)}")
+        expected_hash = _fetch_sha256()
+    except Exception as e:
+        emit(f"Não foi possível contactar servidor: {e}")
+        if entry_point.is_file() and (runtime_dir / "VERSIONS.txt").is_file():
+            emit("Usando runtime existente")
+            return str(runtime_dir)
+        return None
+
+    if not expected_hash:
+        emit("SHA256SUMS não contém hash para o archive")
+        return str(runtime_dir) if entry_point.is_file() else None
+
+    # ── Update check ──────────────────────────────────────────────────────
+    versions_file = runtime_dir / "VERSIONS.txt"
+    if entry_point.is_file() and versions_file.is_file():
+        try:
+            local_versions = versions_file.read_text()
+            if version_data.strip() in local_versions:
+                emit("Steam Runtime atualizado")
+                return str(runtime_dir)
+        except OSError:
+            pass
+        emit("Nova versão do Steam Runtime disponível. Atualizando...")
+
+    # ── Download com resume ────────────────────────────────────────────────
+    cache_dir = Path(STEAM_RUNTIME_CACHE)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    archive_name = "SteamLinuxRuntime_4.tar.xz"
+    parts_file = cache_dir / f"{archive_name}.{build_id}.parts"
+    final_file = cache_dir / f"{archive_name}.{build_id}"
+
+    if not final_file.is_file():
+        emit("Baixando Steam Runtime... (~200MB)")
+        result = _download_with_resume(parts_file, f"{STEAM_RUNTIME_BASE}/{archive_name}", expected_hash, emit)
+        if not result:
+            emit("Falha no download do Steam Runtime")
+            return str(runtime_dir) if entry_point.is_file() else None
+        final_file = result
+
+    # ── Extrair para diretório temporário ─────────────────────────────────
+    emit("Extraindo Steam Runtime...")
+    temp_dir = runtime_dir.parent / f".{runtime_dir.name}.tmp.{os.getpid()}"
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with tarfile.open(final_file, "r:xz") as tar:
+            tar.extractall(path=temp_dir)
+    except Exception as e:
+        emit(f"Falha ao extrair: {e}")
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        return str(runtime_dir) if entry_point.is_file() else None
+
+    # ── Aplainar SteamLinuxRuntime_4/ ────────────────────────────────────
+    extracted = temp_dir / "SteamLinuxRuntime_4"
+    if extracted.is_dir():
+        for item in list(extracted.iterdir()):
+            shutil.move(str(item), str(temp_dir / item.name))
+        extracted.rmdir()
+
+    # ── Validar + pós-instalação ──────────────────────────────────────────
+    if not (temp_dir / "_v2-entry-point").is_file():
+        emit("_v2-entry-point não encontrado após extração")
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        return str(runtime_dir) if entry_point.is_file() else None
+
+    _create_shim_and_symlinks(temp_dir)
+    (temp_dir / "VERSIONS.txt").write_text(version_data)
+
+    # ── Swap atômico ──────────────────────────────────────────────────────
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    _exchange_dirs(temp_dir, runtime_dir)
 
     emit("Steam Runtime pronto!")
     return str(runtime_dir)

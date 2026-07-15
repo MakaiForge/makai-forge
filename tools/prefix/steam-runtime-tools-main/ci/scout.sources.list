@@ -1,0 +1,10 @@
+deb https://repo.steampowered.com/steamrt1/apt scout main
+deb https://repo.steampowered.com/steamrt1/apt scout_beta main
+deb-src https://repo.steampowered.com/steamrt1/apt scout main
+deb-src https://repo.steampowered.com/steamrt1/apt scout_beta main
+deb https://repo.steampowered.com/steamrt1/apt scout main/debug
+deb https://repo.steampowered.com/steamrt1/apt scout_beta main/debug
+deb https://repo.steampowered.com/steam precise steam
+deb-src https://repo.steampowered.com/steam precise steam
+deb https://old-releases.ubuntu.com/ubuntu precise main restricted universe multiverse
+deb-src https://old-releases.ubuntu.com/ubuntu precise main restricted universe multiverse

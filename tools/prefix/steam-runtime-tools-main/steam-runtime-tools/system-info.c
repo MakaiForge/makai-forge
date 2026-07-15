@@ -1,0 +1,5223 @@
+/*
+ * Copyright © 2019-2023 Collabora Ltd.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#include "steam-runtime-tools/system-info.h"
+
+/* Include these at the beginning so that every backports of
+ * G_DEFINE_AUTOPTR_CLEANUP_FUNC will be visible */
+#include "steam-runtime-tools/glib-backports-internal.h"
+#include "steam-runtime-tools/json-glib-backports-internal.h"
+
+#include "steam-runtime-tools/architecture.h"
+#include "steam-runtime-tools/architecture-checks-internal.h"
+#include "steam-runtime-tools/architecture-internal.h"
+#include "steam-runtime-tools/container-internal.h"
+#include "steam-runtime-tools/cpu-feature-internal.h"
+#include "steam-runtime-tools/desktop-entry-internal.h"
+#include "steam-runtime-tools/display-internal.h"
+#include "steam-runtime-tools/graphics.h"
+#include "steam-runtime-tools/graphics-internal.h"
+#include "steam-runtime-tools/json-report-internal.h"
+#include "steam-runtime-tools/json-utils-internal.h"
+#include "steam-runtime-tools/libdl-internal.h"
+#include "steam-runtime-tools/library-internal.h"
+#include "steam-runtime-tools/locale-internal.h"
+#include "steam-runtime-tools/os-internal.h"
+#include "steam-runtime-tools/resolve-in-sysroot-internal.h"
+#include "steam-runtime-tools/runtime-internal.h"
+#include "steam-runtime-tools/steam-internal.h"
+#include "steam-runtime-tools/system-info-internal.h"
+#include "steam-runtime-tools/utils-internal.h"
+#include "steam-runtime-tools/virtualization-internal.h"
+#include "steam-runtime-tools/xdg-portal-internal.h"
+
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <json-glib/json-glib.h>
+
+/**
+ * SECTION:system-info
+ * @title: System information
+ * @short_description: Cached information about the system
+ * @include: steam-runtime-tools/steam-runtime-tools.h
+ *
+ * #SrtSystemInfo is an opaque object representing information about
+ * the system. Information is retrieved "lazily"; when it has been
+ * retrieved, it is cached until the #SrtSystemInfo is destroyed.
+ *
+ * This is a reference-counted object: use g_object_ref() and
+ * g_object_unref() to manage its lifecycle.
+ *
+ * The #SrtSystemInfo object is not thread-aware. It should be considered
+ * to be "owned" by the thread that created it. Only the thread that
+ * "owns" the #SrtSystemInfo may call its methods.
+ * Other threads may create their own parallel #SrtSystemInfo object and
+ * use that instead, if desired.
+ *
+ * The majority of the #SrtSystemInfo API involves child processes, and
+ * requires `SIGCHLD` to be handled (somehow) by the host process:
+ * `SIGCHLD` must not have been ignored (by `sigaction(2)` with `SIG_IGN`)
+ * or blocked (for example with `sigprocmask(2)`) in the thread that is
+ * acting on the #SrtSystemInfo. If this cannot be guaranteed, please run
+ * `steam-runtime-system-info(1)` as a child process and inspect its
+ * JSON output instead of calling library functions directly.
+ *
+ * Ownership can be transferred to other threads by an operation that
+ * implies a memory barrier, such as g_atomic_pointer_set() or
+ * g_object_ref(), but after this is done the previous owner must not
+ * continue to call methods.
+ */
+
+typedef enum
+{
+  TRI_NO = FALSE,
+  TRI_YES = TRUE,
+  TRI_MAYBE = -1
+} Tristate;
+
+typedef struct
+{
+  gchar *version;
+  gchar *path;
+} FromReport;
+
+typedef struct
+{
+  GList *explicit;
+  GList *implicit;
+} OpenXr1Layers;
+
+static void
+openxr_1_layers_free (OpenXr1Layers *self)
+{
+  g_list_free_full (self->explicit, g_object_unref);
+  g_list_free_full (self->implicit, g_object_unref);
+  g_free (self);
+}
+
+struct _SrtSystemInfo
+{
+  /*< private >*/
+  GObject parent;
+  /* "" if we have tried and failed to auto-detect */
+  gchar *expectations;
+  /* Root directory to inspect, usually "/" */
+  SrtSysroot *sysroot;
+  /* Execution environment for helpers */
+  SrtSubprocessRunner *runner;
+  /* Graphics provider assumed to provide @sysroot */
+  SrtGraphicsProvider *graphics_provider;
+  /* Multiarch tuples that are used for helper executables in cases where it
+   * shouldn't matter. The first element is considered the primary multiarch. */
+  GArray *multiarch_tuples;
+  /* If non-%NULL, #SrtSystemInfo cannot be changed */
+  FromReport *from_report;
+  GHashTable *cached_hidden_deps;
+  SrtContainerInfo *container_info;
+  SrtDisplayInfo *display_info;
+  SrtVirtualizationInfo *virtualization_info;
+  SrtSteam *steam_data;
+  SrtXdgPortal *xdg_portal_data;
+  struct
+  {
+    /* GQuark => MaybeLocale */
+    GHashTable *cached_locales;
+    SrtLocaleIssues issues;
+    gboolean have_issues;
+  } locales;
+  /* _srt_runtime_is_populated() indicates we have already checked the
+   * Steam Runtime */
+  SrtRuntime runtime;
+  struct
+  {
+    GList *list;
+    gboolean have;
+  } egl_ext_platform;
+  struct
+  {
+    GList *egl;
+    GList *vulkan;
+    gboolean have_egl;
+    gboolean have_vulkan;
+  } icds;
+  struct
+  {
+    GList *vulkan_explicit;
+    GList *vulkan_implicit;
+    gboolean have_vulkan_explicit;
+    gboolean have_vulkan_implicit;
+  } layers;
+  struct {
+    /* owned string multiarch tuple => owned SrtOpenXr1Runtime */
+    /* (non-NULL if and only if the runtimes are known) */
+    GHashTable *active;
+    SrtOpenXr1Runtime *active_fallback;
+    /* list of owned SrtOpenXr1Runtime */
+    GList *inactive;
+  } openxr_1_runtimes;
+  /* NULL if cache not yet populated */
+  OpenXr1Layers *openxr_1_layers;
+  struct
+  {
+    gchar **values;
+    gchar **messages;
+    gboolean have_data;
+  } overrides;
+  struct
+  {
+    gchar **values_32;
+    gchar **messages_32;
+    gchar **values_64;
+    gchar **messages_64;
+    gboolean have_data;
+  } pinned_libs;
+  struct
+  {
+    GList *values;
+    gboolean have_data;
+  } desktop_entry;
+  struct
+  {
+    SrtX86FeatureFlags x86_features;
+    SrtX86FeatureFlags x86_known;
+  } cpu_features;
+  SrtOsInfo *os_info;
+  SrtCheckFlags check_flags;
+  Tristate can_write_uinput;
+  /* cached_driver_environment != NULL indicates we have already checked the
+   * driver-selection environment variables */
+  gchar **cached_driver_environment;
+  /* (element-type Abi) */
+  GPtrArray *abis;
+};
+
+struct _SrtSystemInfoClass
+{
+  /*< private >*/
+  GObjectClass parent_class;
+};
+
+enum {
+  PROP_0,
+  PROP_EXPECTATIONS,
+  N_PROPERTIES
+};
+
+G_DEFINE_TYPE (SrtSystemInfo, srt_system_info, G_TYPE_OBJECT)
+
+typedef struct
+{
+  SrtLocale *locale;
+  GError *error;
+} MaybeLocale;
+
+static MaybeLocale *
+maybe_locale_new_positive (SrtLocale *locale)
+{
+  MaybeLocale *self;
+
+  g_return_val_if_fail (SRT_IS_LOCALE (locale), NULL);
+
+  self = g_slice_new0 (MaybeLocale);
+  self->locale = g_object_ref (locale);
+  return self;
+}
+
+static MaybeLocale *
+maybe_locale_new_negative (GError *error)
+{
+  MaybeLocale *self;
+
+  g_return_val_if_fail (error != NULL, NULL);
+
+  self = g_slice_new0 (MaybeLocale);
+  self->error = g_error_copy (error);
+  return self;
+}
+
+static void
+maybe_locale_free (gpointer p)
+{
+  MaybeLocale *self = p;
+
+  g_clear_object (&self->locale);
+  g_clear_error (&self->error);
+  g_slice_free (MaybeLocale, self);
+}
+
+typedef struct
+{
+  GList *modules;
+  gboolean available;
+} ModuleList;
+
+typedef struct
+{
+  GQuark multiarch_tuple;
+  const SrtKnownArchitecture *known_architecture;
+  gchar *runtime_linker_resolved;
+  GError *runtime_linker_error;
+  Tristate can_run;
+  GHashTable *cached_results;
+  SrtLibraryIssues cached_combined_issues;
+  gboolean libraries_cache_available;
+
+  gchar *libdl_lib;
+  GError *libdl_lib_error;
+  gchar *libdl_platform;
+  GError *libdl_platform_error;
+
+  GHashTable *cached_graphics_results;
+  SrtGraphicsIssues cached_combined_graphics_issues;
+  gboolean graphics_cache_available;
+
+  ModuleList graphics_modules[NUM_SRT_GRAPHICS_MODULES];
+} Abi;
+
+static Abi *
+ensure_abi_unless_immutable (SrtSystemInfo *self,
+                             GQuark arch_quark)
+{
+  const SrtKnownArchitecture *iter;
+  const char *multiarch_tuple = g_quark_to_string (arch_quark);
+  guint i;
+  Abi *abi = NULL;
+
+  for (i = 0; i < self->abis->len; i++)
+    {
+      abi = g_ptr_array_index (self->abis, i);
+
+      if (abi->multiarch_tuple == arch_quark)
+        return abi;
+    }
+
+  if (self->from_report != NULL)
+    return NULL;
+
+  abi = g_slice_new0 (Abi);
+  abi->multiarch_tuple = arch_quark;
+
+  for (iter = _srt_architecture_get_known ();
+       iter->multiarch_tuple != NULL;
+       iter++)
+    {
+      if (strcmp (iter->multiarch_tuple, multiarch_tuple) == 0)
+        {
+          abi->known_architecture = iter;
+          break;
+        }
+    }
+
+  abi->can_run = TRI_MAYBE;
+  abi->cached_results = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
+  abi->cached_combined_issues = SRT_LIBRARY_ISSUES_NONE;
+  abi->libraries_cache_available = FALSE;
+  abi->cached_graphics_results = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, g_object_unref);
+  abi->cached_combined_graphics_issues = SRT_GRAPHICS_ISSUES_NONE;
+
+  for (i = 0; i < G_N_ELEMENTS (abi->graphics_modules); i++)
+    {
+      abi->graphics_modules[i].modules = NULL;
+      abi->graphics_modules[i].available = FALSE;
+    }
+
+  /* transfer ownership to self->abis */
+  g_ptr_array_add (self->abis, abi);
+  return abi;
+}
+
+static void
+abi_free (gpointer self)
+{
+  Abi *abi = self;
+  gsize i;
+
+  if (abi->cached_results != NULL)
+    g_hash_table_unref (abi->cached_results);
+
+  if (abi->cached_graphics_results != NULL)
+    g_hash_table_unref (abi->cached_graphics_results);
+
+  for (i = 0; i < G_N_ELEMENTS (abi->graphics_modules); i++)
+    g_list_free_full (abi->graphics_modules[i].modules, g_object_unref);
+
+  g_free (abi->runtime_linker_resolved);
+  g_clear_error (&abi->runtime_linker_error);
+  g_free (abi->libdl_lib);
+  g_clear_error (&abi->libdl_lib_error);
+  g_free (abi->libdl_platform);
+  g_clear_error (&abi->libdl_platform_error);
+  g_slice_free (Abi, self);
+}
+
+static void
+srt_system_info_init (SrtSystemInfo *self)
+{
+  GQuark primary;
+#ifndef _SRT_MULTIARCH
+  /* This won't *work* but at least has some value... */
+  primary = g_quark_from_static_string ("UNKNOWN");
+#else
+  primary = g_quark_from_static_string (_SRT_MULTIARCH);
+#endif
+
+  self->multiarch_tuples = g_array_sized_new (TRUE, TRUE, sizeof (GQuark), 1);
+  g_array_prepend_val (self->multiarch_tuples, primary);
+
+  self->can_write_uinput = TRI_MAYBE;
+
+  /* Assume that in practice we will usually add two ABIs: amd64 and i386 */
+  self->abis = g_ptr_array_new_full (2, abi_free);
+
+  srt_system_info_set_sysroot (self, "/");
+  /* Setting the sysroot creates this as a side-effect */
+  g_return_if_fail (self->runner != NULL);
+}
+
+static void
+srt_system_info_get_property (GObject *object,
+                              guint prop_id,
+                              GValue *value,
+                              GParamSpec *pspec)
+{
+  SrtSystemInfo *self = SRT_SYSTEM_INFO (object);
+
+  switch (prop_id)
+    {
+      case PROP_EXPECTATIONS:
+        g_value_set_string (value, self->expectations);
+        break;
+
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+srt_system_info_set_property (GObject *object,
+                              guint prop_id,
+                              const GValue *value,
+                              GParamSpec *pspec)
+{
+  SrtSystemInfo *self = SRT_SYSTEM_INFO (object);
+
+  switch (prop_id)
+    {
+      case PROP_EXPECTATIONS:
+        /* Construct-only */
+        g_return_if_fail (self->expectations == NULL);
+        self->expectations = g_value_dup_string (value);
+        break;
+
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+forget_desktop_entries (SrtSystemInfo *self)
+{
+  self->desktop_entry.have_data = FALSE;
+  g_list_free_full (self->desktop_entry.values, g_object_unref);
+  self->desktop_entry.values = NULL;
+}
+
+/*
+ * Forget any cached information about container information.
+ */
+static void
+forget_container_info (SrtSystemInfo *self)
+{
+  g_clear_object (&self->container_info);
+}
+
+/*
+ * Forget any cached information about the display.
+ */
+static void
+forget_display_info (SrtSystemInfo *self)
+{
+  g_clear_object (&self->display_info);
+}
+
+/*
+ * Forget any cached information about locales.
+ */
+static void
+forget_locales (SrtSystemInfo *self)
+{
+  g_clear_pointer (&self->locales.cached_locales, g_hash_table_unref);
+  self->locales.issues = SRT_LOCALE_ISSUES_NONE;
+  self->locales.have_issues = FALSE;
+}
+
+/*
+ * Forget any cached information about the Steam Runtime.
+ */
+static void
+forget_runtime (SrtSystemInfo *self)
+{
+  _srt_runtime_clear (&self->runtime);
+}
+
+/*
+ * Forget any cached information about the OS.
+ */
+static void
+forget_os (SrtSystemInfo *self)
+{
+  g_clear_object (&self->os_info);
+  forget_runtime (self);
+}
+
+/*
+ * Forget any cached information about the Steam installation.
+ */
+static void
+forget_steam (SrtSystemInfo *self)
+{
+  forget_runtime (self);
+  if (self->steam_data != NULL)
+    g_object_unref (self->steam_data);
+  self->steam_data = NULL;
+}
+
+/*
+ * Forget any cached information about ICDs and layers.
+ */
+static void
+forget_drivers (SrtSystemInfo *self)
+{
+  self->icds.have_egl = FALSE;
+  g_list_free_full (self->icds.egl, g_object_unref);
+  self->icds.egl = NULL;
+  self->icds.have_vulkan = FALSE;
+  g_list_free_full (self->icds.vulkan, g_object_unref);
+  self->icds.vulkan = NULL;
+
+  self->egl_ext_platform.have = FALSE;
+  g_list_free_full (g_steal_pointer (&self->egl_ext_platform.list), g_object_unref);
+
+  g_clear_pointer (&self->openxr_1_runtimes.active, g_hash_table_unref);
+  g_clear_object (&self->openxr_1_runtimes.active_fallback);
+  g_list_free_full (g_steal_pointer (&self->openxr_1_runtimes.inactive), g_object_unref);
+  g_clear_pointer (&self->openxr_1_layers, openxr_1_layers_free);
+
+  self->layers.have_vulkan_explicit = FALSE;
+  self->layers.have_vulkan_implicit = FALSE;
+  g_list_free_full (self->layers.vulkan_explicit, g_object_unref);
+  self->layers.vulkan_explicit = NULL;
+  g_list_free_full (self->layers.vulkan_implicit, g_object_unref);
+  self->layers.vulkan_implicit = NULL;
+}
+
+/*
+ * Forget any cached information about overrides.
+ */
+static void
+forget_overrides (SrtSystemInfo *self)
+{
+  g_clear_pointer (&self->overrides.values, g_strfreev);
+  g_clear_pointer (&self->overrides.messages, g_strfreev);
+  self->overrides.have_data = FALSE;
+}
+
+/*
+ * Forget any cached information about pinned libraries.
+ */
+static void
+forget_pinned_libs (SrtSystemInfo *self)
+{
+  g_clear_pointer (&self->pinned_libs.values_32, g_strfreev);
+  g_clear_pointer (&self->pinned_libs.messages_32, g_strfreev);
+  g_clear_pointer (&self->pinned_libs.values_64, g_strfreev);
+  g_clear_pointer (&self->pinned_libs.messages_64, g_strfreev);
+  self->pinned_libs.have_data = FALSE;
+}
+
+/*
+ * Forget any cached information about xdg portals.
+ */
+static void
+forget_xdg_portal (SrtSystemInfo *self)
+{
+  g_clear_object (&self->xdg_portal_data);
+}
+
+static void
+srt_system_info_dispose (GObject *object)
+{
+  SrtSystemInfo *self = SRT_SYSTEM_INFO (object);
+
+  forget_desktop_entries (self);
+  forget_display_info (self);
+  forget_container_info (self);
+  forget_drivers (self);
+  forget_locales (self);
+  forget_os (self);
+  forget_overrides (self);
+  forget_pinned_libs (self);
+  forget_runtime (self);
+  forget_steam (self);
+  forget_xdg_portal (self);
+  g_ptr_array_set_size (self->abis, 0);
+  g_clear_object (&self->runner);
+  g_clear_object (&self->virtualization_info);
+  g_clear_object (&self->graphics_provider);
+  g_clear_object (&self->sysroot);
+
+  G_OBJECT_CLASS (srt_system_info_parent_class)->dispose (object);
+}
+
+static void
+srt_system_info_finalize (GObject *object)
+{
+  SrtSystemInfo *self = SRT_SYSTEM_INFO (object);
+
+  g_clear_pointer (&self->abis, g_ptr_array_unref);
+  g_clear_pointer (&self->multiarch_tuples, g_array_unref);
+  g_free (self->expectations);
+  g_clear_pointer (&self->cached_driver_environment, g_strfreev);
+
+  if (self->cached_hidden_deps)
+    g_hash_table_unref (self->cached_hidden_deps);
+
+  if (self->from_report)
+    {
+      g_free (self->from_report->version);
+      g_free (self->from_report->path);
+      g_free (self->from_report);
+    }
+
+  G_OBJECT_CLASS (srt_system_info_parent_class)->finalize (object);
+}
+
+static GParamSpec *properties[N_PROPERTIES] = { NULL };
+
+static void
+srt_system_info_class_init (SrtSystemInfoClass *cls)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (cls);
+
+  /* Pre-cache known architecture strings as quarks to avoid having to
+   * duplicate and "leak" them */
+  _srt_architecture_init_known ();
+
+  object_class->get_property = srt_system_info_get_property;
+  object_class->set_property = srt_system_info_set_property;
+  object_class->dispose = srt_system_info_dispose;
+  object_class->finalize = srt_system_info_finalize;
+
+  properties[PROP_EXPECTATIONS] =
+    g_param_spec_string ("expectations", "Expectations",
+                         "Path to a directory containing information "
+                         "about the properties we expect the system "
+                         "to have, or NULL if unknown",
+                         NULL,
+                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_STRINGS);
+
+  g_object_class_install_properties (object_class, N_PROPERTIES, properties);
+}
+
+/*
+ * Same as srt_system_info_set_primary_multiarch_tuple(), but
+ * completely replace the array of architectures instead of
+ * shifting non-primary architectures downward.
+ */
+static void
+_srt_system_info_set_only_multiarch_tuple (SrtSystemInfo *self,
+                                           const char *tuple)
+{
+  const char * const tuples[] = { tuple, NULL };
+
+  srt_system_info_set_multiarch_tuples (self, tuples);
+}
+
+/*
+ * Same as srt_system_info_set_primary_multiarch_tuple(), but
+ * add to the end of the array instead of the beginning.
+ */
+static void
+_srt_system_info_add_multiarch_tuple (SrtSystemInfo *self,
+                                      const char *tuple)
+{
+  _srt_architecture_array_add (self->multiarch_tuples,
+                               g_quark_from_string (tuple));
+}
+
+/**
+ * srt_system_info_new:
+ * @expectations: (nullable) (type filename): Path to a directory
+ *  containing details of the state that the system is expected to have
+ *
+ * Return a new #SrtSystemInfo.
+ *
+ * The @expectations directory should contain a subdirectory for each
+ * supported CPU architecture, named for the multiarch tuple as printed
+ * by `gcc -print-multiarch` in the Steam Runtime (in practice this means
+ * %SRT_ABI_I386 or %SRT_ABI_X86_64).
+ *
+ * The per-architecture directories may contain files whose names end with
+ * `.symbols`. Those files are interpreted as describing libraries that
+ * the runtime environment should support, in
+ * [deb-symbols(5)](https://manpages.debian.org/deb-symbols.5) format.
+ *
+ * Returns: (transfer full): A new #SrtSystemInfo. Free with g_object_unref()
+ */
+SrtSystemInfo *
+srt_system_info_new (const char *expectations)
+{
+  g_return_val_if_fail (_srt_check_not_setuid (), NULL);
+  g_return_val_if_fail ((expectations == NULL ||
+                         g_file_test (expectations, G_FILE_TEST_IS_DIR)),
+                        NULL);
+  return g_object_new (SRT_TYPE_SYSTEM_INFO,
+                       "expectations", expectations,
+                       NULL);
+}
+
+/*
+ * _srt_system_info_is_from_report:
+ * @self: System information object
+ *
+ * Return whether @self was constructed from a saved JSON report
+ *
+ * Returns: %TRUE if @self was constructed from a saved report,
+ *  or %FALSE if it represents "live" data
+ */
+gboolean
+_srt_system_info_is_from_report (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), TRUE);
+  return (self->from_report != NULL);
+}
+
+/**
+ * srt_system_info_get_version:
+ * @self: System information object
+ *
+ * Return the version of the steam-runtime-tools library that gathered
+ * this system information.
+ * Normally, this is the same as the libsteam-runtime-tools version number.
+ * If @self was constructed from a saved JSON report, instead return the
+ * version number that was saved in the report, or %NULL if none.
+ *
+ * Returns: (nullable) (transfer none): A version number or %NULL
+ */
+const char *
+srt_system_info_get_version (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (self->from_report != NULL)
+    return self->from_report->version;
+  else
+    return VERSION;
+}
+
+/**
+ * srt_system_info_get_saved_tool_path:
+ * @self: System information object
+ *
+ * If @self was constructed from a saved JSON report, return the
+ * path to the steam-runtime-system-info or similar tool that produced
+ * the report, or %NULL if unknown. Otherwise, return %NULL.
+ *
+ * Returns: (nullable) (transfer none): A filesystem path or %NULL
+ */
+const char *
+srt_system_info_get_saved_tool_path (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (self->from_report != NULL)
+    return self->from_report->path;
+  else
+    return NULL;
+}
+
+static gchar ** _srt_system_info_driver_environment_from_report (JsonObject *json_obj);
+static gchar ** _srt_system_info_get_pinned_libs_from_report (JsonObject *json_obj,
+                                                              const gchar *which,
+                                                              gchar ***messages);
+
+static void
+get_runtime_linker_from_report (SrtSystemInfo *self,
+                                Abi *abi,
+                                JsonObject *json_arch_obj)
+{
+  JsonObject *runtime_linker_obj;
+  const char *path;
+  const char *resolved;
+
+  g_return_if_fail (abi->runtime_linker_resolved == NULL);
+  g_return_if_fail (abi->runtime_linker_error == NULL);
+
+  if (abi->known_architecture == NULL)
+    return;
+
+  if (abi->known_architecture->interoperable_runtime_linker == NULL)
+    return;
+
+  if (!json_object_has_member (json_arch_obj, "runtime-linker"))
+    return;
+
+  runtime_linker_obj = json_object_get_object_member (json_arch_obj, "runtime-linker");
+
+  path = json_object_get_string_member_with_default (runtime_linker_obj,
+                                                     "path", NULL);
+  resolved = json_object_get_string_member_with_default (runtime_linker_obj,
+                                                         "resolved", NULL);
+
+  if (json_object_has_member (runtime_linker_obj, "error"))
+    {
+      GQuark error_domain;
+      int error_code;
+      const char *error_message;
+
+      error_domain = g_quark_from_string (json_object_get_string_member_with_default (runtime_linker_obj, "error-domain", NULL));
+      error_code = json_object_get_int_member_with_default (runtime_linker_obj,
+                                                            "error-code",
+                                                            -1);
+      error_message = json_object_get_string_member_with_default (runtime_linker_obj,
+                                                                  "error",
+                                                                  NULL);
+
+      if (error_domain == 0)
+        {
+          error_domain = SRT_ARCHITECTURE_ERROR;
+          error_code = SRT_ARCHITECTURE_ERROR_INTERNAL_ERROR;
+        }
+
+      if (error_message == NULL)
+        error_message = "Unknown error";
+
+      g_set_error_literal (&abi->runtime_linker_error, error_domain, error_code,
+                           error_message);
+    }
+  else if (path == NULL)
+    {
+      /* no information */
+      return;
+    }
+  else if (g_strcmp0 (path, abi->known_architecture->interoperable_runtime_linker) != 0)
+    {
+      g_set_error (&abi->runtime_linker_error, SRT_ARCHITECTURE_ERROR,
+                   SRT_ARCHITECTURE_ERROR_INTERNAL_ERROR,
+                   "Expected \"%s\" in report, but got \"%s\"",
+                   abi->known_architecture->interoperable_runtime_linker,
+                   path);
+    }
+  else
+    {
+      abi->runtime_linker_resolved = g_strdup (resolved);
+    }
+}
+
+static void
+get_libdl_from_report (SrtSystemInfo *self,
+                       Abi *abi,
+                       JsonObject *json_arch_obj)
+{
+  gsize i;
+
+  /* Struct to avoid code duplication between all the similar libdl entries */
+  typedef struct
+  {
+    const gchar *member_name;
+    gchar **abi_member;
+    GError **abi_member_error;
+  } LibdlStruct;
+
+  LibdlStruct libdl_elements[] =
+  {
+    { "libdl-LIB", &abi->libdl_lib, &abi->libdl_lib_error },
+    { "libdl-PLATFORM", &abi->libdl_platform, &abi->libdl_platform_error },
+  };
+
+  g_return_if_fail (abi->libdl_lib == NULL);
+  g_return_if_fail (abi->libdl_lib_error == NULL);
+  g_return_if_fail (abi->libdl_platform == NULL);
+  g_return_if_fail (abi->libdl_platform_error == NULL);
+
+  for (i = 0; i < G_N_ELEMENTS (libdl_elements); i++)
+    {
+      JsonNode *subnode;
+      const LibdlStruct *libdl_element = &libdl_elements[i];
+
+      if (!json_object_has_member (json_arch_obj, libdl_element->member_name))
+        continue;
+
+      subnode = json_object_get_member (json_arch_obj, libdl_element->member_name);
+
+      if (JSON_NODE_HOLDS_VALUE (subnode))
+        {
+          *libdl_element->abi_member = g_strdup (json_node_get_string (subnode));
+        }
+      else
+        {
+          JsonObject *json_element_obj;
+          GQuark error_domain;
+          int error_code;
+          const char *error_message;
+
+          json_element_obj = json_object_get_object_member (json_arch_obj,
+                                                            libdl_element->member_name);
+
+          error_domain = g_quark_from_string (json_object_get_string_member_with_default (json_element_obj,
+                                                                                          "error-domain",
+                                                                                          NULL));
+          error_code = json_object_get_int_member_with_default (json_element_obj,
+                                                                "error-code",
+                                                                -1);
+          error_message = json_object_get_string_member_with_default (json_element_obj,
+                                                                      "error",
+                                                                      "Unknown error");
+
+          g_set_error_literal (libdl_element->abi_member_error, error_domain, error_code,
+                               error_message);
+        }
+    }
+}
+
+/**
+ * srt_system_info_new_from_json:
+ * @path: (not nullable) (type filename): Path to a JSON report
+ * @error: Used to raise an error on failure
+ *
+ * Return a new #SrtSystemInfo with the info parsed from an existing JSON
+ * report.
+ * The #SrtSystemInfo will be immutable: whatever information was in the JSON
+ * report, that will be the only information that is available.
+ *
+ * Returns: (transfer full): A new #SrtSystemInfo. Free with g_object_unref()
+ */
+SrtSystemInfo *
+srt_system_info_new_from_json (const char *path,
+                               GError **error)
+{
+  static const char * const no_strings[] = { NULL };
+  SrtSystemInfo *info = NULL;
+  JsonObject *json_obj = NULL;
+  JsonObject *json_sub_obj = NULL;
+  JsonParser *parser = NULL;
+  JsonNode *node = NULL;
+  gboolean have_architectures = FALSE;
+
+  g_return_val_if_fail (_srt_check_not_setuid (), NULL);
+  g_return_val_if_fail (path != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  info = srt_system_info_new (NULL);
+  srt_system_info_set_environ (info, (gchar * const *) no_strings);
+
+  parser = json_parser_new ();
+
+  if (!json_parser_load_from_file (parser, path, error))
+    {
+      g_clear_object (&info);
+      goto out;
+    }
+
+  node = json_parser_get_root (parser);
+  if (node == NULL || !JSON_NODE_HOLDS_OBJECT (node))
+    {
+      if (error)
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                    "Expected to find a JSON object in the provided JSON");
+      g_clear_object (&info);
+      goto out;
+    }
+
+  json_obj = json_node_get_object (node);
+
+  if (json_object_has_member (json_obj, "architectures"))
+    {
+      /* The list itself is owned, the contents are not */
+      g_autoptr(GList) multiarch_tuples = NULL;
+
+      json_sub_obj = json_object_get_object_member (json_obj, "architectures");
+      multiarch_tuples = json_object_get_members (json_sub_obj);
+
+      for (GList *l = multiarch_tuples; l != NULL; l = l->next)
+        {
+          if (have_architectures)
+            {
+              _srt_system_info_add_multiarch_tuple (info, l->data);
+            }
+          else
+            {
+              _srt_system_info_set_only_multiarch_tuple (info, l->data);
+              have_architectures = TRUE;
+            }
+        }
+    }
+
+  info->can_write_uinput = json_object_get_boolean_member_with_default (json_obj,
+                                                                        "can-write-uinput",
+                                                                        FALSE);
+
+  info->steam_data = _srt_steam_get_from_report (json_obj);
+  _srt_runtime_fill_from_report (&info->runtime, json_obj);
+
+  if (json_object_has_member (json_obj, "runtime"))
+    {
+      json_sub_obj = json_object_get_object_member (json_obj, "runtime");
+
+      info->pinned_libs.have_data = TRUE;
+      info->pinned_libs.values_32 = _srt_system_info_get_pinned_libs_from_report (json_sub_obj,
+                                                                                  "pinned_libs_32",
+                                                                                  &info->pinned_libs.messages_32);
+      info->pinned_libs.values_64 = _srt_system_info_get_pinned_libs_from_report (json_sub_obj,
+                                                                                  "pinned_libs_64",
+                                                                                  &info->pinned_libs.messages_64);
+    }
+
+  info->os_info = _srt_os_info_new_from_report (json_obj);
+  info->container_info = _srt_container_info_get_from_report (json_obj);
+  info->display_info = _srt_display_info_get_from_report (json_obj);
+  info->virtualization_info = _srt_virtualization_info_get_from_report (json_obj);
+
+  info->cached_driver_environment = _srt_system_info_driver_environment_from_report (json_obj);
+
+  /* Initialize this before the rest of the graphics-related info, because it
+     will be used when loading the architecture-specific objects. */
+  info->openxr_1_runtimes.active = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                          g_free, g_object_unref);
+  _srt_openxr_1_runtimes_get_from_report (json_obj,
+                                          &info->openxr_1_runtimes.active_fallback,
+                                          &info->openxr_1_runtimes.inactive);
+
+
+  if (json_object_has_member (json_obj, "architectures"))
+    {
+      JsonObject *json_arch_obj = NULL;
+      /* The list itself is owned, the contents are not */
+      g_autoptr(GList) multiarch_tuples = NULL;
+
+      json_sub_obj = json_object_get_object_member (json_obj, "architectures");
+
+      multiarch_tuples = json_object_get_members (json_sub_obj);
+      for (GList *l = multiarch_tuples; l != NULL; l = l->next)
+        {
+          GQuark arch_quark = g_quark_from_string (l->data);
+          Abi *abi = NULL;
+          SrtOpenXr1Runtime *xr_rt;
+
+          if (!json_object_has_member (json_sub_obj, l->data))
+            continue;
+
+          json_arch_obj = json_object_get_object_member (json_sub_obj, l->data);
+
+          abi = ensure_abi_unless_immutable (info, arch_quark);
+
+          abi->can_run = _srt_architecture_can_run_from_report (json_arch_obj);
+
+          get_libdl_from_report (info, abi, json_arch_obj);
+
+          abi->libraries_cache_available = TRUE;
+          abi->cached_combined_issues = _srt_json_object_get_issues_from_report (json_arch_obj,
+                                                                                 l->data,
+                                                                                 SRT_TYPE_LIBRARY_ISSUES,
+                                                                                 "library-issues-summary",
+                                                                                 "libraries-ok",
+                                                                                 SRT_LIBRARY_ISSUES_UNKNOWN);
+
+          get_runtime_linker_from_report (info, abi, json_arch_obj);
+
+          _srt_graphics_get_from_report (json_arch_obj,
+                                         arch_quark,
+                                         &abi->cached_graphics_results);
+
+          abi->graphics_modules[SRT_GRAPHICS_DRI_MODULE].modules = _srt_dri_driver_get_from_report (json_arch_obj);
+          abi->graphics_modules[SRT_GRAPHICS_DRI_MODULE].available = TRUE;
+
+          abi->graphics_modules[SRT_GRAPHICS_GBM_MODULE].modules = _srt_gbm_backend_get_from_report (json_arch_obj);
+          abi->graphics_modules[SRT_GRAPHICS_GBM_MODULE].available = TRUE;
+
+          abi->graphics_modules[SRT_GRAPHICS_VAAPI_MODULE].modules = _srt_va_api_driver_get_from_report (json_arch_obj);
+          abi->graphics_modules[SRT_GRAPHICS_VAAPI_MODULE].available = TRUE;
+
+          abi->graphics_modules[SRT_GRAPHICS_VDPAU_MODULE].modules = _srt_vdpau_driver_get_from_report (json_arch_obj);
+          abi->graphics_modules[SRT_GRAPHICS_VDPAU_MODULE].available = TRUE;
+
+          abi->graphics_modules[SRT_GRAPHICS_GLX_MODULE].modules = _srt_glx_icd_get_from_report (json_arch_obj);
+          abi->graphics_modules[SRT_GRAPHICS_GLX_MODULE].available = TRUE;
+
+          xr_rt = _srt_openxr_1_runtime_get_active_from_abi_report (json_arch_obj);
+          if (xr_rt != NULL)
+              g_hash_table_insert (info->openxr_1_runtimes.active,
+                                   g_strdup (l->data), xr_rt);
+        }
+    }
+
+  if (!have_architectures)
+    srt_system_info_set_multiarch_tuples (info, NULL);
+
+  info->locales.have_issues = TRUE;
+  info->locales.issues = _srt_json_object_get_issues_from_report (json_obj,
+                                                                  "top level",
+                                                                  SRT_TYPE_LOCALE_ISSUES,
+                                                                  "locale-issues",
+                                                                  "locales-ok",
+                                                                  SRT_LOCALE_ISSUES_UNKNOWN);
+
+  if (info->locales.cached_locales == NULL)
+    info->locales.cached_locales = g_hash_table_new_full (NULL, NULL, NULL,
+                                                          maybe_locale_free);
+
+  if (json_object_has_member (json_obj, "locales"))
+    {
+      JsonObject *json_locale_obj = NULL;
+      /* The list itself is owned, the contents are not */
+      g_autoptr(GList) locales_members = NULL;
+
+      json_sub_obj = json_object_get_object_member (json_obj, "locales");
+
+      locales_members = json_object_get_members (json_sub_obj);
+      for (GList *l = locales_members; l != NULL; l = l->next)
+        {
+          SrtLocale *locale = NULL;
+          MaybeLocale *maybe;
+          const gchar *requested_name = NULL;
+          GError *locale_error = NULL;
+          json_locale_obj = json_object_get_object_member (json_sub_obj, l->data);
+
+          requested_name = g_strcmp0 (l->data, "<default>") == 0 ? "" : l->data;
+
+          locale = _srt_locale_get_locale_from_report (json_locale_obj, l->data, &locale_error);
+          if (locale != NULL)
+            {
+              maybe = maybe_locale_new_positive (locale);
+              g_object_unref (locale);
+            }
+          else
+            {
+              maybe = maybe_locale_new_negative (locale_error);
+              g_clear_error (&locale_error);
+            }
+
+          g_hash_table_replace (info->locales.cached_locales,
+                                GUINT_TO_POINTER (g_quark_from_string (requested_name)),
+                                maybe);
+        }
+    }
+
+  info->icds.have_egl = TRUE;
+  info->icds.egl = _srt_get_egl_from_json_report (SRT_TYPE_EGL_ICD, json_obj);
+  info->egl_ext_platform.have = TRUE;
+  info->egl_ext_platform.list = _srt_get_egl_from_json_report (SRT_TYPE_EGL_EXTERNAL_PLATFORM,
+                                                               json_obj);
+
+  info->icds.have_vulkan = TRUE;
+  info->icds.vulkan = _srt_get_vulkan_from_json_report (json_obj);
+
+  info->openxr_1_layers = g_new0 (OpenXr1Layers, 1);
+  info->openxr_1_layers->explicit = _srt_get_explicit_openxr_1_layers_from_json_report (json_obj);
+  info->openxr_1_layers->implicit = _srt_get_implicit_openxr_1_layers_from_json_report (json_obj);
+
+  info->layers.have_vulkan_explicit = TRUE;
+  info->layers.vulkan_explicit = _srt_get_explicit_vulkan_layers_from_json_report (json_obj);
+  info->layers.have_vulkan_implicit = TRUE;
+  info->layers.vulkan_implicit = _srt_get_implicit_vulkan_layers_from_json_report (json_obj);
+
+  info->desktop_entry.have_data = TRUE;
+  info->desktop_entry.values = _srt_get_steam_desktop_entries_from_json_report (json_obj);
+
+  info->xdg_portal_data = _srt_xdg_portal_get_info_from_report (json_obj);
+
+  info->cpu_features.x86_features = _srt_feature_get_x86_flags_from_report (json_obj,
+                                                                            &info->cpu_features.x86_known);
+
+  info->from_report = g_new0 (FromReport, 1);
+
+  if (json_object_has_member (json_obj, "steam-runtime-system-info"))
+    {
+      const char *s;
+
+      json_sub_obj = json_object_get_object_member (json_obj,
+                                                    "steam-runtime-system-info");
+      s = json_object_get_string_member_with_default (json_sub_obj,
+                                                      "version",
+                                                      NULL);
+      info->from_report->version = g_strdup (s);
+      s = json_object_get_string_member_with_default (json_sub_obj,
+                                                      "path",
+                                                      NULL);
+      info->from_report->path = g_strdup (s);
+    }
+
+out:
+  if (parser != NULL)
+    g_object_unref (parser);
+
+  return info;
+}
+
+/**
+ * srt_system_info_can_run:
+ * @self: A #SrtSystemInfo object
+ * @multiarch_tuple: A multiarch tuple defining an ABI, as printed
+ *  by `gcc -print-multiarch` in the Steam Runtime
+ *
+ * Check whether an executable for the given ABI can be run.
+ *
+ * For this check (and all similar checks) to work as intended, the
+ * contents of the `libsteam-runtime-tools-0-helpers:i386` package must
+ * be available in the same directory hierarchy as the
+ * `libsteam-runtime-tools-0` shared library, something like this:
+ *
+ * |[
+ * any directory/
+ *      lib/
+ *          x86_64-linux-gnu/
+ *              libsteam-runtime-tools-0.so.0
+ *      libexec/
+ *          steam-runtime-tools-0/
+ *              i386-linux-gnu-*
+ *              x86_64-linux-gnu-*
+ * ]|
+ *
+ * Returns: %TRUE if executables belonging to @multiarch_tuple can be run
+ */
+gboolean
+srt_system_info_can_run (SrtSystemInfo *self,
+                         const char *multiarch_tuple)
+{
+  GQuark arch_quark;
+  Abi *abi = NULL;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), FALSE);
+  g_return_val_if_fail (multiarch_tuple != NULL, FALSE);
+
+  arch_quark = g_quark_from_string (multiarch_tuple);
+  abi = ensure_abi_unless_immutable (self, arch_quark);
+
+  if (abi == NULL)
+    return FALSE;
+
+  if (abi->can_run == TRI_MAYBE)
+    {
+      if (_srt_architecture_can_run (self->runner, arch_quark,
+                                     abi->known_architecture))
+        abi->can_run = TRI_YES;
+      else
+        abi->can_run = TRI_NO;
+    }
+
+  return (abi->can_run == TRI_YES);
+}
+
+/**
+ * srt_system_info_can_write_to_uinput:
+ * @self: a #SrtSystemInfo object
+ *
+ * Return %TRUE if the current user can write to `/dev/uinput`.
+ * This is required for the Steam client to be able to emulate gamepads,
+ * keyboards, mice and other input devices based on input from the
+ * Steam Controller or a remote streaming client.
+ *
+ * Returns: %TRUE if `/dev/uinput` can be opened for writing
+ */
+gboolean
+srt_system_info_can_write_to_uinput (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), FALSE);
+
+  if (self->can_write_uinput == TRI_MAYBE && self->from_report == NULL)
+    {
+      int fd = open ("/dev/uinput", O_WRONLY | O_NONBLOCK);
+
+      if (fd >= 0)
+        {
+          g_debug ("Successfully opened /dev/uinput for writing");
+          self->can_write_uinput = TRI_YES;
+          close (fd);
+        }
+      else
+        {
+          g_debug ("Failed to open /dev/uinput for writing: %s",
+                   g_strerror (errno));
+          self->can_write_uinput = TRI_NO;
+        }
+    }
+
+  return (self->can_write_uinput == TRI_YES);
+}
+
+static gint
+library_compare (SrtLibrary *a, SrtLibrary *b)
+{
+  return g_strcmp0 (srt_library_get_requested_name (a),
+                    srt_library_get_requested_name (b));
+}
+
+static gint
+graphics_compare (SrtGraphics *a, SrtGraphics *b)
+{
+  int aKey = _srt_graphics_hash_key (srt_graphics_get_window_system (a),
+                                     srt_graphics_get_rendering_interface (a));
+  int bKey = _srt_graphics_hash_key (srt_graphics_get_window_system (b),
+                                     srt_graphics_get_rendering_interface (b));
+  return (aKey < bKey) ? -1 : (aKey > bKey);
+}
+
+/* Path components from ${prefix} to steamrt expectations */
+#define STEAMRT_EXPECTATIONS "lib", "steamrt", "expectations"
+
+static gboolean
+ensure_expectations (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (_srt_check_not_setuid (), FALSE);
+  g_return_val_if_fail (self->from_report == NULL, FALSE);
+
+  if (self->expectations == NULL)
+    {
+      const char *runtime;
+      g_autofree gchar *def = NULL;
+
+      runtime = _srt_subprocess_runner_getenv (self->runner, "STEAM_RUNTIME");
+
+      if (runtime != NULL && runtime[0] == '/')
+        {
+          def = g_build_filename (runtime, "usr", STEAMRT_EXPECTATIONS,
+                                  NULL);
+        }
+
+      if (def == NULL)
+        {
+          runtime = _srt_find_myself (NULL, NULL, NULL);
+
+          if (runtime != NULL)
+            def = g_build_filename (runtime, STEAMRT_EXPECTATIONS, NULL);
+        }
+
+      if (def == NULL)
+        def = g_build_filename ("/usr", STEAMRT_EXPECTATIONS, NULL);
+
+      if (g_file_test (def, G_FILE_TEST_IS_DIR))
+        self->expectations = g_steal_pointer (&def);
+      else
+        self->expectations = g_strdup ("");
+    }
+
+  return self->expectations[0] != '\0';
+}
+
+static void
+ensure_hidden_deps (SrtSystemInfo *self)
+{
+  g_return_if_fail (self->from_report == NULL);
+
+  if (self->cached_hidden_deps == NULL)
+    {
+      g_autoptr(JsonParser) parser = NULL;
+      JsonNode *node = NULL;
+      JsonArray *libraries_array = NULL;
+      JsonArray *hidden_libraries_array = NULL;
+      JsonObject *object;
+      g_autofree gchar *path = NULL;
+      g_autoptr(GError) error = NULL;
+
+      self->cached_hidden_deps = g_hash_table_new_full (g_str_hash,
+                                                        g_str_equal,
+                                                        g_free,
+                                                        (GDestroyNotify) g_strfreev);
+
+      if (!ensure_expectations (self))
+        {
+          g_debug ("Hidden dependencies parsing skipped because of unknown expectations");
+          return;
+        }
+
+      path = g_build_filename (self->expectations, "steam-runtime-abi.json", NULL);
+
+      /* Currently, in a standard Steam installation, we have the abi JSON one level up
+      * from the expectations folder */
+      if (!g_file_test (path, G_FILE_TEST_EXISTS))
+        {
+          g_clear_pointer (&path, g_free);
+          path = g_build_filename (self->expectations, "..", "steam-runtime-abi.json", NULL);
+        }
+
+      parser = json_parser_new ();
+      if (!json_parser_load_from_file (parser, path, &error))
+        {
+          g_debug ("Error parsing the expected JSON object in \"%s\": %s", path, error->message);
+          return;
+        }
+
+      node = json_parser_get_root (parser);
+      object = json_node_get_object (node);
+
+      if (!json_object_has_member (object, "shared_libraries"))
+        {
+          g_debug ("No \"shared_libraries\" in the JSON object \"%s\"", path);
+          return;
+        }
+
+      libraries_array = json_object_get_array_member (object, "shared_libraries");
+      /* If there are no libraries in the parsed JSON file we simply return */
+      if (libraries_array == NULL || json_array_get_length (libraries_array) == 0)
+        return;
+
+      for (guint i = 0; i < json_array_get_length (libraries_array); i++)
+        {
+          g_autoptr(GList) members = NULL;
+          g_autoptr(GPtrArray) arr = NULL;
+          g_autofree gchar *soname = NULL;
+
+          node = json_array_get_element (libraries_array, i);
+          if (!JSON_NODE_HOLDS_OBJECT (node))
+            continue;
+
+          object = json_node_get_object (node);
+
+          members = json_object_get_members (object);
+
+          if (members == NULL)
+            continue;
+
+          soname = g_strdup (members->data);
+
+          object = json_object_get_object_member (object, soname);
+          if (!json_object_has_member (object, "hidden_dependencies"))
+            continue;
+
+          hidden_libraries_array = json_object_get_array_member (object, "hidden_dependencies");
+          if (hidden_libraries_array == NULL || json_array_get_length (hidden_libraries_array) == 0)
+            continue;
+
+          arr = g_ptr_array_new_full (json_array_get_length (hidden_libraries_array) + 1, g_free);
+
+          for (guint j = 0; j < json_array_get_length (hidden_libraries_array); j++)
+            g_ptr_array_add (arr, g_strdup (json_array_get_string_element (hidden_libraries_array, j)));
+
+          g_ptr_array_add (arr, NULL);
+
+          g_debug ("%s soname hidden dependencies have been parsed", soname);
+          g_hash_table_insert (self->cached_hidden_deps,
+                               g_steal_pointer (&soname),
+                               _srt_ptr_array_clear_to_array (&arr, NULL));
+        }
+    }
+}
+
+static void
+ensure_overrides_cached (SrtSystemInfo *self)
+{
+  g_return_if_fail (_srt_check_not_setuid ());
+  g_return_if_fail (self->from_report == NULL);
+
+  if (!self->overrides.have_data)
+    {
+      static const char * const paths[] = {
+          "overrides/",
+          "usr/lib/pressure-vessel/overrides/",
+      };
+      gsize i;
+      const char * const *envp;
+
+      self->overrides.have_data = TRUE;
+
+      if (self->sysroot == NULL)
+        {
+          self->overrides.messages = g_new0 (gchar *, 2);
+          self->overrides.messages[0] = g_strdup ("Unable to open sysroot");
+          self->overrides.messages[1] = NULL;
+          return;
+        }
+
+      envp = _srt_subprocess_runner_get_environ (self->runner);
+
+      for (i = 0; i < G_N_ELEMENTS (paths); i++)
+        {
+          glnx_autofd int fd = -1;
+
+          fd = _srt_sysroot_open (self->sysroot,
+                                  paths[i],
+                                  SRT_RESOLVE_FLAGS_MUST_BE_DIRECTORY,
+                                  NULL, NULL);
+
+          if (fd >= 0)
+            {
+              self->overrides.values = _srt_recursive_list_content (self->sysroot->path,
+                                                                    self->sysroot->fd,
+                                                                    paths[i],
+                                                                    fd,
+                                                                    envp,
+                                                                    &self->overrides.messages);
+              break;
+            }
+        }
+    }
+}
+
+/**
+ * srt_system_info_list_pressure_vessel_overrides:
+ * @self: The #SrtSystemInfo object
+ * @messages: (optional) (out) (array zero-terminated=1) (transfer full): If
+ *  not %NULL, used to return a %NULL-terminated array of diagnostic
+ *  messages. Free with g_strfreev().
+ *
+ * If running in a Steam Runtime container using `pressure-vessel`,
+ * list the libraries from the container that have been overridden
+ * with libraries from the host system.
+ *
+ * The output is intended to be human-readable debugging information,
+ * rather than something to use programmatically, and its format is
+ * not guaranteed.
+ *
+ * Similarly, @messages is intended to be human-readable debugging
+ * information.
+ *
+ * Returns: (array zero-terminated=1) (transfer full) (nullable): A
+ *  %NULL-terminated array of libraries that have been overridden,
+ *  or %NULL if this process does not appear to be in a pressure-vessel
+ *  container. Free with g_strfreev().
+ */
+gchar **
+srt_system_info_list_pressure_vessel_overrides (SrtSystemInfo *self,
+                                                gchar ***messages)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (self->from_report == NULL)
+    ensure_overrides_cached (self);
+
+  if (messages != NULL)
+    *messages = g_strdupv (self->overrides.messages);
+
+  return g_strdupv (self->overrides.values);
+}
+
+static void
+ensure_pinned_libs_cached (SrtSystemInfo *self)
+{
+  g_return_if_fail (_srt_check_not_setuid ());
+
+  if (!self->pinned_libs.have_data && self->from_report == NULL)
+    {
+      g_autofree gchar *runtime = NULL;
+      const char * const *envp;
+
+      runtime = srt_system_info_dup_runtime_path (self);
+
+      self->pinned_libs.have_data = TRUE;
+
+      if (runtime == NULL || g_strcmp0 (runtime, "/") == 0)
+        return;
+
+      envp = _srt_subprocess_runner_get_environ (self->runner);
+
+      self->pinned_libs.values_32 = _srt_recursive_list_content (runtime,
+                                                                 -1,
+                                                                 "pinned_libs_32",
+                                                                 -1,
+                                                                 envp,
+                                                                 &self->pinned_libs.messages_32);
+
+      self->pinned_libs.values_64 = _srt_recursive_list_content (runtime,
+                                                                 -1,
+                                                                 "pinned_libs_64",
+                                                                 -1,
+                                                                 envp,
+                                                                 &self->pinned_libs.messages_64);
+    }
+}
+
+/**
+ * srt_system_info_list_pinned_libs_32:
+ * @self: The #SrtSystemInfo object
+ * @messages: (optional) (out) (array zero-terminated=1) (transfer full): If
+ *  not %NULL, used to return a %NULL-terminated array of diagnostic
+ *  messages. Free with g_strfreev().
+ *
+ * If running in an `LD_LIBRARY_PATH`-based Steam Runtime, return
+ * information about %SRT_ABI_I386 libraries that have been "pinned".
+ * Normally, the Steam Runtime infrastructure prefers to use shared
+ * libraries from the host OS, if available, rather than the
+ * library of the same `SONAME` from the Steam Runtime. However, if
+ * a library in the Steam Runtime is newer then the version in the
+ * host OS, or if it is known to be incompatible with newer
+ * libraries with the same `SONAME`, then the library from the
+ * Steam Runtime is said to have been "pinned": it is used with a
+ * higher precedence than libraries from the host OS.
+ *
+ * If not in an `LD_LIBRARY_PATH`-based Steam Runtime, return %NULL.
+ *
+ * The output is intended to be human-readable debugging information,
+ * rather than something to use programmatically, and its format is
+ * not guaranteed.
+ *
+ * Similarly, @messages is intended to be human-readable debugging
+ * information.
+ *
+ * Returns: (array zero-terminated=1) (transfer full) (element-type utf8) (nullable):
+ *  An array of strings, or %NULL if not in an `LD_LIBRARY_PATH`-based Steam
+ *  Runtime or if it was not possible to list the pinned libs.
+ *  Free with g_strfreev().
+ */
+gchar **
+srt_system_info_list_pinned_libs_32 (SrtSystemInfo *self,
+                                     gchar ***messages)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_pinned_libs_cached (self);
+
+  if (messages != NULL)
+    *messages = g_strdupv (self->pinned_libs.messages_32);
+
+  return g_strdupv (self->pinned_libs.values_32);
+}
+
+/**
+ * srt_system_info_list_pinned_libs_64:
+ * @self: The #SrtSystemInfo object
+ * @messages: (optional) (out) (array zero-terminated=1) (transfer full): If
+ *  not %NULL, used to return a %NULL-terminated array of diagnostic
+ *  messages. Free with g_strfreev().
+ *
+ * If running in an `LD_LIBRARY_PATH`-based Steam Runtime, return
+ * information about %SRT_ABI_X86_64 libraries that have been "pinned".
+ * Normally, the Steam Runtime infrastructure prefers to use shared
+ * libraries from the host OS, if available, rather than the
+ * library of the same `SONAME` from the Steam Runtime. However, if
+ * a library in the Steam Runtime is newer then the version in the
+ * host OS, or if it is known to be incompatible with newer
+ * libraries with the same `SONAME`, then the library from the
+ * Steam Runtime is said to have been "pinned": it is used with a
+ * higher precedence than libraries from the host OS.
+ *
+ * If not in an `LD_LIBRARY_PATH`-based Steam Runtime, return %NULL.
+ *
+ * The output is intended to be human-readable debugging information,
+ * rather than something to use programmatically, and its format is
+ * not guaranteed.
+ *
+ * Similarly, @messages is intended to be human-readable debugging
+ * information.
+ *
+ * Returns: (array zero-terminated=1) (transfer full) (element-type utf8) (nullable):
+ *  An array of strings, or %NULL if not in an `LD_LIBRARY_PATH`-based Steam
+ *  Runtime or if it was not possible to list the pinned libs.
+ *  Free with g_strfreev().
+ */
+gchar **
+srt_system_info_list_pinned_libs_64 (SrtSystemInfo *self,
+                                     gchar ***messages)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_pinned_libs_cached (self);
+
+  if (messages != NULL)
+    *messages = g_strdupv (self->pinned_libs.messages_64);
+
+  return g_strdupv (self->pinned_libs.values_64);
+}
+
+/**
+ * _srt_system_info_get_pinned_libs_from_report:
+ * @json_obj: (not nullable): A JSON Object used to search for @which
+ *  property
+ * @which: (not nullable): The member to look up
+ * @messages: (not nullable): Used to return human-readable debug information
+ *
+ * Returns: (array zero-terminated=1) (transfer full) (element-type utf8) (nullable):
+ *  An array of strings with the found pinned libs from the @json_obj, or %NULL
+ *  if @json_obj doesn't have a @which member. Free with g_strfreev().
+ */
+static gchar **
+_srt_system_info_get_pinned_libs_from_report (JsonObject *json_obj,
+                                              const gchar *which,
+                                              gchar ***messages)
+{
+  JsonObject *json_pinned_obj = NULL;
+  gchar **pinned_list = NULL;
+
+  g_return_val_if_fail (json_obj != NULL, NULL);
+  g_return_val_if_fail (which != NULL, NULL);
+  g_return_val_if_fail (messages != NULL && *messages == NULL, NULL);
+
+  if (json_object_has_member (json_obj, which))
+    {
+      json_pinned_obj = json_object_get_object_member (json_obj, which);
+
+      pinned_list = _srt_json_object_dup_strv_member (json_pinned_obj,
+                                                      "list",
+                                                      "<invalid>");
+
+      *messages = _srt_json_object_dup_strv_member (json_pinned_obj,
+                                                    "messages",
+                                                    "<invalid>");
+    }
+
+  return pinned_list;
+}
+
+/**
+ * srt_system_info_check_libraries:
+ * @self: The #SrtSystemInfo object to use.
+ * @multiarch_tuple: A multiarch tuple like %SRT_ABI_I386, representing an ABI.
+ * @libraries_out: (out) (optional) (element-type SrtLibrary) (transfer full):
+ *  Used to return a #GList object where every element of said list is an
+ *  #SrtLibrary object, representing every `SONAME` found from the expectations
+ *  folder. Free with `g_list_free_full(libraries, g_object_unref)`.
+ *
+ * Check if the running system has all the expected libraries, and related symbols,
+ * as listed in the `deb-symbols(5)` files `*.symbols` in the @multiarch
+ * subdirectory of #SrtSystemInfo:expectations.
+ *
+ * Returns: A bitfield containing problems, or %SRT_LIBRARY_ISSUES_NONE
+ *  if no problems were found.
+ */
+SrtLibraryIssues
+srt_system_info_check_libraries (SrtSystemInfo *self,
+                                 const gchar *multiarch_tuple,
+                                 GList **libraries_out)
+{
+  GQuark arch_quark;
+  Abi *abi = NULL;
+  gchar *dir_path = NULL;
+  const gchar *filename = NULL;
+  gchar *symbols_file = NULL;
+  size_t len = 0;
+  ssize_t chars;
+  GDir *dir = NULL;
+  FILE *fp = NULL;
+  GError *error = NULL;
+  SrtLibraryIssues ret = SRT_LIBRARY_ISSUES_UNKNOWN;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), SRT_LIBRARY_ISSUES_UNKNOWN);
+  g_return_val_if_fail (multiarch_tuple != NULL, SRT_LIBRARY_ISSUES_UNKNOWN);
+  g_return_val_if_fail (libraries_out == NULL || *libraries_out == NULL,
+                        SRT_LIBRARY_ISSUES_UNKNOWN);
+
+  arch_quark = g_quark_from_string (multiarch_tuple);
+  abi = ensure_abi_unless_immutable (self, arch_quark);
+
+  if (abi == NULL)
+    return SRT_LIBRARY_ISSUES_CANNOT_LOAD;
+
+  /* If we cached already the result, we return it */
+  if (abi->libraries_cache_available)
+    {
+      if (libraries_out != NULL)
+        {
+          *libraries_out = g_list_sort (g_hash_table_get_values (abi->cached_results),
+                                        (GCompareFunc) library_compare);
+          g_list_foreach (*libraries_out, (GFunc) G_CALLBACK (g_object_ref), NULL);
+        }
+
+      return abi->cached_combined_issues;
+    }
+
+  if (self->from_report != NULL)
+    return SRT_LIBRARY_ISSUES_UNKNOWN;
+
+  if (!ensure_expectations (self))
+    {
+      /* We don't know which libraries to check. */
+      return SRT_LIBRARY_ISSUES_UNKNOWN_EXPECTATIONS;
+    }
+
+  dir_path = g_build_filename (self->expectations, multiarch_tuple, NULL);
+  dir = g_dir_open (dir_path, 0, &error);
+  if (error)
+    {
+      g_debug ("An error occurred while opening the symbols directory: %s", error->message);
+      g_clear_error (&error);
+      ret = SRT_LIBRARY_ISSUES_UNKNOWN_EXPECTATIONS;
+      goto out;
+    }
+
+  ensure_hidden_deps (self);
+
+  while ((filename = g_dir_read_name (dir)))
+    {
+      char *line = NULL;
+
+      if (!g_str_has_suffix (filename, ".symbols"))
+        continue;
+
+      symbols_file = g_build_filename (dir_path, filename, NULL);
+      fp = fopen(symbols_file, "r");
+
+      if (fp == NULL)
+        {
+          int saved_errno = errno;
+          g_debug ("Error reading \"%s\": %s\n", symbols_file, strerror (saved_errno));
+          goto out;
+        }
+
+      while ((chars = getline(&line, &len, fp)) != -1)
+        {
+          char *pointer_into_line = line;
+          if (line[chars - 1] == '\n')
+            line[chars - 1] = '\0';
+
+          if (line[0] == '\0')
+            continue;
+
+          if (line[0] != '#' && line[0] != '*' && line[0] != '|' && line[0] != ' ')
+            {
+              /* This line introduces a new SONAME. We extract it and call
+                * `_srt_check_library_presence` with the symbols file where we
+                * found it, as an argument. */
+              SrtLibrary *library = NULL;
+              char *soname = g_strdup (strsep (&pointer_into_line, " \t"));
+              gchar **hidden_deps = g_hash_table_lookup (self->cached_hidden_deps, soname);
+              abi->cached_combined_issues |= _srt_check_library_presence (self->runner,
+                                                                          soname,
+                                                                          arch_quark,
+                                                                          abi->known_architecture,
+                                                                          symbols_file,
+                                                                          (const gchar * const *)hidden_deps,
+                                                                          self->check_flags,
+                                                                          SRT_LIBRARY_SYMBOLS_FORMAT_DEB_SYMBOLS,
+                                                                          &library);
+              g_hash_table_insert (abi->cached_results, soname, library);
+            }
+        }
+      free (line);
+      g_clear_pointer (&symbols_file, g_free);
+      g_clear_pointer (&fp, fclose);
+    }
+
+  abi->libraries_cache_available = TRUE;
+  if (libraries_out != NULL)
+    {
+      *libraries_out = g_list_sort (g_hash_table_get_values (abi->cached_results),
+                                    (GCompareFunc) library_compare);
+      g_list_foreach (*libraries_out, (GFunc) G_CALLBACK (g_object_ref), NULL);
+    }
+
+  ret = abi->cached_combined_issues;
+
+  out:
+    g_clear_pointer (&symbols_file, g_free);
+    g_clear_pointer (&dir_path, g_free);
+
+    if (fp != NULL)
+      g_clear_pointer (&fp, fclose);
+
+    if (dir != NULL)
+      g_dir_close (dir);
+
+    return ret;
+}
+
+/**
+ * srt_system_info_check_library:
+ * @self: The #SrtSystemInfo object to use.
+ * @multiarch_tuple: A multiarch tuple like %SRT_ABI_I386, representing an ABI.
+ * @requested_name: (type filename): The `SONAME` of a shared library, for
+ *  example `libjpeg.so.62`.
+ * @more_details_out: (out) (optional) (transfer full): Used to return an
+ *  #SrtLibrary object representing the shared library provided
+ *  by @requested_name. Free with `g_object_unref()`.
+ *
+ * Check if @requested_name is available in the running system and whether
+ * it conforms to the `deb-symbols(5)` files `*.symbols` in the @multiarch
+ * subdirectory of #SrtSystemInfo:expectations.
+ *
+ * Returns: A bitfield containing problems, or %SRT_LIBRARY_ISSUES_NONE
+ *  if no problems were found.
+ */
+SrtLibraryIssues
+srt_system_info_check_library (SrtSystemInfo *self,
+                               const gchar *multiarch_tuple,
+                               const gchar *requested_name,
+                               SrtLibrary **more_details_out)
+{
+  GQuark arch_quark;
+  Abi *abi = NULL;
+  SrtLibrary *library = NULL;
+  const gchar *filename = NULL;
+  gchar *symbols_file = NULL;
+  gchar *dir_path = NULL;
+  gchar *line = NULL;
+  size_t len = 0;
+  ssize_t chars;
+  FILE *fp = NULL;
+  SrtLibraryIssues issues;
+  GDir *dir = NULL;
+  GError *error = NULL;
+  SrtLibraryIssues ret = SRT_LIBRARY_ISSUES_UNKNOWN;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), SRT_LIBRARY_ISSUES_UNKNOWN);
+  g_return_val_if_fail (multiarch_tuple != NULL, SRT_LIBRARY_ISSUES_UNKNOWN);
+  g_return_val_if_fail (requested_name != NULL, SRT_LIBRARY_ISSUES_UNKNOWN);
+  g_return_val_if_fail (more_details_out == NULL || *more_details_out == NULL,
+                        SRT_LIBRARY_ISSUES_UNKNOWN);
+
+  arch_quark = g_quark_from_string (multiarch_tuple);
+  abi = ensure_abi_unless_immutable (self, arch_quark);
+
+  if (abi == NULL)
+    return SRT_LIBRARY_ISSUES_CANNOT_LOAD;
+
+  /* If we have the result already in cache, we return it */
+  library = g_hash_table_lookup (abi->cached_results, requested_name);
+  if (library != NULL)
+    {
+      if (more_details_out != NULL)
+        *more_details_out = g_object_ref (library);
+      return srt_library_get_issues (library);
+    }
+
+  if (self->from_report != NULL)
+    return SRT_LIBRARY_ISSUES_UNKNOWN;
+
+  if (ensure_expectations (self))
+    {
+      dir_path = g_build_filename (self->expectations, multiarch_tuple, NULL);
+      dir = g_dir_open (dir_path, 0, &error);
+
+      if (error)
+        {
+          g_debug ("An error occurred while opening the symbols directory: %s", error->message);
+          g_clear_error (&error);
+        }
+    }
+
+  ensure_hidden_deps (self);
+
+  while (dir != NULL && (filename = g_dir_read_name (dir)))
+    {
+      if (!g_str_has_suffix (filename, ".symbols"))
+        continue;
+
+      symbols_file = g_build_filename (dir_path, filename, NULL);
+      fp = fopen(symbols_file, "r");
+
+      if (fp == NULL)
+        {
+          int saved_errno = errno;
+          g_debug ("Error reading \"%s\": %s\n", symbols_file, strerror (saved_errno));
+          goto out;
+        }
+
+      while ((chars = getline(&line, &len, fp)) != -1)
+        {
+          char *pointer_into_line = line;
+          if (line[chars - 1] == '\n')
+            line[chars - 1] = '\0';
+
+          if (line[0] == '\0')
+            continue;
+
+          if (line[0] != '#' && line[0] != '*' && line[0] != '|' && line[0] != ' ')
+            {
+              /* This line introduces a new SONAME, which might
+                * be the one we are interested in. */
+              char *soname_found = g_strdup (strsep (&pointer_into_line, " \t"));
+              if (g_strcmp0 (soname_found, requested_name) == 0)
+                {
+                  gchar **hidden_deps = g_hash_table_lookup (self->cached_hidden_deps, requested_name);
+                  issues = _srt_check_library_presence (self->runner,
+                                                        soname_found,
+                                                        arch_quark,
+                                                        abi->known_architecture,
+                                                        symbols_file,
+                                                        (const gchar * const *)hidden_deps,
+                                                        self->check_flags,
+                                                        SRT_LIBRARY_SYMBOLS_FORMAT_DEB_SYMBOLS,
+                                                        &library);
+                  g_hash_table_insert (abi->cached_results, soname_found, library);
+                  abi->cached_combined_issues |= issues;
+                  if (more_details_out != NULL)
+                    *more_details_out = g_object_ref (library);
+                  free (line);
+                  ret = issues;
+                  goto out;
+                }
+              free (soname_found);
+            }
+        }
+      g_clear_pointer (&symbols_file, g_free);
+      g_clear_pointer (&line, g_free);
+      g_clear_pointer (&fp, fclose);
+    }
+
+  /* The SONAME's symbols file is not available.
+   * We do instead a simple absence/presence check. */
+  issues = _srt_check_library_presence (self->runner,
+                                        requested_name,
+                                        arch_quark,
+                                        abi->known_architecture,
+                                        NULL,
+                                        NULL,
+                                        self->check_flags,
+                                        SRT_LIBRARY_SYMBOLS_FORMAT_DEB_SYMBOLS,
+                                        &library);
+  g_hash_table_insert (abi->cached_results, g_strdup (requested_name), library);
+  abi->cached_combined_issues |= issues;
+  if (more_details_out != NULL)
+    *more_details_out = g_object_ref (library);
+
+  ret = issues;
+
+  out:
+    g_clear_pointer (&symbols_file, g_free);
+    g_clear_pointer (&dir_path, g_free);
+
+    if (fp != NULL)
+      g_clear_pointer (&fp, fclose);
+
+    if (dir != NULL)
+      g_dir_close (dir);
+
+    return ret;
+}
+
+/*
+ * Forget whether we can load libraries.
+ */
+static void
+forget_libraries (SrtSystemInfo *self)
+{
+  gsize i;
+
+  for (i = 0; i < self->abis->len; i++)
+    {
+      Abi *abi = g_ptr_array_index (self->abis, i);
+
+      g_hash_table_remove_all (abi->cached_results);
+      abi->cached_combined_issues = SRT_LIBRARY_ISSUES_NONE;
+      abi->libraries_cache_available = FALSE;
+    }
+}
+
+/*
+ * Forget cached libdl information.
+ */
+static void
+forget_libdl (SrtSystemInfo *self)
+{
+  gsize i;
+
+  for (i = 0; i < self->abis->len; i++)
+    {
+      Abi *abi = g_ptr_array_index (self->abis, i);
+
+      g_clear_pointer (&abi->libdl_lib, g_free);
+      g_clear_error (&abi->libdl_lib_error);
+      g_clear_pointer (&abi->libdl_platform, g_free);
+      g_clear_error (&abi->libdl_platform_error);
+    }
+}
+
+/*
+ * Forget cached graphics results.
+ */
+static void
+forget_graphics_results (SrtSystemInfo *self)
+{
+  gsize i;
+
+  for (i = 0; i < self->abis->len; i++)
+    {
+      Abi *abi = g_ptr_array_index (self->abis, i);
+
+      g_hash_table_remove_all (abi->cached_graphics_results);
+      abi->cached_combined_graphics_issues = SRT_GRAPHICS_ISSUES_NONE;
+      abi->graphics_cache_available = FALSE;
+    }
+}
+
+/*
+ * Forget any cached information about graphics modules.
+ */
+static void
+forget_graphics_modules (SrtSystemInfo *self)
+{
+  gsize i, j;
+
+  for (i = 0; i < self->abis->len; i++)
+    {
+      Abi *abi = g_ptr_array_index (self->abis, i);
+
+      for (j = 0; j < G_N_ELEMENTS (abi->graphics_modules); j++)
+        {
+          g_list_free_full (g_steal_pointer (&abi->graphics_modules[j].modules),
+                            g_object_unref);
+          abi->graphics_modules[j].available = FALSE;
+        }
+    }
+}
+
+/**
+ * srt_system_info_check_graphics:
+ * @self: The #SrtSystemInfo object to use.
+ * @multiarch_tuple: A multiarch tuple like %SRT_ABI_I386, representing an ABI.
+ * @window_system: The window system to check.
+ * @rendering_interface: The graphics renderng interface to check.
+ * @details_out: (out) (optional) (transfer full): Used to return an
+ *  #SrtGraphics object representing the items tested and results.
+ *  Free with `g_object_unref()`.
+ *
+ * Returns: A bitfield containing problems, or %SRT_GRAPHICS_ISSUES_NONE
+ *  if no problems were found.
+ */
+SrtGraphicsIssues
+srt_system_info_check_graphics (SrtSystemInfo *self,
+                                const char *multiarch_tuple,
+                                SrtWindowSystem window_system,
+                                SrtRenderingInterface rendering_interface,
+                                SrtGraphics **details_out)
+{
+  GQuark arch_quark;
+  Abi *abi = NULL;
+  SrtGraphicsIssues issues;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), SRT_GRAPHICS_ISSUES_UNKNOWN);
+  g_return_val_if_fail (multiarch_tuple != NULL, SRT_GRAPHICS_ISSUES_UNKNOWN);
+  g_return_val_if_fail (details_out == NULL || *details_out == NULL,
+                        SRT_GRAPHICS_ISSUES_UNKNOWN);
+  g_return_val_if_fail (((unsigned) window_system) < SRT_N_WINDOW_SYSTEMS, SRT_GRAPHICS_ISSUES_UNKNOWN);
+  g_return_val_if_fail (((unsigned) rendering_interface) < SRT_N_RENDERING_INTERFACES, SRT_GRAPHICS_ISSUES_UNKNOWN);
+
+  arch_quark = g_quark_from_string (multiarch_tuple);
+  abi = ensure_abi_unless_immutable (self, arch_quark);
+
+  if (abi == NULL)
+    return SRT_GRAPHICS_ISSUES_UNKNOWN;
+
+  /* If we have the result already in cache, we return it */
+  int hash_key = _srt_graphics_hash_key (window_system, rendering_interface);
+  SrtGraphics *graphics = g_hash_table_lookup (abi->cached_graphics_results, GINT_TO_POINTER(hash_key));
+  if (graphics != NULL)
+    {
+      if (details_out != NULL)
+        *details_out = g_object_ref (graphics);
+      return srt_graphics_get_issues (graphics);
+    }
+
+  if (self->from_report != NULL)
+    return SRT_GRAPHICS_ISSUES_UNKNOWN;
+
+  /* Testing GL, Vulkan, etc. will load arbitrary shared libraries
+   * in a way that is not under our control and not expected to be
+   * sysroot-aware, so we can't meaningfully test this in a sysroot. */
+  if (self->sysroot != NULL && !_srt_sysroot_is_direct (self->sysroot))
+    {
+      g_debug ("Can't do functional tests on the graphics stack in a "
+               "non-trivial sysroot");
+      return SRT_GRAPHICS_ISSUES_UNKNOWN;
+    }
+
+  graphics = NULL;
+  issues = _srt_check_graphics (self->runner,
+                                arch_quark,
+                                window_system,
+                                rendering_interface,
+                                &graphics);
+  g_hash_table_insert (abi->cached_graphics_results, GINT_TO_POINTER(hash_key), graphics);
+  abi->cached_combined_graphics_issues |= issues;
+  if (details_out != NULL)
+    *details_out = g_object_ref (graphics);
+
+  return issues;
+}
+
+/**
+ * srt_system_info_check_all_graphics:
+ * @self: The #SrtSystemInfo object to use.
+ * @multiarch_tuple: A multiarch tuple like %SRT_ABI_I386, representing an ABI.
+*
+ * Check whether various combinations of rendering interface and windowing
+ * system are available. The specific combinations of rendering interface and
+ * windowing system that are returned are not guaranteed, but will include at
+ * least %SRT_RENDERING_INTERFACE_GL on %SRT_WINDOW_SYSTEM_GLX. Additional combinations
+ * will be added in future versions of this library.
+ *
+ * Returns: (transfer full) (type SrtGraphics): A list of #SrtGraphics objects
+ * representing the items tested and results.
+ * Free with 'g_list_free_full(list, g_object_unref)`.
+ */
+GList * srt_system_info_check_all_graphics (SrtSystemInfo *self,
+                                            const char *multiarch_tuple)
+{
+  Abi *abi = NULL;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+  g_return_val_if_fail (multiarch_tuple != NULL, NULL);
+
+  abi = ensure_abi_unless_immutable (self, g_quark_from_string (multiarch_tuple));
+
+  if (abi == NULL)
+    return NULL;
+
+  GList *list = NULL;
+
+  /* If we cached already the result, we return it */
+  if (abi->graphics_cache_available)
+    {
+      list = g_list_sort (g_hash_table_get_values (abi->cached_graphics_results),
+                                    (GCompareFunc) graphics_compare);
+      g_list_foreach (list, (GFunc) G_CALLBACK (g_object_ref), NULL);
+
+      return list;
+    }
+
+  // Try each rendering interface
+  // Try each window system
+
+  abi->cached_combined_graphics_issues |=
+    srt_system_info_check_graphics (self,
+                                    multiarch_tuple,
+                                    SRT_WINDOW_SYSTEM_GLX,
+                                    SRT_RENDERING_INTERFACE_GL,
+                                    NULL);
+
+  abi->cached_combined_graphics_issues |=
+    srt_system_info_check_graphics (self,
+                                    multiarch_tuple,
+                                    SRT_WINDOW_SYSTEM_EGL_X11,
+                                    SRT_RENDERING_INTERFACE_GL,
+                                    NULL);
+
+  abi->cached_combined_graphics_issues |=
+    srt_system_info_check_graphics (self,
+                                    multiarch_tuple,
+                                    SRT_WINDOW_SYSTEM_EGL_X11,
+                                    SRT_RENDERING_INTERFACE_GLESV2,
+                                    NULL);
+
+  abi->cached_combined_graphics_issues |=
+    srt_system_info_check_graphics (self,
+                                    multiarch_tuple,
+                                    SRT_WINDOW_SYSTEM_X11,
+                                    SRT_RENDERING_INTERFACE_VULKAN,
+                                    NULL);
+
+  abi->cached_combined_graphics_issues |=
+    srt_system_info_check_graphics (self,
+                                    multiarch_tuple,
+                                    SRT_WINDOW_SYSTEM_X11,
+                                    SRT_RENDERING_INTERFACE_VDPAU,
+                                    NULL);
+
+  abi->cached_combined_graphics_issues |=
+    srt_system_info_check_graphics (self,
+                                    multiarch_tuple,
+                                    SRT_WINDOW_SYSTEM_X11,
+                                    SRT_RENDERING_INTERFACE_VAAPI,
+                                    NULL);
+
+  abi->graphics_cache_available = TRUE;
+
+  list = g_list_sort (g_hash_table_get_values (abi->cached_graphics_results),
+                      (GCompareFunc) graphics_compare);
+  g_list_foreach (list, (GFunc) G_CALLBACK (g_object_ref), NULL);
+
+  return list;
+}
+
+SrtSubprocessRunner *
+_srt_system_info_get_subprocess_runner (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+  return self->runner;
+}
+
+/* More efficient than calling set_environ, set_helpers_path and
+ * set_test_flags separately */
+void
+_srt_system_info_set_subprocess_runner (SrtSystemInfo *self,
+                                        SrtSubprocessRunner *runner)
+{
+  g_autoptr(SrtSubprocessRunner) old = NULL;
+
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+  g_return_if_fail (self->from_report == NULL);
+  g_return_if_fail (SRT_IS_SUBPROCESS_RUNNER (runner));
+
+  forget_container_info (self);
+  forget_display_info (self);
+  forget_drivers (self);
+  forget_graphics_modules (self);
+  forget_graphics_results (self);
+  forget_libdl (self);
+  forget_libraries (self);
+  forget_locales (self);
+  forget_pinned_libs (self);
+  forget_steam (self);
+  forget_xdg_portal (self);
+  g_clear_pointer (&self->cached_driver_environment, g_strfreev);
+
+  if (g_set_object (&self->runner, runner))
+    {
+      SrtSysroot *sysroot = _srt_subprocess_runner_get_sysroot (runner);
+
+      g_set_object (&self->sysroot, sysroot);
+    }
+}
+
+/**
+ * srt_system_info_set_environ:
+ * @self: The #SrtSystemInfo
+ * @env: (nullable) (array zero-terminated=1) (element-type filename) (transfer none): An
+ *  array of environment variables
+ *
+ * Use @env instead of the real environment variable block `environ`
+ * when locating the Steam Runtime.
+ *
+ * If @env is %NULL, go back to using the real environment variables.
+ *
+ * This method is not valid to call on a #SrtSystemInfo that was
+ * constructed with srt_system_info_new_from_json().
+ */
+void
+srt_system_info_set_environ (SrtSystemInfo *self,
+                             gchar * const *env)
+{
+  g_autoptr(SrtSubprocessRunner) runner = NULL;
+
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+  g_return_if_fail (self->from_report == NULL);
+
+  runner = _srt_subprocess_runner_new_swap_envp (self->runner,
+                                                 _srt_const_strv (env));
+  _srt_system_info_set_subprocess_runner (self, runner);
+}
+
+const char *
+_srt_system_info_get_sysroot_path (SrtSystemInfo *self)
+{
+  if (self->sysroot == NULL)
+    return NULL;
+
+  return self->sysroot->path;
+}
+
+SrtSysroot *
+_srt_system_info_get_sysroot (SrtSystemInfo *self)
+{
+  return self->sysroot;
+}
+
+/**
+ * srt_system_info_set_sysroot:
+ * @self: The #SrtSystemInfo
+ * @root: (nullable) (type filename) (transfer none): Path to the sysroot
+ *
+ * Use @root instead of the real root directory when investigating
+ * system properties.
+ *
+ * If @root is %NULL or `/`, go back to using the real root.
+ *
+ * To bypass any filesystem virtualization that might be imposed by
+ * something like FEX-Emu, use the "magic symlink" `/proc/self/root`.
+ *
+ * This method is not valid to call on a #SrtSystemInfo that was
+ * constructed with srt_system_info_new_from_json().
+ */
+void
+srt_system_info_set_sysroot (SrtSystemInfo *self,
+                             const char *root)
+{
+  g_autoptr(SrtSysroot) sysroot = NULL;
+  g_autoptr(GError) local_error = NULL;
+
+  if (root == NULL)
+    root = "/";
+
+  sysroot = _srt_sysroot_new_maybe_direct (root, &local_error);
+
+  if (sysroot == NULL)
+    g_warning ("Unable to open sysroot %s: %s",
+               root, local_error->message);
+
+  _srt_system_info_set_sysroot (self, sysroot);
+}
+
+/*
+ * _srt_system_info_set_sysroot:
+ * @self: The #SrtSystemInfo
+ * @sysroot: (nullable): The sysroot
+ *
+ * Use @sysroot instead of the real root directory when investigating
+ * system properties.
+ *
+ * If @sysroot is _srt_sysroot_new_direct(), go back to using the real root.
+ * If @sysroot is %NULL, attempts to access the filesystem will fail.
+ *
+ * To bypass any filesystem virtualization that might be imposed by
+ * something like FEX-Emu, use _srt_sysroot_new_real_root().
+ *
+ * This method is not valid to call on a #SrtSystemInfo that was
+ * constructed with srt_system_info_new_from_json().
+ */
+void
+_srt_system_info_set_sysroot (SrtSystemInfo *self,
+                              SrtSysroot *sysroot)
+{
+  g_autoptr(SrtSubprocessRunner) runner = NULL;
+
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+  g_return_if_fail (self->from_report == NULL);
+
+  if (self->runner != NULL)
+    {
+      if (sysroot != self->sysroot)
+        runner = _srt_subprocess_runner_new_swap_sysroot (self->runner,
+                                                          sysroot);
+    }
+  else
+    {
+      /* during initialization */
+      runner = _srt_subprocess_runner_new_full (NULL,   /* emulator */
+                                                NULL,   /* emulator server */
+                                                NULL,   /* envp */
+                                                NULL,   /* bin */
+                                                NULL,   /* libexec/s-r-t-0 */
+                                                sysroot,
+                                                SRT_TEST_FLAGS_NONE,
+                                                NULL);  /* cwd */
+    }
+
+  /* This doesn't need to forget information that is also forgotten
+   * by _srt_system_info_set_subprocess_runner() */
+  forget_os (self);
+  forget_overrides (self);
+  g_clear_object (&self->virtualization_info);
+
+  if (runner != NULL)
+    {
+      g_return_if_fail (_srt_subprocess_runner_get_sysroot (runner) == sysroot);
+      _srt_system_info_set_subprocess_runner (self, runner);
+    }
+
+  g_return_if_fail (self->sysroot == sysroot);
+}
+
+/*
+ * _srt_system_info_set_graphics_provider:
+ * @self: The #SrtSystemInfo
+ * @provider: (nullable): The graphics provider
+ *
+ * Use the sysroot from @provider.
+ * Instead of discovering everything from first principles,
+ * optimize by assuming that information provided
+ * in its JSON manifest (if any) is correct.
+ */
+void
+_srt_system_info_set_graphics_provider (SrtSystemInfo *self,
+                                        SrtGraphicsProvider *provider)
+{
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+  g_return_if_fail (SRT_IS_GRAPHICS_PROVIDER (provider));
+  g_return_if_fail (self->from_report == NULL);
+
+  if (g_set_object (&self->graphics_provider, provider))
+    {
+      SrtSysroot *root;
+
+      forget_graphics_modules (self);
+
+      root = _srt_graphics_provider_get_root (provider);
+
+      if (root != self->sysroot)
+        _srt_system_info_set_sysroot (self, root);
+    }
+}
+
+static void
+ensure_steam_cached (SrtSystemInfo *self)
+{
+  if (self->steam_data == NULL && self->from_report == NULL)
+    {
+      const char * const *envp = _srt_subprocess_runner_get_environ (self->runner);
+
+      _srt_steam_check (envp, ~0, &self->steam_data);
+    }
+}
+
+/**
+ * srt_system_info_get_steam_issues:
+ * @self: The #SrtSystemInfo object
+ *
+ * Detect and return any problems encountered with the Steam installation.
+ *
+ * Returns: Any problems detected with the Steam installation,
+ *  or %SRT_STEAM_ISSUES_NONE if no problems were detected
+ */
+SrtSteamIssues
+srt_system_info_get_steam_issues (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), SRT_STEAM_ISSUES_UNKNOWN);
+
+  ensure_steam_cached (self);
+  return srt_steam_get_issues (self->steam_data);
+}
+
+/**
+ * srt_system_info_get_steam_details:
+ * @self: The #SrtSystemInfo object
+ *
+ * Gather and return information about the Steam installation.
+ *
+ * Returns: (transfer full): An #SrtSteam object. Free with
+ *  `g_object_unref ()`.
+ */
+SrtSteam *
+srt_system_info_get_steam_details (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_steam_cached (self);
+  return g_object_ref (self->steam_data);
+}
+
+/**
+ * srt_system_info_dup_steam_installation_path:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return the absolute path to the Steam installation in use (the
+ * directory containing `steam.sh` and `ubuntu12_32/` among other
+ * files and directories).
+ *
+ * This directory is analogous to `C:\Program Files\Steam` in a
+ * typical Windows installation of Steam, and is typically of the form
+ * `/home/me/.local/share/Steam`. It is also known as the "Steam root",
+ * and is canonically accessed via the symbolic link `~/.steam/root`
+ * (known as the "Steam root link").
+ *
+ * Under normal circumstances, this is the same directory as
+ * srt_system_info_dup_steam_data_path(). However, it is possible to
+ * construct situations where they are different, for example when a
+ * Steam developer tests a new client build in its own installation
+ * directory in conjunction with an existing data directory from the
+ * production client, or when Steam was first installed using a Debian
+ * package that suffered from
+ * [#916303](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=916303)
+ * (which resulted in `~/.steam/steam` being a plain directory, not a
+ * symbolic link).
+ *
+ * If the Steam installation could not be found, flags will
+ * be set in the result of srt_system_info_get_steam_issues() to indicate
+ * why: at least %SRT_STEAM_ISSUES_CANNOT_FIND, and possibly others.
+ *
+ * Returns: (transfer full) (type filename) (nullable): The absolute path
+ *  to the Steam installation, or %NULL if it could not be determined.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_steam_installation_path (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_steam_cached (self);
+  return g_strdup (srt_steam_get_install_path (self->steam_data));
+}
+
+/**
+ * srt_system_info_dup_steam_data_path:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return the absolute path to the Steam data directory in use (the
+ * directory containing `appcache/`, `userdata/` and the default
+ * `steamapps/` or `SteamApps/` installation path for games, among other
+ * files and directories).
+ *
+ * This directory is analogous to `C:\Program Files\Steam` in a
+ * typical Windows installation of Steam, and is typically of the form
+ * `/home/me/.local/share/Steam`. It is canonically accessed via the
+ * symbolic link `~/.steam/steam` (known as the "Steam data link").
+ *
+ * Under normal circumstances, this is the same directory as
+ * srt_system_info_dup_steam_installation_path(). However, it is possible
+ * to construct situations where they are different, for example when a
+ * Steam developer tests a new client build in its own installation
+ * directory in conjunction with an existing data directory from the
+ * production client, or when Steam was first installed using a Debian
+ * package that suffered from
+ * [#916303](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=916303)
+ * (which resulted in `~/.steam/steam` being a plain directory, not a
+ * symbolic link).
+ *
+ * If the Steam data could not be found, flags will
+ * be set in the result of srt_system_info_get_steam_issues() to indicate
+ * why: at least %SRT_STEAM_ISSUES_CANNOT_FIND_DATA, and possibly others.
+ *
+ * Returns: (transfer full) (type filename) (nullable): The absolute path
+ *  to the Steam installation, or %NULL if it could not be determined.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_steam_data_path (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_steam_cached (self);
+  return g_strdup (srt_steam_get_data_path (self->steam_data));
+}
+
+/**
+ * srt_system_info_dup_steam_bin32_path:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return the absolute path to the Steam `ubuntu12_32` directory in use
+ * (the directory containing `steam-runtime/` among other files and
+ * directories).
+ *
+ * Under normal circumstances, this is a `ubuntu12_32` direct subdirectory
+ * under the srt_system_info_dup_steam_installation_path().
+ * Typically of the form `/home/me/.local/share/Steam/ubuntu12_32`.
+ * It is canonically accessed via the symbolic link `~/.steam/bin32`.
+ *
+ * Returns: (transfer full) (type filename) (nullable): The absolute path
+ *  to the Steam `ubuntu12_32` directory, or %NULL if it could not be
+ *  determined. Free with g_free().
+ */
+gchar *
+srt_system_info_dup_steam_bin32_path (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_steam_cached (self);
+  return g_strdup (srt_steam_get_bin32_path (self->steam_data));
+}
+
+static void
+ensure_os_cached (SrtSystemInfo *self)
+{
+  if (self->os_info == NULL
+      && self->from_report == NULL)
+    {
+      if (self->sysroot != NULL)
+        {
+          self->os_info = _srt_os_info_new_from_sysroot (self->sysroot);
+        }
+      else
+        {
+          g_autofree gchar *message = NULL;
+
+          message = g_strdup_printf ("Unable to open sysroot");
+          self->os_info = _srt_os_info_new (NULL, message, NULL, NULL);
+        }
+    }
+}
+
+/**
+ * srt_system_info_check_os:
+ * @self: The #SrtSystemInfo object
+ *
+ * Gather and return information about the current operating system.
+ *
+ * Returns: (transfer full): An #SrtOsInfo object.
+ *  Free with g_object_unref().
+ */
+SrtOsInfo *
+srt_system_info_check_os (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  return g_object_ref (self->os_info);
+}
+
+/**
+ * srt_system_info_dup_os_build_id:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return a machine-readable identifier for the system image used as the
+ * origin for a distribution, for example `0.20190925.0`. If called
+ * from inside a Steam Runtime container, return the Steam Runtime build
+ * ID, which currently looks like `0.20190925.0`.
+ *
+ * In operating systems that do not use image-based installation, such
+ * as Debian, this will be %NULL.
+ *
+ * This is the `BUILD_ID` from os-release(5).
+ *
+ * Returns: (transfer full) (type utf8): The build ID, or %NULL if not known.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_os_build_id (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  return g_strdup (srt_os_info_get_build_id (self->os_info));
+}
+
+/**
+ * srt_system_info_dup_os_id:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return a lower-case machine-readable operating system identifier,
+ * for example `debian` or `arch`. If called from inside a Steam Runtime
+ * container, return `steamrt`.
+ *
+ * This is the `ID` in os-release(5). If os-release(5) is not available,
+ * future versions of this library might derive a similar ID from
+ * lsb_release(1).
+ *
+ * Returns: (transfer full) (type utf8): The OS ID, or %NULL if not known.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_os_id (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  return g_strdup (srt_os_info_get_id (self->os_info));
+}
+
+/**
+ * srt_system_info_dup_os_id_like:
+ * @self: The #SrtSystemInfo object
+ * @include_self: If %TRUE, include srt_system_info_dup_os_id() in the
+ *  returned array (if known)
+ *
+ * Return an array of lower-case machine-readable operating system
+ * identifiers similar to srt_system_info_dup_os_id() describing OSs
+ * that this one resembles or is derived from.
+ *
+ * For example, the Steam Runtime 1 'scout' is derived from Ubuntu,
+ * which is itself derived from Debian, so srt_system_info_dup_os_id_like()
+ * would return `{ "debian", "ubuntu", NULL }` if @include_self is false,
+ * `{ "steamrt", "debian", "ubuntu", NULL }` otherwise.
+ *
+ * This is the `ID_LIKE` field from os-release(5), possibly combined
+ * with the `ID` field.
+ *
+ * Returns: (array zero-terminated=1) (transfer full) (element-type utf8) (nullable): An
+ *  array of OS IDs, or %NULL if nothing is known.
+ *  Free with g_strfreev().
+ */
+gchar **
+srt_system_info_dup_os_id_like (SrtSystemInfo *self,
+                                gboolean include_self)
+{
+  GPtrArray *builder;
+  const char *id;
+  const char * const *id_like;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  builder = g_ptr_array_new_with_free_func (g_free);
+  id = srt_os_info_get_id (self->os_info);
+  id_like = srt_os_info_get_id_like (self->os_info);
+
+  if (id != NULL && include_self)
+    g_ptr_array_add (builder, g_strdup (id));
+
+  if (id_like != NULL)
+    {
+      gsize i;
+
+      for (i = 0; id_like[i] != NULL; i++)
+        g_ptr_array_add (builder, g_strdup (id_like[i]));
+    }
+
+  if (builder->len > 0)
+    {
+      g_ptr_array_add (builder, NULL);
+      return (gchar **) g_ptr_array_free (builder, FALSE);
+    }
+  else
+    {
+      g_ptr_array_free (builder, TRUE);
+      return NULL;
+    }
+}
+
+/**
+ * srt_system_info_dup_os_name:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return a human-readable identifier for the operating system without
+ * its version, for example `Debian GNU/Linux` or `Arch Linux`.
+ *
+ * This is the `NAME` in os-release(5). If os-release(5) is not
+ * available, future versions of this library might derive a similar
+ * name from lsb_release(1).
+ *
+ * Returns: (transfer full) (type utf8): The name, or %NULL if not known.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_os_name (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  return g_strdup (srt_os_info_get_name (self->os_info));
+}
+
+/**
+ * srt_system_info_dup_os_pretty_name:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return a human-readable identifier for the operating system,
+ * including its version if any, for example `Debian GNU/Linux 10 (buster)`
+ * or `Arch Linux`.
+ *
+ * If the OS uses rolling releases, this will probably be the same as
+ * or similar to srt_system_info_dup_os_name().
+ *
+ * This is the `PRETTY_NAME` in os-release(5). If os-release(5) is not
+ * available, future versions of this library might derive a similar
+ * name from lsb_release(1).
+ *
+ * Returns: (transfer full) (type utf8): The name, or %NULL if not known.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_os_pretty_name (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  return g_strdup (srt_os_info_get_pretty_name (self->os_info));
+}
+
+/**
+ * srt_system_info_dup_os_variant:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return a human-readable identifier for the operating system variant,
+ * for example `Workstation Edition`, `Server Edition` or
+ * `Raspberry Pi Edition`. In operating systems that do not have
+ * formal variants this will usually be %NULL.
+ *
+ * This is the `VARIANT` in os-release(5).
+ *
+ * Returns: (transfer full) (type utf8): The name, or %NULL if not known.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_os_variant (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  return g_strdup (srt_os_info_get_variant (self->os_info));
+}
+
+/**
+ * srt_system_info_dup_os_variant_id:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return a lower-case machine-readable identifier for the operating system
+ * variant in a form suitable for use in filenames, for example
+ * `workstation`, `server` or `rpi`. In operating systems that do not
+ * have formal variants this will usually be %NULL.
+ *
+ * This is the `VARIANT_ID` in os-release(5).
+ *
+ * Returns: (transfer full) (type utf8): The variant ID, or %NULL if not known.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_os_variant_id (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  return g_strdup (srt_os_info_get_variant_id (self->os_info));
+}
+
+/**
+ * srt_system_info_dup_os_version_codename:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return a lower-case machine-readable identifier for the operating
+ * system version codename, for example `buster` for Debian 10 "buster".
+ * In operating systems that do not use codenames in machine-readable
+ * contexts, this will usually be %NULL.
+ *
+ * This is the `VERSION_CODENAME` in os-release(5). If os-release(5) is not
+ * available, future versions of this library might derive a similar
+ * codename from lsb_release(1).
+ *
+ * Returns: (transfer full) (type utf8): The codename, or %NULL if not known.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_os_version_codename (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  return g_strdup (srt_os_info_get_version_codename (self->os_info));
+}
+
+/**
+ * srt_system_info_dup_os_version_id:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return a machine-readable identifier for the operating system version,
+ * for example `10` for Debian 10 "buster". In operating systems that
+ * only have rolling releases, such as Arch Linux, or in OS branches
+ * that behave like rolling releases, such as Debian unstable, this
+ * will usually be %NULL.
+ *
+ * This is the `VERSION_ID` in os-release(5). If os-release(5) is not
+ * available, future versions of this library might derive a similar
+ * identifier from lsb_release(1).
+ *
+ * Returns: (transfer full) (type utf8): The ID, or %NULL if not known.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_os_version_id (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_os_cached (self);
+  return g_strdup (srt_os_info_get_version_id (self->os_info));
+}
+
+/**
+ * srt_system_info_set_expected_runtime_version:
+ * @self: The #SrtSystemInfo object
+ * @version: (nullable): The expected version number, such as `0.20190711.3`,
+ *  or %NULL if there is no particular expectation
+ *
+ * Set the expected version number of the Steam Runtime. Invalidate any
+ * cached information about the Steam Runtime if it differs from the
+ * previous expectation.
+ */
+void
+srt_system_info_set_expected_runtime_version (SrtSystemInfo *self,
+                                              const char *version)
+{
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+
+  if (self->from_report != NULL)
+    {
+      g_clear_pointer (&self->runtime.expected_version, g_free);
+      self->runtime.expected_version = g_strdup (version);
+      if (self->runtime.expected_version == NULL
+          || self->runtime.version == NULL
+          || g_strcmp0 (self->runtime.expected_version, self->runtime.version) == 0)
+        self->runtime.issues &= ~SRT_RUNTIME_ISSUES_UNEXPECTED_VERSION;
+      else
+        self->runtime.issues |= SRT_RUNTIME_ISSUES_UNEXPECTED_VERSION;
+    }
+  else if (g_strcmp0 (version, self->runtime.expected_version) != 0)
+    {
+      forget_runtime (self);
+      g_clear_pointer (&self->runtime.expected_version, g_free);
+      self->runtime.expected_version = g_strdup (version);
+    }
+}
+
+/**
+ * srt_system_info_dup_expected_runtime_version:
+ * @self: The #SrtSystemInfo object
+ *
+ * Returns: (transfer full) (type utf8): The expected version number of
+ *  the Steam Runtime, or %NULL if no particular version is expected.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_expected_runtime_version (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  return g_strdup (self->runtime.expected_version);
+}
+
+static void
+ensure_runtime_cached (SrtSystemInfo *self)
+{
+  if (self->from_report != NULL)
+    return;
+
+  ensure_os_cached (self);
+  ensure_steam_cached (self);
+
+  if (!_srt_runtime_is_populated (&self->runtime))
+    {
+      const char * const *envp = _srt_subprocess_runner_get_environ (self->runner);
+
+      _srt_runtime_check_execution_environment (&self->runtime, envp,
+                                                self->os_info,
+                                                srt_steam_get_bin32_path (self->steam_data));
+    }
+}
+
+/**
+ * srt_system_info_get_runtime_issues:
+ * @self: The #SrtSystemInfo object
+ *
+ * Detect and return any problems encountered with the Steam Runtime.
+ *
+ * Returns: Any problems detected with the Steam Runtime,
+ *  or %SRT_RUNTIME_ISSUES_NONE if no problems were detected
+ */
+SrtRuntimeIssues
+srt_system_info_get_runtime_issues (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self),
+                        SRT_RUNTIME_ISSUES_UNKNOWN);
+
+  ensure_runtime_cached (self);
+  return self->runtime.issues;
+}
+
+/**
+ * srt_system_info_dup_runtime_path:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return the absolute path to the Steam Runtime in use.
+ *
+ * For the `LD_LIBRARY_PATH`-based Steam Runtime, this is the directory
+ * containing `run.sh`, `version.txt` and similar files.
+ *
+ * If running in a Steam Runtime container or chroot, this function
+ * returns `/` to indicate that the entire container is the Steam Runtime.
+ *
+ * This will typically be below
+ * srt_system_info_dup_steam_installation_path(), unless overridden.
+ *
+ * If the Steam Runtime has been disabled or could not be found, at
+ * least one flag will be set in the result of
+ * srt_system_info_get_runtime_issues() to indicate why.
+ *
+ * Returns: (transfer full) (type filename) (nullable): The absolute path
+ *  to the Steam Runtime, or %NULL if it could not be determined.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_runtime_path (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_runtime_cached (self);
+  return g_strdup (self->runtime.path);
+}
+
+/**
+ * srt_system_info_dup_runtime_version:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return the version number of the Steam Runtime
+ * in use, for example `0.20190711.3`, or %NULL if it could not be
+ * determined. This could either be the `LD_LIBRARY_PATH`-based Steam
+ * Runtime, or a Steam Runtime container or chroot.
+ *
+ * If the Steam Runtime has been disabled or could not be found, or its
+ * version number could not be read, then at least one flag will be set
+ * in the result of srt_system_info_get_runtime_issues() to indicate why.
+ *
+ * Returns: (transfer full) (type utf8) (nullable): The version number of
+ *  the Steam Runtime, or %NULL if it could not be determined.
+ *  Free with g_free().
+ */
+gchar *
+srt_system_info_dup_runtime_version (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_runtime_cached (self);
+  return g_strdup (self->runtime.version);
+}
+
+/**
+ * srt_system_info_set_helpers_path:
+ * @self: The #SrtSystemInfo
+ * @path: (nullable) (type filename) (transfer none): An absolute path
+ *
+ * Look for helper executables used to inspect the system state in @path,
+ * instead of the normal installed location.
+ *
+ * If @path is %NULL, go back to using the installed location.
+ *
+ * This method is not valid to call on a #SrtSystemInfo that was
+ * constructed with srt_system_info_new_from_json().
+ */
+void
+srt_system_info_set_helpers_path (SrtSystemInfo *self,
+                                  const gchar *path)
+{
+  g_autoptr(SrtSubprocessRunner) runner = NULL;
+
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+  g_return_if_fail (self->from_report == NULL);
+
+  runner = _srt_subprocess_runner_new_swap_helpers_path (self->runner, path);
+  _srt_system_info_set_subprocess_runner (self, runner);
+}
+
+static inline GQuark
+_srt_system_info_get_primary_multiarch_quark (SrtSystemInfo *self)
+{
+  return g_array_index (self->multiarch_tuples, GQuark, 0);
+}
+
+/**
+ * srt_system_info_get_primary_multiarch_tuple:
+ * @self: The #SrtSystemInfo
+ *
+ * Return the multiarch tuple set by
+ * srt_system_info_set_primary_multiarch_tuple() if any,
+ * or the multiarch tuple corresponding to the steam-runtime-tools
+ * library itself.
+ *
+ * Returns: (type filename) (transfer none): a Debian-style multiarch
+ *  tuple such as %SRT_ABI_I386 or %SRT_ABI_X86_64
+ */
+const char *
+srt_system_info_get_primary_multiarch_tuple (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  return g_quark_to_string (_srt_system_info_get_primary_multiarch_quark (self));
+}
+
+/**
+ * srt_system_info_set_primary_multiarch_tuple:
+ * @self: The #SrtSystemInfo
+ * @tuple: (nullable) (type filename) (transfer none): A Debian-style
+ *  multiarch tuple such as %SRT_ABI_X86_64
+ *
+ * Set the primary architecture that is used to find helper
+ * executables where the architecture does not matter, such as
+ * checking locales.
+ * The primary architecture is the first element from the list of
+ * ABIs, editable by `srt_system_info_set_multiarch_tuples()`.
+ * If the list was not %NULL, the previous primary multiarch
+ * tuple will be demoted to be foreign and the new primary
+ * multiarch tuple will be moved/added to the top of the list.
+ *
+ * If @tuple is %NULL, revert to the default behaviour, which
+ * is that the primary architecture is the architecture of the
+ * steam-runtime-tools library.
+ *
+ * This method is not valid to call on a #SrtSystemInfo that was
+ * constructed with srt_system_info_new_from_json().
+ */
+void
+srt_system_info_set_primary_multiarch_tuple (SrtSystemInfo *self,
+                                             const gchar *tuple)
+{
+  GQuark primary;
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+  g_return_if_fail (self->from_report == NULL);
+
+  forget_drivers (self);
+  forget_locales (self);
+
+  if (tuple)
+    {
+      primary = g_quark_from_string (tuple);
+    }
+  else
+    {
+#ifndef _SRT_MULTIARCH
+      primary = g_quark_from_static_string ("UNKNOWN");
+#else
+      primary = g_quark_from_static_string (_SRT_MULTIARCH);
+#endif
+    }
+
+  for (gsize i = 0; i < self->multiarch_tuples->len; i++)
+    {
+      GQuark stored_tuple = g_array_index (self->multiarch_tuples, GQuark, i);
+      if (stored_tuple == primary)
+        {
+          g_array_remove_index (self->multiarch_tuples, i);
+          break;
+        }
+    }
+
+  g_array_prepend_val (self->multiarch_tuples, primary);
+}
+
+/*
+ * _srt_system_info_get_multiarch_quarks:
+ * @self: The #SrtSystemInfo
+ * @n: (out) (optional): Number of quarks in the array
+ *
+ * Returns: (transfer none): An array of @n quarks representing
+ *  Debian-style multiarch tuples such as %SRT_ABI_X86_64,
+ *  followed by a zero-terminator which is not included in @n.
+ *  The first is the primary architecture.
+ */
+const GQuark *
+_srt_system_info_get_multiarch_quarks (SrtSystemInfo *self,
+                                       gsize *n)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (n != NULL)
+    *n = self->multiarch_tuples->len;
+
+  return (const GQuark *) self->multiarch_tuples->data;
+}
+
+/**
+ * srt_system_info_set_multiarch_tuples:
+ * @self: The #SrtSystemInfo
+ * @tuples: (nullable) (array zero-terminated=1) (element-type filename) (transfer none):
+ *  An array of Debian-style multiarch tuples such as %SRT_ABI_X86_64 terminated by a
+ *  %NULL entry, or %NULL
+ *
+ * Set the list of ABIs that will be checked by default in contexts
+ * where multiple ABIs are inspected at the same time, such as
+ * `srt_system_info_list_dri_drivers()`. The first one listed is
+ * assumed to be the primary architecture, and is used to find helper
+ * executables where the architecture does not matter, such as
+ * checking locales. The second and subsequent (if any) are assumed
+ * to be "foreign" architectures.
+ *
+ * If @tuples is %NULL or empty, revert to the default behaviour,
+ * which is that the primary architecture is the architecture of the
+ * steam-runtime-tools library, and there are no foreign architectures.
+ *
+ * For example, to check the x86_64 and i386 ABIs on an x86 platform
+ * or the native ABI otherwise, you might use code like this:
+ *
+ * |[
+ * #ifdef __x86_64__
+ * const char
+ * const tuples[] = { SRT_ABI_X86_64, SRT_ABI_I386, NULL };
+ * #elif defined(__i386__)
+ * const char
+ * const tuples[] = { SRT_ABI_I386, SRT_ABI_X86_64, NULL };
+ * #else
+ * const char
+ * const tuples[] = { NULL };
+ * #endif
+ *
+ * srt_system_info_set_multiarch_tuples (info, tuples);
+ * ]|
+ *
+ * This method is not valid to call on a #SrtSystemInfo that was
+ * constructed with srt_system_info_new_from_json().
+ */
+void
+srt_system_info_set_multiarch_tuples (SrtSystemInfo *self,
+                                      const gchar * const *tuples)
+{
+  g_autoptr(GArray) arr = g_array_new (TRUE, TRUE, sizeof (GQuark));
+
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+  g_return_if_fail (self->from_report == NULL);
+
+  if (tuples == NULL || *tuples == NULL)
+    {
+      GQuark primary;
+#ifndef _SRT_MULTIARCH
+      primary = g_quark_from_static_string ("UNKNOWN");
+#else
+      primary = g_quark_from_static_string (_SRT_MULTIARCH);
+#endif
+
+      g_array_prepend_val (arr, primary);
+    }
+
+  for (const gchar * const *tuples_iter = tuples;
+       tuples_iter != NULL && *tuples_iter != NULL;
+       tuples_iter++)
+    {
+      GQuark tuple = g_quark_from_string (*tuples_iter);
+      g_array_append_val (arr, tuple);
+    }
+
+  _srt_system_info_set_multiarch_quarks (self,
+                                         (const GQuark *) arr->data,
+                                         arr->len);
+}
+
+/*
+ * _srt_system_info_set_multiarch_quarks:
+ * @self: The #SrtSystemInfo
+ * @tuples: (nullable) (array length=n):
+ *  An array of Debian-style multiarch tuples such as %SRT_ABI_X86_64
+ *  represented as quarks. The first is the primary architecture.
+ * @n: Number of architectures to support
+ */
+void
+_srt_system_info_set_multiarch_quarks (SrtSystemInfo *self,
+                                       const GQuark *tuples,
+                                       gsize n)
+{
+  gsize i;
+
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+  g_return_if_fail (self->from_report == NULL);
+  g_return_if_fail (n >= 1);
+  g_return_if_fail (n <= G_MAXUINT);
+
+  for (i = 0; i < n; i++)
+    g_return_if_fail (tuples[i] != 0);
+
+  forget_drivers (self);
+  forget_locales (self);
+
+  g_array_set_size (self->multiarch_tuples, 0);
+  g_array_append_vals (self->multiarch_tuples, tuples, n);
+}
+
+/**
+ * srt_system_info_dup_multiarch_tuples:
+ * @self: the system information object
+ *
+ * Return the ABIs for which this object will carry out checks,
+ * in the form of multiarch tuples as printed by
+ * `gcc -print-multiarch` in the Steam Runtime (in practice
+ * this means %SRT_ABI_I386 or %SRT_ABI_X86_64).
+ *
+ * The ABIs that are to be checked can be set with
+ * srt_system_info_set_multiarch_tuples().
+ *
+ * Returns: (array zero-terminated=1) (transfer full): The
+ * ABIs used for various checks. Free with g_strfreev().
+ */
+GStrv srt_system_info_dup_multiarch_tuples (SrtSystemInfo *self)
+{
+  GStrv ret;
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ret = g_new0 (gchar *, self->multiarch_tuples->len + 1);
+
+  for (gsize i = 0; i < self->multiarch_tuples->len; i++)
+    {
+      GQuark tuple = g_array_index (self->multiarch_tuples, GQuark, i);
+      ret[i] = g_strdup (g_quark_to_string (tuple));
+    }
+
+  ret[self->multiarch_tuples->len] = NULL;
+  return ret;
+}
+
+/**
+ * srt_system_info_get_locale_issues:
+ * @self: The #SrtSystemInfo
+ *
+ * Check that the locale specified by environment variables, and some
+ * other commonly-assumed locales, are available and suitable.
+ *
+ * Returns: A summary of issues found, or %SRT_LOCALE_ISSUES_NONE
+ *  if no problems are detected
+ */
+SrtLocaleIssues
+srt_system_info_get_locale_issues (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), SRT_LOCALE_ISSUES_UNKNOWN);
+
+  if (!self->locales.have_issues && self->from_report == NULL)
+    {
+      SrtLocale *locale = NULL;
+
+      self->locales.issues = SRT_LOCALE_ISSUES_NONE;
+
+      locale = srt_system_info_check_locale (self, "", NULL);
+
+      if (locale == NULL)
+        self->locales.issues |= SRT_LOCALE_ISSUES_DEFAULT_MISSING;
+      else if (!srt_locale_is_utf8 (locale))
+        self->locales.issues |= SRT_LOCALE_ISSUES_DEFAULT_NOT_UTF8;
+
+      g_clear_object (&locale);
+
+      locale = srt_system_info_check_locale (self, "C.UTF-8", NULL);
+
+      if (locale == NULL || !srt_locale_is_utf8 (locale))
+        self->locales.issues |= SRT_LOCALE_ISSUES_C_UTF8_MISSING;
+
+      g_clear_object (&locale);
+
+      locale = srt_system_info_check_locale (self, "en_US.UTF-8", NULL);
+
+      if (locale == NULL || !srt_locale_is_utf8 (locale))
+        self->locales.issues |= SRT_LOCALE_ISSUES_EN_US_UTF8_MISSING;
+
+      g_clear_object (&locale);
+
+      self->locales.have_issues = TRUE;
+
+      /* We currently only look for I18NDIR data in /usr/share/i18n (the
+       * glibc default path), so these checks only look there too.
+       *
+       * If we discover that some distros use a different default, then
+       * we should enhance this check to iterate through a search path.
+       *
+       * Please keep this in sync with pv-locale-gen. */
+
+      if (!g_file_test ("/usr/share/i18n/SUPPORTED", G_FILE_TEST_IS_REGULAR))
+        self->locales.issues |= SRT_LOCALE_ISSUES_I18N_SUPPORTED_MISSING;
+
+      if (!g_file_test ("/usr/share/i18n/locales/en_US", G_FILE_TEST_IS_REGULAR))
+        self->locales.issues |= SRT_LOCALE_ISSUES_I18N_LOCALES_EN_US_MISSING;
+    }
+
+  return self->locales.issues;
+}
+
+/**
+ * srt_system_info_check_locale:
+ * @self: The #SrtSystemInfo
+ * @requested_name: The locale to request, for example `en_US.UTF-8`.
+ *  This may be the empty string or %NULL to request the empty string
+ *  as a locale, which uses environment variables like `$LC_ALL`.
+ * @error: Used to return an error on failure
+ *
+ * Check whether the given locale can be set successfully.
+ *
+ * Returns: (transfer full) (nullable): A #SrtLocale object, or %NULL
+ *  if the requested locale could not be set.
+ *  Free with g_object_unref() if non-%NULL.
+ */
+SrtLocale *
+srt_system_info_check_locale (SrtSystemInfo *self,
+                              const char *requested_name,
+                              GError **error)
+{
+  GQuark quark = 0;
+  gpointer value = NULL;
+  MaybeLocale *maybe;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  /* Our test for locales loads them directly and is not sysroot-aware,
+   * so we can't do this check in the presence of a sysroot. */
+  if (self->from_report == NULL
+      && self->sysroot != NULL
+      && !_srt_sysroot_is_direct (self->sysroot))
+    {
+      g_set_error (error, SRT_LOCALE_ERROR, SRT_LOCALE_ERROR_UNKNOWN,
+                   "Cannot check locale functionality for a sysroot");
+      return NULL;
+    }
+
+  if (requested_name == NULL)
+    quark = g_quark_from_string ("");
+  else
+    quark = g_quark_from_string (requested_name);
+
+  if (self->locales.cached_locales == NULL)
+    self->locales.cached_locales = g_hash_table_new_full (NULL, NULL, NULL,
+                                                          maybe_locale_free);
+
+  if (g_hash_table_lookup_extended (self->locales.cached_locales,
+                                    GUINT_TO_POINTER (quark),
+                                    NULL,
+                                    &value))
+    {
+      maybe = value;
+    }
+  else if (self->from_report != NULL)
+    {
+      g_set_error (error, SRT_LOCALE_ERROR, SRT_LOCALE_ERROR_UNKNOWN,
+                   "Information about the requested locale is missing");
+      return NULL;
+    }
+  else
+    {
+      GError *local_error = NULL;
+      SrtLocale *locale = NULL;
+
+      locale = _srt_check_locale (self->runner,
+                                  _srt_system_info_get_primary_multiarch_quark (self),
+                                  g_quark_to_string (quark),
+                                  &local_error);
+
+      if (locale != NULL)
+        {
+          maybe = maybe_locale_new_positive (locale);
+          g_object_unref (locale);
+        }
+      else
+        {
+          maybe = maybe_locale_new_negative (local_error);
+        }
+
+      g_hash_table_replace (self->locales.cached_locales,
+                            GUINT_TO_POINTER (quark),
+                            maybe);
+      g_clear_error (&local_error);
+    }
+
+  if (maybe->locale != NULL)
+    {
+      g_assert (SRT_IS_LOCALE (maybe->locale));
+      g_assert (maybe->error == NULL);
+      return g_object_ref (maybe->locale);
+    }
+  else
+    {
+      g_assert (maybe->error != NULL);
+      g_set_error_literal (error,
+                           maybe->error->domain,
+                           maybe->error->code,
+                           maybe->error->message);
+      return NULL;
+    }
+}
+
+/*
+ * _srt_system_info_set_check_flags:
+ * @self: The #SrtSystemInfo
+ * @flags: Flags altering behaviour
+ *
+ * Alter the behaviour of the #SrtSystemInfo to avoid expensive checks.
+ */
+void
+_srt_system_info_set_check_flags (SrtSystemInfo *self,
+                                  SrtCheckFlags flags)
+{
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+  self->check_flags = flags;
+
+  /* SKIP_EXTRAS affects e.g. VDPAU modules.
+   * SKIP_SLOW_CHECKS affects Vulkan and EGL modules */
+  forget_graphics_modules (self);
+  forget_drivers (self);
+}
+
+/**
+ * srt_system_info_set_test_flags:
+ * @self: The #SrtSystemInfo
+ * @flags: Flags altering behaviour, for use in automated tests
+ *
+ * Alter the behaviour of the #SrtSystemInfo to make automated tests
+ * quicker or give better test coverage.
+ *
+ * This function should not be called in production code.
+ */
+void
+srt_system_info_set_test_flags (SrtSystemInfo *self,
+                                SrtTestFlags flags)
+{
+  g_autoptr(SrtSubprocessRunner) runner = NULL;
+
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+
+  runner = _srt_subprocess_runner_new_swap_test_flags (self->runner, flags);
+  _srt_system_info_set_subprocess_runner (self, runner);
+}
+
+static GArray *
+tuples_to_quarks (const char * const *multiarch_tuples)
+{
+  g_autoptr(GArray) quarks = g_array_new (TRUE, TRUE, sizeof (GQuark));
+  gsize i;
+
+  for (i = 0; multiarch_tuples[i] != NULL; i++)
+    {
+      GQuark q = g_quark_from_string (multiarch_tuples[i]);
+
+      g_array_append_val (quarks, q);
+    }
+
+  return g_steal_pointer (&quarks);
+}
+
+/**
+ * srt_system_info_list_egl_icds:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuples: (nullable) (array zero-terminated=1) (element-type utf8):
+ *  Force the usage of the provided multiarch tuples like %SRT_ABI_I386,
+ *  representing ABIs. If %NULL, the multiarch list stored in @self will
+ *  be used instead.
+ *
+ * List the available EGL ICDs, using the same search paths as GLVND.
+ *
+ * This function is not architecture-specific and may return a mixture
+ * of ICDs for more than one architecture or ABI, because the way the
+ * GLVND EGL loader works is to read a single search path for metadata
+ * describing ICDs, then filter out the ones that are for the wrong
+ * architecture at load time.
+ *
+ * Some of the entries in the result might describe a bare SONAME in the
+ * standard library search path, which might exist for any or all
+ * architectures simultaneously (this is the most common approach for EGL).
+ * Other entries might describe the relative or absolute path to a
+ * specific library, which will only be usable for the architecture for
+ * which it was compiled.
+ *
+ * Duplicated EGL ICDs are searched by their absolute path, obtained
+ * using "inspect-library" in @multiarch_tuples, or
+ * `srt_system_info_dup_multiarch_tuples()` if %NULL.
+ * Also, if running in a Flatpak environment, the multiarch tuples are used
+ * to march the search paths used by the freedesktop.org runtime's patched
+ * GLVND.
+ *
+ * Returns: (transfer full) (element-type SrtEglIcd): A list of
+ *  opaque #SrtEglIcd objects. Free with
+ *  `g_list_free_full(icds, srt_egl_icd_unref)`.
+ */
+GList *
+srt_system_info_list_egl_icds (SrtSystemInfo *self,
+                               const char * const *multiarch_tuples)
+{
+  GList *ret = NULL;
+  const GList *iter;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (!self->icds.have_egl && self->from_report == NULL && self->sysroot != NULL)
+    {
+      g_autoptr(GArray) tuples_as_quarks = NULL;
+      const GArray *quarks;
+
+      g_assert (self->icds.egl == NULL);
+
+      if (multiarch_tuples != NULL)
+        {
+          tuples_as_quarks = tuples_to_quarks (multiarch_tuples);
+          quarks = tuples_as_quarks;
+        }
+      else
+        {
+          quarks = self->multiarch_tuples;
+        }
+
+      self->icds.egl = _srt_load_egl_things (SRT_TYPE_EGL_ICD,
+                                             self->sysroot,
+                                             self->runner,
+                                             (const GQuark *) quarks->data,
+                                             quarks->len,
+                                             self->check_flags);
+      self->icds.have_egl = TRUE;
+    }
+
+  for (iter = self->icds.egl; iter != NULL; iter = iter->next)
+    ret = g_list_prepend (ret, g_object_ref (iter->data));
+
+  return g_list_reverse (ret);
+}
+
+/**
+ * srt_system_info_list_egl_external_platforms:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuples: (nullable) (array zero-terminated=1) (element-type utf8):
+ *  Force the usage of the provided multiarch tuples like %SRT_ABI_I386,
+ *  representing ABIs. If %NULL, the multiarch list stored in @self will
+ *  be used instead.
+ *
+ * List the available EGL external platform modules, using the same
+ * search paths as the NVIDIA proprietary driver `libEGL_nvidia.so.0`.
+ *
+ * This function is not architecture-specific and may return a mixture
+ * of modules for more than one architecture or ABI, because the way this
+ * loader appears to work is to read a single search path for metadata
+ * describing modules, then filter out the ones that are for the wrong
+ * architecture at load time.
+ *
+ * Some of the entries in the result might describe a bare SONAME in the
+ * standard library search path, which might exist for any or all
+ * architectures simultaneously (this is the most common approach for EGL).
+ * Other entries might describe the relative or absolute path to a
+ * specific library, which will only be usable for the architecture for
+ * which it was compiled.
+ *
+ * Duplicated modules are searched by their absolute path, obtained
+ * using "inspect-library" in @multiarch_tuples, or
+ * `srt_system_info_dup_multiarch_tuples()` if %NULL.
+ *
+ * Returns: (transfer full) (element-type SrtEglExternalPlatform): A list of
+ *  opaque #SrtEglExternalPlatform objects. Free with
+ *  `g_list_free_full(list, srt_egl_icd_unref)`.
+ */
+GList *
+srt_system_info_list_egl_external_platforms (SrtSystemInfo *self,
+                                             const char * const *multiarch_tuples)
+{
+  GList *ret = NULL;
+  const GList *iter;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (!self->egl_ext_platform.have && self->from_report == NULL && self->sysroot != NULL)
+    {
+      g_autoptr(GArray) tuples_as_quarks = NULL;
+      const GArray *quarks;
+
+      g_assert (self->egl_ext_platform.list == NULL);
+
+      if (multiarch_tuples != NULL)
+        {
+          tuples_as_quarks = tuples_to_quarks (multiarch_tuples);
+          quarks = tuples_as_quarks;
+        }
+      else
+        {
+          quarks = self->multiarch_tuples;
+        }
+
+      self->egl_ext_platform.list = _srt_load_egl_things (SRT_TYPE_EGL_EXTERNAL_PLATFORM,
+                                                          self->sysroot,
+                                                          self->runner,
+                                                          (const GQuark *) quarks->data,
+                                                          quarks->len,
+                                                          self->check_flags);
+      self->egl_ext_platform.have = TRUE;
+    }
+
+  for (iter = self->egl_ext_platform.list; iter != NULL; iter = iter->next)
+    ret = g_list_prepend (ret, g_object_ref (iter->data));
+
+  return g_list_reverse (ret);
+}
+
+/**
+ * srt_system_info_list_vulkan_icds:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuples: (nullable) (array zero-terminated=1) (element-type utf8):
+ *  Force the usage of the provided multiarch tuples like %SRT_ABI_I386,
+ *  representing ABIs. If %NULL, the multiarch list stored in @self will
+ *  be used instead.
+ *
+ * List the available Vulkan ICDs, using the same search paths as the
+ * reference vulkan-loader.
+ *
+ * This function is not architecture-specific and may return a mixture
+ * of ICDs for more than one architecture or ABI, because the way the
+ * reference vulkan-loader works is to read a single search path for
+ * metadata describing ICDs, then filter out the ones that are for the
+ * wrong architecture at load time.
+ *
+ * Some of the entries in the result might describe a bare SONAME in the
+ * standard library search path, which might exist for any or all
+ * architectures simultaneously (for example, this approach is used for
+ * the NVIDIA binary driver on Debian systems). Other entries might
+ * describe the relative or absolute path to a specific library, which
+ * will only be usable for the architecture for which it was compiled
+ * (for example, this approach is used in Mesa).
+ *
+ * Duplicated Vulkan ICDs are searched by their absolute path, obtained
+ * using "inspect-library" in @multiarch_tuples, or
+ * `srt_system_info_dup_multiarch_tuples()` if %NULL.
+ * Also, if running in a Flatpak environment, the multiarch tuples are used
+ * to march the search paths used by the freedesktop.org runtime's patched
+ * vulkan-loader.
+ *
+ * Returns: (transfer full) (element-type SrtVulkanIcd): A list of
+ *  opaque #SrtVulkanIcd objects. Free with
+ *  `g_list_free_full(icds, srt_vulkan_icd_unref)`.
+ */
+GList *
+srt_system_info_list_vulkan_icds (SrtSystemInfo *self,
+                                  const char * const *multiarch_tuples)
+{
+  GList *ret = NULL;
+  const GList *iter;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (!self->icds.have_vulkan && self->from_report == NULL && self->sysroot != NULL)
+    {
+      g_autoptr(GArray) tuples_as_quarks = NULL;
+      const GArray *quarks;
+
+      g_assert (self->icds.vulkan == NULL);
+
+      if (multiarch_tuples != NULL)
+        {
+          tuples_as_quarks = tuples_to_quarks (multiarch_tuples);
+          quarks = tuples_as_quarks;
+        }
+      else
+        {
+          quarks = self->multiarch_tuples;
+        }
+
+      self->icds.vulkan = _srt_load_vulkan_icds (self->sysroot,
+                                                 self->runner,
+                                                 (const GQuark *) quarks->data,
+                                                 quarks->len,
+                                                 self->check_flags);
+      self->icds.have_vulkan = TRUE;
+    }
+
+  for (iter = self->icds.vulkan; iter != NULL; iter = iter->next)
+    ret = g_list_prepend (ret, g_object_ref (iter->data));
+
+  return g_list_reverse (ret);
+}
+
+/**
+ * srt_system_info_list_explicit_vulkan_layers:
+ * @self: The #SrtSystemInfo object
+ *
+ * List the available explicit Vulkan layers, using the same search paths as
+ * the reference vulkan-loader.
+ *
+ * This function is not architecture-specific and may return a mixture
+ * of layers for more than one architecture or ABI, because the way the
+ * reference vulkan-loader works is to read a single search path for
+ * metadata describing layers, then filter out the ones that are for the
+ * wrong architecture at load time.
+ *
+ * Some of the entries in the result might describe a bare SONAME in the
+ * standard library search path, which might exist for any or all
+ * architectures simultaneously. Other entries might describe the relative
+ * or absolute path to a specific library, which will only be usable for
+ * the architecture for which it was compiled.
+ *
+ * Duplicated Vulkan layers are searched by their absolute path, obtained
+ * using "inspect-library" in the multiarch tuples set using
+ * "srt_system_info_set_multiarch_tuples()".
+ *
+ * Returns: (transfer full) (element-type SrtVulkanLayer): A list of
+ *  opaque #SrtVulkanLayer objects. Free with
+ *  `g_list_free_full(layers, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_explicit_vulkan_layers (SrtSystemInfo *self)
+{
+  GList *ret = NULL;
+  const GList *iter;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (!self->layers.have_vulkan_explicit && self->from_report == NULL && self->sysroot != NULL)
+    {
+      g_assert (self->layers.vulkan_explicit == NULL);
+      self->layers.vulkan_explicit = _srt_load_vulkan_layers_extended (self->sysroot,
+                                                                       self->runner,
+                                                                       (const GQuark *) self->multiarch_tuples->data,
+                                                                       self->multiarch_tuples->len,
+                                                                       TRUE,
+                                                                       self->check_flags);
+      self->layers.have_vulkan_explicit = TRUE;
+    }
+
+  for (iter = self->layers.vulkan_explicit; iter != NULL; iter = iter->next)
+    ret = g_list_prepend (ret, g_object_ref (iter->data));
+
+  return g_list_reverse (ret);
+}
+
+/**
+ * srt_system_info_list_implicit_vulkan_layers:
+ * @self: The #SrtSystemInfo object
+ *
+ * List the available implicit Vulkan layers, using the same search paths as
+ * the reference vulkan-loader.
+ *
+ * This function is not architecture-specific and may return a mixture
+ * of layers for more than one architecture or ABI, because the way the
+ * reference vulkan-loader works is to read a single search path for
+ * metadata describing layers, then filter out the ones that are for the
+ * wrong architecture at load time.
+ *
+ * Some of the entries in the result might describe a bare SONAME in the
+ * standard library search path, which might exist for any or all
+ * architectures simultaneously. Other entries might describe the relative
+ * or absolute path to a specific library, which will only be usable for
+ * the architecture for which it was compiled.
+ *
+ * Duplicated Vulkan layers are searched by their absolute path, obtained
+ * using "inspect-library" in the multiarch tuples set using
+ * "srt_system_info_set_multiarch_tuples()".
+ *
+ * Returns: (transfer full) (element-type SrtVulkanLayer): A list of
+ *  opaque #SrtVulkanLayer objects. Free with
+ *  `g_list_free_full(layers, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_implicit_vulkan_layers (SrtSystemInfo *self)
+{
+  GList *ret = NULL;
+  const GList *iter;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (!self->layers.have_vulkan_implicit && self->from_report == NULL && self->sysroot != NULL)
+    {
+      g_assert (self->layers.vulkan_implicit == NULL);
+      self->layers.vulkan_implicit = _srt_load_vulkan_layers_extended (self->sysroot,
+                                                                       self->runner,
+                                                                       (const GQuark *) self->multiarch_tuples->data,
+                                                                       self->multiarch_tuples->len,
+                                                                       FALSE,
+                                                                       self->check_flags);
+      self->layers.have_vulkan_implicit = TRUE;
+    }
+
+  for (iter = self->layers.vulkan_implicit; iter != NULL; iter = iter->next)
+    ret = g_list_prepend (ret, g_object_ref (iter->data));
+
+  return g_list_reverse (ret);
+}
+
+/* Maybe they should implement a common GInterface or have a common
+ * base class or something, but for now we do this the easy way */
+static gboolean
+graphics_module_is_extra (SrtGraphicsModule which,
+                          gpointer object)
+{
+  switch (which)
+    {
+      case SRT_GRAPHICS_DRI_MODULE:
+        return srt_dri_driver_is_extra (object);
+
+      case SRT_GRAPHICS_GBM_MODULE:
+        return srt_gbm_backend_is_extra (object);
+
+      case SRT_GRAPHICS_VAAPI_MODULE:
+        return srt_va_api_driver_is_extra (object);
+
+      case SRT_GRAPHICS_VDPAU_MODULE:
+        return srt_vdpau_driver_is_extra (object);
+
+      /* We don't have extras for GLX, yet */
+      case SRT_GRAPHICS_GLX_MODULE:
+        return FALSE;
+
+      case NUM_SRT_GRAPHICS_MODULES:
+      default:
+        g_return_val_if_reached (FALSE);
+    }
+}
+
+static GList *
+_srt_system_info_list_graphics_modules (SrtSystemInfo *self,
+                                        const char *multiarch_tuple,
+                                        SrtDriverFlags flags,
+                                        SrtGraphicsModule which)
+{
+  GQuark arch_quark;
+  Abi *abi = NULL;
+  GList *ret = NULL;
+  const GList *iter;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+  g_return_val_if_fail (multiarch_tuple != NULL, NULL);
+  g_return_val_if_fail ((int) which >= 0, NULL);
+  g_return_val_if_fail ((int) which < NUM_SRT_GRAPHICS_MODULES, NULL);
+
+  arch_quark = g_quark_from_string (multiarch_tuple);
+  abi = ensure_abi_unless_immutable (self, arch_quark);
+
+  if (abi == NULL)
+    return NULL;
+
+  if (!abi->graphics_modules[which].available && self->from_report == NULL && self->sysroot != NULL)
+    {
+      abi->graphics_modules[which].modules = _srt_list_graphics_modules (self->sysroot,
+                                                                         self->runner,
+                                                                         self->graphics_provider,
+                                                                         arch_quark,
+                                                                         abi->known_architecture,
+                                                                         self->check_flags,
+                                                                         which);
+      abi->graphics_modules[which].available = TRUE;
+    }
+
+  for (iter = abi->graphics_modules[which].modules;
+       iter != NULL;
+       iter = iter->next)
+    {
+      if ((flags & SRT_DRIVER_FLAGS_INCLUDE_ALL) == 0 &&
+          graphics_module_is_extra (which, iter->data))
+        continue;
+
+      ret = g_list_prepend (ret, g_object_ref (iter->data));
+    }
+
+  return g_list_reverse (ret);
+}
+
+/**
+ * srt_system_info_list_dri_drivers:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: (not nullable) (type filename): A Debian-style multiarch
+ *  tuple such as %SRT_ABI_X86_64
+ * @flags: Filter the list of DRI drivers accordingly to these flags.
+ *  For example, "extra" drivers that are unlikely to be found by
+ *  the Mesa DRI loader will only be included if the
+ *  %SRT_DRIVER_FLAGS_INCLUDE_ALL flag is set.
+ *
+ * List of the available Mesa DRI modules.
+ *
+ * `$LIBGL_DRIVERS_PATH` will be used as the search path, if set.
+ * Otherwise some implementation-dependent paths will be used instead.
+ *
+ * Note that if `$LIBGL_DRIVERS_PATH` is set, all drivers outside that
+ * path will be treated as "extra", and omitted from the list unless
+ * %SRT_DRIVER_FLAGS_INCLUDE_ALL is used.
+ *
+ * Returns: (transfer full) (element-type SrtDriDriver) (nullable): A list of
+ *  opaque #SrtDriDriver objects, or %NULL if nothing was found. Free with
+ *  `g_list_free_full(list, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_dri_drivers (SrtSystemInfo *self,
+                                  const char *multiarch_tuple,
+                                  SrtDriverFlags flags)
+{
+  return _srt_system_info_list_graphics_modules (self, multiarch_tuple, flags,
+                                                 SRT_GRAPHICS_DRI_MODULE);
+}
+
+/**
+ * srt_system_info_list_gbm_backends:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: (not nullable) (type filename): A Debian-style multiarch
+ *  tuple such as %SRT_ABI_X86_64
+ * @flags: Filter the list of GBM backends accordingly to these flags.
+ *  For example, "extra" drivers that are unlikely to be found by
+ *  the Mesa GBM loader will only be included if the
+ *  %SRT_DRIVER_FLAGS_INCLUDE_ALL flag is set.
+ *
+ * List of the available Mesa GBM modules.
+ *
+ * `$GBM_BACKENDS_PATH` will be used as the search path, if set.
+ * Otherwise some implementation-dependent paths will be used instead.
+ *
+ * Note that if `$GBM_BACKENDS_PATH` is set, all drivers outside that
+ * path will be treated as "extra", and omitted from the list unless
+ * %SRT_DRIVER_FLAGS_INCLUDE_ALL is used.
+ *
+ * Returns: (transfer full) (element-type SrtGbmBackend) (nullable): A list of
+ *  opaque #SrtGbmBackend objects, or %NULL if nothing was found. Free with
+ *  `g_list_free_full(list, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_gbm_backends (SrtSystemInfo *self,
+                                   const char *multiarch_tuple,
+                                   SrtDriverFlags flags)
+{
+  return _srt_system_info_list_graphics_modules (self, multiarch_tuple, flags,
+                                                 SRT_GRAPHICS_GBM_MODULE);
+}
+
+/**
+ * srt_system_info_list_va_api_drivers:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: (not nullable) (type filename): A Debian-style multiarch
+ *  tuple such as %SRT_ABI_X86_64
+ * @flags: Filter the list of VA-API drivers accordingly to these flags.
+ *  For example, "extra" drivers that are unlikely to be found by
+ *  the VA-API loader will only be included if the
+ *  %SRT_DRIVER_FLAGS_INCLUDE_ALL flag is set.
+ *
+ * List of the available VA-API drivers.
+ *
+ * `$LIBVA_DRIVERS_PATH` will be used as the search path, if set.
+ * Otherwise some implementation-dependent paths will be used instead.
+ *
+ * Note that if `$LIBVA_DRIVERS_PATH` is set, all drivers outside that
+ * path will be treated as "extra", and omitted from the list unless
+ * %SRT_DRIVER_FLAGS_INCLUDE_ALL is used.
+ *
+ * Returns: (transfer full) (element-type SrtVaApiDriver) (nullable): A list of
+ *  opaque #SrtVaApiDriver objects, or %NULL if nothing was found. Free with
+ *  `g_list_free_full(list, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_va_api_drivers (SrtSystemInfo *self,
+                                     const char *multiarch_tuple,
+                                     SrtDriverFlags flags)
+{
+  return _srt_system_info_list_graphics_modules (self, multiarch_tuple, flags,
+                                                 SRT_GRAPHICS_VAAPI_MODULE);
+}
+
+/**
+ * srt_system_info_list_vdpau_drivers:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: (not nullable) (type filename): A Debian-style multiarch
+ *  tuple such as %SRT_ABI_X86_64
+ * @flags: Filter the list of VDPAU drivers accordingly to these flags.
+ *  For example, "extra" drivers that are unlikely to be found by
+ *  the VDPAU loader will only be included if the
+ *  %SRT_DRIVER_FLAGS_INCLUDE_ALL flag is set.
+ *
+ * List of the available VDPAU drivers.
+ *
+ * `$VDPAU_DRIVER_PATH` will be used as the search path, if set.
+ * Otherwise some implementation-dependent paths will be used instead.
+ *
+ * Note that if `$VDPAU_DRIVER_PATH` is set, all drivers outside that
+ * path will be treated as "extra", and omitted from the list unless
+ * %SRT_DRIVER_FLAGS_INCLUDE_ALL is used.
+ *
+ * Returns: (transfer full) (element-type SrtVaApiDriver) (nullable): A list of
+ *  opaque #SrtVaApiDriver objects, or %NULL if nothing was found. Free with
+ *  `g_list_free_full(list, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_vdpau_drivers (SrtSystemInfo *self,
+                                    const char *multiarch_tuple,
+                                    SrtDriverFlags flags)
+{
+  return _srt_system_info_list_graphics_modules (self, multiarch_tuple, flags,
+                                                 SRT_GRAPHICS_VDPAU_MODULE);
+}
+
+/**
+ * srt_system_info_list_glx_icds:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: (not nullable) (type filename): A Debian-style multiarch
+ *  tuple such as %SRT_ABI_X86_64
+ * @flags: Filter the list of GLX ICDs accordingly to these flags.
+ *  At the moment no filters are available, so there are no practical
+ *  differences between %SRT_DRIVER_FLAGS_INCLUDE_ALL and
+ *  %SRT_DRIVER_FLAGS_NONE.
+ *
+ * List the available GLX ICDs, in an unspecified order.
+ * These are the drivers used by `libGL.so.1` or `libGLX.so.0`
+ * if it is the loader library provided by
+ * [GLVND](https://github.com/NVIDIA/libglvnd)
+ * (if this is the case, srt_graphics_library_is_vendor_neutral() for
+ * the combination of %SRT_WINDOW_SYSTEM_X11 and %SRT_RENDERING_INTERFACE_GL
+ * will return %TRUE and indicate %SRT_GRAPHICS_LIBRARY_VENDOR_GLVND).
+ *
+ * Returns: (transfer full) (element-type SrtGlxIcd) (nullable): A list of
+ *  opaque #SrtGlxIcd objects, or %NULL if nothing was found. Free with
+ *  `g_list_free_full(list, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_glx_icds (SrtSystemInfo *self,
+                               const char *multiarch_tuple,
+                               SrtDriverFlags flags)
+{
+  return _srt_system_info_list_graphics_modules (self, multiarch_tuple, flags,
+                                                 SRT_GRAPHICS_GLX_MODULE);
+}
+
+static gboolean
+srt_system_info_load_openxr_1_runtimes (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), FALSE);
+
+  if (self->openxr_1_runtimes.active != NULL)
+    return TRUE;
+  else if (self->from_report != NULL || self->sysroot == NULL)
+    return FALSE;
+
+  self->openxr_1_runtimes.active = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                          g_free, g_object_unref);
+  _srt_load_openxr_1_runtimes (self->sysroot,
+                               _srt_subprocess_runner_get_environ (self->runner),
+                               self->openxr_1_runtimes.active,
+                               &self->openxr_1_runtimes.active_fallback,
+                               &self->openxr_1_runtimes.inactive);
+  return TRUE;
+}
+
+/**
+ * srt_system_info_dup_openxr_1_runtime:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: (type filename): A Debian-style multiarch tuple such as
+ *  %SRT_ABI_X86_64, or %NULL to not specify an architecture.
+ *
+ * Return the OpenXR 1 runtime that will be used for the given architecture.
+ *
+ * If @multiarch_tuple is not %NULL, then this will prefer to return,
+ * if available, the corresponding architecture-specific active
+ * runtime (e.g. `active_runtime.x86_64.json` for %SRT_ABI_X86_64).
+ *
+ * If no architecture-specific runtime exists, or if @multiarch_tuple is %NULL,
+ * then this will return the runtime that is used for architectures with no
+ * architecture-specific runtime available (`active_runtime.json`).
+ *
+ * Returns: (transfer full) (nullable): The runtime, or %NULL.
+ */
+SrtOpenXr1Runtime *
+srt_system_info_dup_openxr_1_runtime (SrtSystemInfo *self,
+                                      const char *multiarch_tuple)
+{
+  SrtOpenXr1Runtime *rt = NULL;
+
+  if (!srt_system_info_load_openxr_1_runtimes (self))
+    return NULL;
+
+  if (multiarch_tuple != NULL)
+    {
+      GQuark arch_quark = g_quark_from_string (multiarch_tuple);
+
+      if (ensure_abi_unless_immutable (self, arch_quark) == NULL)
+        return NULL;
+      rt = g_hash_table_lookup (self->openxr_1_runtimes.active, multiarch_tuple);
+    }
+
+  rt = rt ?: self->openxr_1_runtimes.active_fallback;
+  return rt != NULL ? g_object_ref (rt) : NULL;
+}
+
+/**
+ * srt_system_info_list_inactive_openxr_1_runtimes:
+ * @self: The #SrtSystemInfo object
+ * @active_multiarch_tuples: (nullable) (array zero-terminated=1) (element-type utf8):
+ *   A list of multiarch tuples that will be assumed as active and thus omitted.
+ *   (This should usually be the list of multiarch tuples that you have already
+ *   given to %srt_system_info_dup_openxr_1_runtime().)
+ *
+ * Return a list of inactive runtimes, containing:
+ * - Runtimes for architectures not in @active_multiarch_tuples.
+ * - Runtimes for architectures that already have another preferred runtime
+ *   available.
+ * - Runtimes that are completely inactive, due to filename.
+ *
+ * Returns: (transfer full) (element-type SrtOpenXr1Runtime): A list of
+ *  opaque #SrtOpenXr1Runtime objects. Free with
+ *  `g_list_free_full(runtimes, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_inactive_openxr_1_runtimes (SrtSystemInfo *self,
+                                                 const char *const *active_multiarch_tuples)
+{
+  GHashTableIter active_iter;
+  gpointer active_tuple, active_rt;
+  GList *ret = NULL;
+  const GList *inactive_iter;
+
+  if (!srt_system_info_load_openxr_1_runtimes (self))
+    return NULL;
+
+  g_hash_table_iter_init (&active_iter, self->openxr_1_runtimes.active);
+  while (g_hash_table_iter_next (&active_iter, &active_tuple, &active_rt))
+    {
+      if (!g_strv_contains (active_multiarch_tuples, active_tuple))
+        ret = g_list_prepend (ret, g_object_ref (active_rt));
+    }
+
+  for (inactive_iter = self->openxr_1_runtimes.inactive; inactive_iter != NULL;
+       inactive_iter = inactive_iter->next)
+    ret = g_list_prepend (ret, g_object_ref (inactive_iter->data));
+
+  return g_list_reverse (ret);
+}
+
+static gboolean
+srt_system_info_load_openxr_1_layers (SrtSystemInfo *self)
+{
+  OpenXr1Layers *cache;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), FALSE);
+
+  if (self->openxr_1_layers != NULL)
+    return TRUE;
+  else if (self->from_report != NULL || self->sysroot == NULL)
+    return FALSE;
+
+  cache = g_new0 (OpenXr1Layers, 1);
+  cache->explicit = _srt_load_openxr_1_layers (self->sysroot,
+                                               self->runner,
+                                               (const GQuark *) self->multiarch_tuples->data,
+                                               self->multiarch_tuples->len,
+                                               TRUE,
+                                               self->check_flags);
+  cache->implicit = _srt_load_openxr_1_layers (self->sysroot,
+                                               self->runner,
+                                               (const GQuark *) self->multiarch_tuples->data,
+                                               self->multiarch_tuples->len,
+                                               FALSE,
+                                               self->check_flags);
+  self->openxr_1_layers = cache;
+
+  return TRUE;
+}
+
+/**
+ * srt_system_info_list_explicit_openxr_1_layers:
+ * @self: The #SrtSystemInfo object
+ *
+ * List the available explicit OpenXR 1 layers, using the same search paths as
+ * the reference OpenXR loader.
+ *
+ * Like srt_system_info_list_explicit_vulkan_layers(),
+ * this function is not architecture-specific and may return a mixture
+ * of layers for more than one architecture or ABI.
+ *
+ * Returns: (transfer full) (element-type SrtOpenXr1Layer): A list of
+ *  opaque #SrtOpenXr1Layer objects. Free with
+ *  `g_list_free_full (layers, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_explicit_openxr_1_layers (SrtSystemInfo *self)
+{
+  if (!srt_system_info_load_openxr_1_layers (self))
+    return NULL;
+
+  return _srt_object_list_copy (self->openxr_1_layers->explicit);
+}
+
+/**
+ * srt_system_info_list_implicit_openxr_1_layers:
+ * @self: The #SrtSystemInfo object
+ *
+ * List the available explicit OpenXR 1 layers, using the same search paths as
+ * the reference OpenXR loader.
+ *
+ * Like srt_system_info_list_implicit_vulkan_layers(),
+ * this function is not architecture-specific and may return a mixture
+ * of layers for more than one architecture or ABI.
+ *
+ * Returns: (transfer full) (element-type SrtOpenXr1Layer): A list of
+ *  opaque #SrtOpenXr1Layer objects. Free with
+ *  `g_list_free_full (layers, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_implicit_openxr_1_layers (SrtSystemInfo *self)
+{
+  if (!srt_system_info_load_openxr_1_layers (self))
+    return NULL;
+
+  return _srt_object_list_copy (self->openxr_1_layers->implicit);
+}
+
+static void
+ensure_driver_environment (SrtSystemInfo *self)
+{
+  g_return_if_fail (_srt_check_not_setuid ());
+
+  if (self->cached_driver_environment == NULL && self->from_report == NULL)
+    {
+      GPtrArray *builder;
+      GRegex *regex;
+      const char * const *env_list;
+      /* This is the list of well-known driver-selection environment variables,
+       * plus __GLX_FORCE_VENDOR_LIBRARY_%d that will be searched with a regex.
+       * It doesn't include the variables already listed in _str_check_display().
+       * Please keep in LC_ALL=C alphabetical order. */
+      static const gchar * const drivers_env[] =
+      {
+        "ALSA_CONFIG_PATH",
+        "AMDVLK_ENABLE_DEVELOPING_EXT",
+        "AMD_CONFIG_DIR",
+        "AMD_SHADER_DISK_CACHE_PATH",
+        "AMD_VULKAN_ICD",
+        "AUDIODEV",
+        "BUMBLEBEE_SOCKET",
+        "DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1",
+        "DISABLE_MANGOHUD",
+        "DISABLE_PRIMUS_LAYER",
+        "DISABLE_VKBASALT",
+        "DRI_PRIME",
+        "EGL_PLATFORM",
+        "ENABLE_DEVICE_CHOOSER_LAYER",
+        "ENABLE_PRIMUS_LAYER",
+        "ENABLE_VKBASALT",
+        "ESPEAKER",
+        "GST_PLUGIN_SYSTEM_PATH",
+        "LADSPA_PATH",
+        "LD_LIBRARY_PATH",
+        "LD_PRELOAD",
+        "LIBVA_DRIVER_NAME",
+        "MANGOHUD",
+        "MESA_GLSL_CACHE_DIR",
+        "MESA_LOADER_DRIVER_OVERRIDE",
+        "MESA_VK_DEVICE_SELECT",
+        "MIDIDEV",
+        "NODEVICE_SELECT",
+        "PRIMUS_DISPLAY",
+        "PRIMUS_LOAD_GLOBAL",
+        "PRIMUS_SLEEP",
+        "PRIMUS_SYNC",
+        "PRIMUS_UPLOAD",
+        "PRIMUS_VK_DISPLAYID",
+        "PRIMUS_VK_MULTITHREADING",
+        "PRIMUS_VK_RENDERID",
+        "PRIMUS_libGL",
+        "PRIMUS_libGLa",
+        "PRIMUS_libGLd",
+        "PULSE_CLIENTCONFIG",
+        "PULSE_CONFIG_PATH",
+        "PULSE_LATENCY_MSEC",
+        "PULSE_RUNTIME_PATH",
+        "PULSE_SERVER",
+        "PULSE_SINK",
+        "PULSE_SOURCE",
+        "PULSE_STATE_PATH",
+        "PULSE_SYSTEM",
+        "SDL_ACCELEROMETER_AS_JOYSTICK",
+        "SDL_AUDIODRIVER",
+        "SDL_AUDIO_CHANNELS",
+        "SDL_AUDIO_DEVICE_NAME",
+        "SDL_AUDIO_FORMAT",
+        "SDL_AUDIO_FREQUENCY",
+        "SDL_AUDIO_SAMPLES",
+        "SDL_AUTO_UPDATE_JOYSTICKS",
+        "SDL_DYNAMIC_API",
+        "SDL_ENABLE_STEAM_CONTROLLERS",
+        "SDL_FRAMEBUFFER_ACCELERATION",
+        "SDL_GAMECONTROLLERCONFIG",
+        "SDL_GAMECONTROLLERCONFIG_FILE",
+        "SDL_GAMECONTROLLERTYPE",
+        "SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD",
+        "SDL_GAMECONTROLLER_IGNORE_DEVICES",
+        "SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT",
+        "SDL_JOYSTICK_DEVICE",
+        "SDL_JOYSTICK_DISABLE_UDEV",
+        "SDL_JOYSTICK_HIDAPI",
+        "SDL_JOYSTICK_HIDAPI_PS4",
+        "SDL_JOYSTICK_HIDAPI_PS5",
+        "SDL_JOYSTICK_HIDAPI_STEAM",
+        "SDL_JOYSTICK_HIDAPI_SWITCH",
+        "SDL_JOYSTICK_HIDAPI_XBOX",
+        "SDL_OPENGLES_LIBRARY",
+        "SDL_OPENGL_ES_DRIVER",
+        "SDL_OPENGL_LIBRARY",
+        "SDL_PATH_DSP",
+        "SDL_RENDER_DRIVER",
+        "SDL_RENDER_LOGICAL_SIZE_MODE",
+        "SDL_RENDER_OPENGL_SHADERS",
+        "SDL_RENDER_SCALE_QUALITY",
+        "SDL_RENDER_VSYNC",
+        "SDL_VIDEO_ALLOW_SCREENSAVER",
+        "SDL_VIDEO_DOUBLE_BUFFER",
+        "SDL_VIDEO_EGL_DRIVER",
+        "SDL_VIDEO_EXTERNAL_CONTEXT",
+        "SDL_VIDEO_GL_DRIVER",
+        "SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS",
+        "SDL_VIDEO_WAYLAND_WMCLASS",
+        "SDL_VIDEO_X11_FORCE_EGL",
+        "SDL_VIDEO_X11_LEGACY_FULLSCREEN",
+        "SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR",
+        "SDL_VIDEO_X11_NET_WM_PING",
+        "SDL_VIDEO_X11_VISUALID",
+        "SDL_VIDEO_X11_WINDOW_VISUALID",
+        "SDL_VIDEO_X11_WMCLASS",
+        "SDL_VIDEO_X11_XINERAMA",
+        "SDL_VIDEO_X11_XRANDR",
+        "SDL_VIDEO_X11_XVIDMODE",
+        "SDL_VULKAN_DISPLAY",
+        "SDL_VULKAN_LIBRARY",
+        "SDL_X11_XCB_LIBRARY",
+        "SDL_XINPUT_ENABLED",
+        "SSL_CERT_DIR",
+        "STEAM_RUNTIME_PREFER_HOST_LIBRARIES",
+        "VDPAU_DRIVER",
+        "VK_ADD_DRIVER_FILES",
+        "VK_ADD_IMPLICIT_LAYER_PATH",
+        "VK_ADD_LAYER_PATH",
+        "VK_DRIVER_FILES",
+        "VK_ICD_FILENAMES",
+        "VK_IMPLICIT_LAYER_PATH",
+        "VK_LAYER_PATH",
+        "VR_OVERRIDE",
+        "VULKAN_DEVICE_INDEX",
+        "WINEESYNC",
+        "WINEFSYNC",
+        "WINE_FULLSCREEN_INTEGER_SCALING",
+        "WINE_HIDE_NVIDIA_GPU",
+        "XDG_RUNTIME_DIR",
+        "XR_API_LAYER_PATH",
+        "XR_ENABLE_API_LAYERS",
+        "XR_RUNTIME_JSON",
+        "__EGL_EXTERNAL_PLATFORM_CONFIG_DIRS",
+        "__EGL_EXTERNAL_PLATFORM_CONFIG_FILENAMES",
+        "__EGL_VENDOR_LIBRARY_DIRS",
+        "__EGL_VENDOR_LIBRARY_FILENAMES",
+        "__GLX_VENDOR_LIBRARY_NAME",
+        "__NV_PRIME_RENDER_OFFLOAD",
+        NULL
+      };
+
+      env_list = _srt_subprocess_runner_get_environ (self->runner);
+      builder = g_ptr_array_new_with_free_func (g_free);
+
+      for (guint i = 0; drivers_env[i] != NULL; i++)
+        {
+          const gchar *value = g_environ_getenv ((gchar **) env_list, drivers_env[i]);
+          if (value != NULL)
+            {
+              gchar *key_value = g_strjoin ("=", drivers_env[i], value, NULL);
+              g_ptr_array_add (builder, key_value);
+            }
+        }
+
+      regex = g_regex_new ("^__GLX_FORCE_VENDOR_LIBRARY_[0-9]+=", 0, 0, NULL);
+      g_assert (regex != NULL);    /* known to be valid at compile-time */
+
+      for (gsize i = 0; env_list != NULL && env_list[i] != NULL; i++)
+        {
+          if (!g_regex_match (regex, env_list[i], 0, NULL))
+            continue;
+
+          g_ptr_array_add (builder, g_strdup (env_list[i]));
+        }
+
+      g_ptr_array_sort (builder, _srt_indirect_strcmp0);
+      g_ptr_array_add (builder, NULL);
+      g_regex_unref (regex);
+
+      self->cached_driver_environment = (gchar **) g_ptr_array_free (builder, FALSE);
+    }
+}
+
+/**
+ * srt_system_info_list_driver_environment:
+ * @self: The #SrtSystemInfo object
+ *
+ * List of the driver-selection environment variables.
+ *
+ * Some drivers have an environment variable that overrides the automatic
+ * detection of which driver should be used.
+ * For example Mesa has `MESA_LOADER_DRIVER_OVERRIDE`, VA-API has
+ * `LIBVA_DRIVER_NAME` and so on.
+ *
+ * The output will contain a list, in the form "NAME=VALUE", of the well-known
+ * driver environment variables that are currently being set.
+ *
+ * The drivers will be in lexicographic order, for example
+ * `LIBVA_DRIVER_NAME=radeonsi`, `VDPAU_DRIVER=radeonsi`,
+ * `__GLX_FORCE_VENDOR_LIBRARY_0=i965`, in that order.
+ *
+ * Returns: (array zero-terminated=1) (transfer full) (element-type utf8) (nullable):
+ *  An array of strings, or %NULL if we were unable to find driver-selection
+ *  environment variables. Free with g_strfreev().
+ */
+gchar **
+srt_system_info_list_driver_environment (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_driver_environment (self);
+
+  if (self->cached_driver_environment == NULL || self->cached_driver_environment[0] == NULL)
+    return NULL;
+  else
+    return g_strdupv (self->cached_driver_environment);
+}
+
+/**
+ * _srt_system_info_driver_environment_from_report:
+ * @json_obj: (not nullable): A JSON Object used to search for "driver_environment"
+ *  property
+ *
+ * Returns: (array zero-terminated=1) (element-type utf8) (nullable): An array
+ *  of strings, or %NULL if the provided @json_obj doesn't have a
+ *  "driver_environment" member. Free with g_strfreev().
+ */
+static gchar **
+_srt_system_info_driver_environment_from_report (JsonObject *json_obj)
+{
+  return _srt_json_object_dup_strv_member (json_obj,
+                                           "driver_environment",
+                                           "<invalid>");
+}
+
+static void
+ensure_container_info (SrtSystemInfo *self)
+{
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+
+  if (self->container_info == NULL)
+    {
+      if (self->sysroot != NULL && self->from_report == NULL)
+        {
+          self->container_info = _srt_check_container (self->sysroot);
+
+          if (self->check_flags & SRT_CHECK_FLAGS_NO_HELPERS)
+            _srt_container_info_check_issues (self->container_info,
+                                              self->sysroot, NULL);
+          else
+            _srt_container_info_check_issues (self->container_info,
+                                              self->sysroot, self->runner);
+        }
+      else
+        {
+          self->container_info = _srt_container_info_new_empty ();
+        }
+    }
+}
+
+/**
+ * srt_system_info_check_container:
+ * @self: The #SrtSystemInfo object
+ *
+ * Gather and return information about the container that is currently in use.
+ *
+ * Returns: (transfer full): An #SrtContainerInfo object.
+ *  Free with g_object_unref().
+ */
+SrtContainerInfo *
+srt_system_info_check_container (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_container_info (self);
+  return g_object_ref (self->container_info);
+}
+
+/**
+ * srt_system_info_get_container_type:
+ * @self: The #SrtSystemInfo object
+ *
+ * If the program appears to be running in a container, return what sort
+ * of container it is.
+ *
+ * Returns: A recognised container type, or %SRT_CONTAINER_TYPE_NONE
+ *  if a container cannot be detected, or %SRT_CONTAINER_TYPE_UNKNOWN
+ *  if unsure.
+ */
+SrtContainerType
+srt_system_info_get_container_type (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), SRT_CONTAINER_TYPE_UNKNOWN);
+
+  ensure_container_info (self);
+  return srt_container_info_get_container_type (self->container_info);
+}
+
+/**
+ * srt_system_info_dup_container_host_directory:
+ * @self: The #SrtSystemInfo object
+ *
+ * If the program appears to be running in a container, return the
+ * directory where host files can be found. For example, if this function
+ * returns `/run/host`, it might be possible to load the host system's
+ * `/usr/lib/os-release` by reading `/run/host/usr/lib/os-release`.
+ *
+ * The returned directory is usually not complete. For example,
+ * in a Flatpak app, `/run/host` will sometimes contain the host system's
+ * `/etc` and `/usr`, but only if suitable permissions flags are set.
+ *
+ * Returns: A path from which at least some host-system files can be
+ *  loaded, typically `/run/host`, or %NULL if unknown or unavailable
+ */
+gchar *
+srt_system_info_dup_container_host_directory (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_container_info (self);
+  return g_strdup (srt_container_info_get_container_host_directory (self->container_info));
+}
+
+/**
+ * srt_system_info_check_virtualization:
+ * @self: The #SrtSystemInfo object
+ *
+ * Gather and return information about the virtualization, emulation or
+ * hypervisor in use.
+ *
+ * Returns: (transfer full): An #SrtVirtualizationInfo object.
+ *  Free with g_object_unref().
+ */
+SrtVirtualizationInfo *
+srt_system_info_check_virtualization (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (self->virtualization_info == NULL)
+    {
+      /* If we don't know already, then we never will */
+      if (self->from_report != NULL || self->sysroot == NULL)
+        self->virtualization_info = _srt_virtualization_info_new_empty ();
+      else
+        self->virtualization_info = _srt_check_virtualization (NULL,
+                                                               self->sysroot,
+                                                               NULL);
+    }
+
+  return g_object_ref (self->virtualization_info);
+}
+
+static void
+ensure_desktop_entries (SrtSystemInfo *self)
+{
+  g_return_if_fail (self->from_report == NULL);
+
+  if (self->desktop_entry.have_data)
+    return;
+
+  g_assert (self->desktop_entry.values == NULL);
+
+  self->desktop_entry.values = _srt_list_steam_desktop_entries ();
+  self->desktop_entry.have_data = TRUE;
+}
+
+/**
+ * srt_system_info_list_desktop_entries:
+ * @self: The #SrtSystemInfo object
+ *
+ * List all the available desktop applications that are able to handle the
+ * type "x-scheme-handler/steam".
+ *
+ * This function will also search for well known desktop applications ID like
+ * the Flathub `com.valvesoftware.Steam.desktop` and they'll be included even
+ * if they are not able to handle the `steam:` URI.
+ * Using `srt_desktop_entry_is_steam_handler()` it is possible to filter them out.
+ *
+ * The returned list is in no particular order.
+ *
+ * Please note that the environment variables of the current process will be used.
+ * Any possible custom environ set with `srt_system_info_set_environ()` will be
+ * ignored.
+ *
+ * Returns: (transfer full) (element-type SrtDesktopEntry) (nullable): A list of
+ *  opaque #SrtDesktopEntry objects or %NULL if nothing was found. Free with
+ *  `g_list_free_full (entries, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_desktop_entries (SrtSystemInfo *self)
+{
+  GList *ret = NULL;
+  const GList *iter;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (self->from_report == NULL)
+    ensure_desktop_entries (self);
+
+  for (iter = self->desktop_entry.values; iter != NULL; iter = iter->next)
+    ret = g_list_prepend (ret, g_object_ref (iter->data));
+
+  return g_list_reverse (ret);
+}
+
+static void
+ensure_display_info (SrtSystemInfo *self)
+{
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+
+  if (self->display_info == NULL && self->from_report == NULL)
+    {
+      GQuark arch_quark = _srt_system_info_get_primary_multiarch_quark (self);
+      Abi *abi = ensure_abi_unless_immutable (self, arch_quark);
+
+      g_return_if_fail (abi != NULL);
+
+      self->display_info = _srt_check_display (self->runner,
+                                               arch_quark);
+    }
+}
+
+/**
+ * srt_system_info_check_display:
+ * @self: The #SrtSystemInfo object
+ *
+ * Gather and return information about the display server that is currently
+ * in use.
+ *
+ * Returns: (transfer full): An #SrtDisplayInfo object.
+ *  Free with g_object_unref().
+ */
+SrtDisplayInfo *
+srt_system_info_check_display (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_display_info (self);
+  return g_object_ref (self->display_info);
+}
+
+static void
+ensure_x86_features_cached (SrtSystemInfo *self)
+{
+  g_return_if_fail (self->from_report == NULL);
+
+  if (self->cpu_features.x86_known != SRT_X86_FEATURE_NONE)
+    return;
+
+  self->cpu_features.x86_features = _srt_feature_get_x86_flags (NULL,
+                                                                &self->cpu_features.x86_known);
+}
+
+/**
+ * srt_system_info_get_x86_features:
+ * @self: The #SrtSystemInfo object
+ *
+ * Detect and return a list of x86 features that the CPU supports.
+ *
+ * Returns: x86 CPU supported features, or %SRT_X86_FEATURE_NONE
+ *  if none of the checked features are supported.
+ */
+SrtX86FeatureFlags
+srt_system_info_get_x86_features (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), SRT_X86_FEATURE_NONE);
+
+  if (self->from_report == NULL)
+    ensure_x86_features_cached (self);
+
+  return self->cpu_features.x86_features;
+}
+
+/**
+ * srt_system_info_get_known_x86_features:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return a list of x86 CPU features that has been checked.
+ *
+ * Returns: x86 CPU checked features, or %SRT_X86_FEATURE_NONE
+ *  if no features were checked, e.g. when the CPU is not x86 based.
+ */
+SrtX86FeatureFlags
+srt_system_info_get_known_x86_features (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), SRT_X86_FEATURE_NONE);
+
+  if (self->from_report == NULL)
+    ensure_x86_features_cached (self);
+
+  return self->cpu_features.x86_known;
+}
+
+/**
+ * srt_system_info_dup_steamscript_path:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return the absolute path to the script used to launch Steam, if known.
+ * If the application using this library was not run as a child process
+ * of the Steam client, then this will usually be %NULL.
+ *
+ * This will usually be `/usr/bin/steam` for the packaged Steam launcher
+ * released by Valve, `/app/bin/steam` for the Flatpak app, or either
+ * `/usr/bin/steam` or `/usr/games/steam` for third-party packaged versions
+ * of the Steam client.
+ *
+ * Returns: (transfer full) (type filename) (nullable): A filename, or %NULL.
+ */
+gchar *
+srt_system_info_dup_steamscript_path (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_steam_cached (self);
+  return g_strdup (srt_steam_get_steamscript_path (self->steam_data));
+}
+
+/**
+ * srt_system_info_dup_steamscript_version:
+ * @self: The #SrtSystemInfo object
+ *
+ * Return the version of the script used to launch Steam, if known.
+ * If the application using this library was not run as a child process
+ * of the Steam client, then this will usually be %NULL.
+ *
+ * Typical values look like `1.0.0.66` for the packaged Steam launcher
+ * released by Valve, `1.0.0.66-2/Debian` for recent Debian packages, or
+ * %NULL for older Debian/Ubuntu packages. Future Ubuntu packages might
+ * produce a string like `1.0.0.66-2ubuntu1/Ubuntu`.
+ *
+ * Returns: (transfer full) (type filename) (nullable): A filename, or %NULL.
+ */
+gchar *
+srt_system_info_dup_steamscript_version (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_steam_cached (self);
+  return g_strdup (srt_steam_get_steamscript_version (self->steam_data));
+}
+
+static void
+ensure_xdg_portals_cached (SrtSystemInfo *self)
+{
+  g_return_if_fail (SRT_IS_SYSTEM_INFO (self));
+
+  if (self->from_report != NULL)
+    return;
+
+  if (self->xdg_portal_data == NULL)
+    {
+      GQuark arch_quark = _srt_system_info_get_primary_multiarch_quark (self);
+      Abi *abi = ensure_abi_unless_immutable (self, arch_quark);
+
+      g_return_if_fail (abi != NULL);
+
+      ensure_container_info (self);
+
+      _srt_check_xdg_portals (self->runner,
+                              srt_container_info_get_container_type (self->container_info),
+                              arch_quark,
+                              &self->xdg_portal_data);
+    }
+}
+
+/**
+ * srt_system_info_list_xdg_portal_backends:
+ * @self: The #SrtSystemInfo object
+ *
+ * List the XDG portal backends that have been checked, with information about
+ * their eventual availability.
+ *
+ * Examples of XDG portal backends are "org.freedesktop.impl.portal.desktop.gtk"
+ * and "org.freedesktop.impl.portal.desktop.kde".
+ *
+ * The returned list is in the same arbitrary order as the check-xdg-portal
+ * helper used to return them.
+ *
+ * Returns: (transfer full) (element-type SrtXdgPortalBackend) (nullable):
+ *  A list of opaque #SrtXdgPortalBackend objects or %NULL if an error
+ *  occurred trying to check the backends availability or if we were unable to
+ *  check them, e.g. if we are in a Flatpak environment.
+ *  Free with `g_list_free_full (backends, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_xdg_portal_backends (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  ensure_xdg_portals_cached (self);
+
+  return srt_xdg_portal_get_backends (self->xdg_portal_data);
+}
+
+/**
+ * srt_system_info_list_xdg_portal_interfaces:
+ * @self: The #SrtSystemInfo object
+ *
+ * List the XDG portal interfaces that have been checked, with information
+ * about their eventual availability and version property.
+ *
+ * Examples of XDG portal interfaces are "org.freedesktop.portal.OpenURI"
+ * and "org.freedesktop.portal.Email".
+ *
+ * The returned list is in the same arbitrary order as the check-xdg-portal
+ * helper used to return them.
+ *
+ * Returns: (transfer full) (element-type SrtXdgPortalInterface) (nullable):
+ *  A list of opaque #SrtXdgPortalInterface objects or %NULL if an error
+ *  occurred trying to check the interfaces availability. Free with
+ *  `g_list_free_full (interfaces, g_object_unref)`.
+ */
+GList *
+srt_system_info_list_xdg_portal_interfaces (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+
+  if (self->from_report == NULL)
+    ensure_xdg_portals_cached (self);
+
+  return srt_xdg_portal_get_interfaces (self->xdg_portal_data);
+}
+
+/**
+ * srt_system_info_get_xdg_portal_issues:
+ * @self: The #SrtSystemInfo object
+ * @messages: (optional) (out): If not %NULL, used to return the diagnostic
+ *  messages. Free with g_free().
+ *
+ * Check if the current system supports the XDG portals.
+ *
+ * Returns: A bitfield containing problems, or %SRT_XDG_PORTAL_ISSUES_NONE
+ *  if no problems were found.
+ */
+SrtXdgPortalIssues
+srt_system_info_get_xdg_portal_issues (SrtSystemInfo *self,
+                                       gchar **messages)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), SRT_XDG_PORTAL_ISSUES_UNKNOWN);
+  g_return_val_if_fail (messages == NULL || *messages == NULL, SRT_XDG_PORTAL_ISSUES_UNKNOWN);
+
+  if (self->from_report == NULL)
+    ensure_xdg_portals_cached (self);
+
+  if (messages != NULL)
+    *messages = g_strdup (srt_xdg_portal_get_messages (self->xdg_portal_data));
+
+  return srt_xdg_portal_get_issues (self->xdg_portal_data);
+}
+
+static void
+ensure_runtime_linker (SrtSystemInfo *self,
+                       Abi *abi)
+{
+  g_autofree gchar *real_path = NULL;
+  glnx_autofd int fd = -1;
+
+  if (abi->runtime_linker_resolved != NULL)
+    return;
+
+  if (abi->runtime_linker_error != NULL)
+    return;
+
+  if (abi->known_architecture == NULL)
+    return;
+
+  if (abi->known_architecture->interoperable_runtime_linker == NULL)
+    {
+      g_set_error (&abi->runtime_linker_error, SRT_ARCHITECTURE_ERROR,
+                   SRT_ARCHITECTURE_ERROR_NO_INFORMATION,
+                   "Interoperable runtime_linker for \"%s\" not known",
+                   abi->known_architecture->multiarch_tuple);
+      return;
+    }
+
+  if (self->sysroot == NULL)
+    {
+      g_set_error (&abi->runtime_linker_error, SRT_ARCHITECTURE_ERROR,
+                   SRT_ARCHITECTURE_ERROR_INTERNAL_ERROR,
+                   "Unable to open sysroot");
+      return;
+    }
+
+  fd = _srt_sysroot_open (self->sysroot,
+                          abi->known_architecture->interoperable_runtime_linker,
+                          (SRT_RESOLVE_FLAGS_READABLE
+                           | SRT_RESOLVE_FLAGS_RETURN_ABSOLUTE),
+                          &real_path,
+                          &abi->runtime_linker_error);
+
+  if (fd >= 0)
+    abi->runtime_linker_resolved = g_steal_pointer (&real_path);
+}
+
+/**
+ * srt_system_info_check_runtime_linker:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: A multiarch tuple defining an ABI, as printed
+ *  by `gcc -print-multiarch` in the Steam Runtime
+ * @resolved: (out) (type filename) (transfer full) (optional): Used
+ *  to return the path to the runtime linker after resolving all
+ *  symbolic links. Free with g_free(); may be %NULL to ignore.
+ * @error: Used to raise an error on failure.
+ *
+ * Check whether the runtime linker `ld.so(8)` for the ABI described
+ * by @multiarch_tuple, as returned by
+ * srt_architecture_get_expected_runtime_linker(), is available.
+ *
+ * If `ld.so` is unavailable, return %FALSE with @error set.
+ *
+ * If not enough information is available to determine whether `ld.so`
+ * is available, raise %SRT_ARCHITECTURE_ERROR_NO_INFORMATION.
+ *
+ * Returns: %TRUE if `ld.so(8)` is available at the interoperable path
+ *  for the given architecture
+ */
+gboolean
+srt_system_info_check_runtime_linker (SrtSystemInfo *self,
+                                      const char *multiarch_tuple,
+                                      gchar **resolved,
+                                      GError **error)
+{
+  Abi *abi;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), FALSE);
+  g_return_val_if_fail (multiarch_tuple != NULL, FALSE);
+
+  abi = ensure_abi_unless_immutable (self, g_quark_from_string (multiarch_tuple));
+
+  if (abi == NULL)
+    {
+      g_set_error (error, SRT_ARCHITECTURE_ERROR,
+                   SRT_ARCHITECTURE_ERROR_NO_INFORMATION,
+                   "ABI \"%s\" not included in report",
+                   multiarch_tuple);
+      return FALSE;
+    }
+
+  if (self->from_report == NULL)
+    ensure_runtime_linker (self, abi);
+
+  if (abi->known_architecture == NULL)
+    {
+      g_set_error (error, SRT_ARCHITECTURE_ERROR,
+                   SRT_ARCHITECTURE_ERROR_NO_INFORMATION,
+                   "Interoperable runtime linker for \"%s\" not known",
+                   multiarch_tuple);
+      return FALSE;
+    }
+  else if (abi->runtime_linker_resolved != NULL)
+    {
+      if (resolved != NULL)
+        *resolved = g_strdup (abi->runtime_linker_resolved);
+
+      return TRUE;
+    }
+  else if (abi->runtime_linker_error != NULL)
+    {
+      if (error != NULL)
+        *error = g_error_copy (abi->runtime_linker_error);
+
+      return FALSE;
+    }
+  else if (self->from_report != NULL)
+    {
+      g_set_error (error, SRT_ARCHITECTURE_ERROR,
+                   SRT_ARCHITECTURE_ERROR_NO_INFORMATION,
+                   "Runtime linker for \"%s\" not included in report",
+                   multiarch_tuple);
+      return FALSE;
+    }
+  else
+    {
+      /* We shouldn't be able to get here */
+      g_set_error (error, SRT_ARCHITECTURE_ERROR,
+                   SRT_ARCHITECTURE_ERROR_INTERNAL_ERROR,
+                   "Runtime linker for \"%s\" not checked",
+                   multiarch_tuple);
+      g_return_val_if_reached (FALSE);
+    }
+}
+
+/**
+ * srt_system_info_dup_libdl_lib:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: A multiarch tuple defining an ABI, as printed
+ *  by `gcc -print-multiarch` in the Steam Runtime
+ * @error: Used to raise an error on failure.
+ *
+ * Return the expansion of the dynamic linker string token `$LIB`,
+ * if possible.
+ *
+ * If the library path to be loaded with `dlopen()` or similar contains
+ * the literal tokens `$LIB` or `${LIB}`, the dynamic linker will replace
+ * them with the library directory returned by this function. See `ld.so(8)`
+ * section "Dynamic string tokens" for more details.
+ *
+ * Because there is currently no glibc API to determine how this token would
+ * be expanded, only a finite number of known values can currently be detected.
+ * If called on a platform where `$LIB` has a different expansion, this
+ * function will return %NULL.
+ *
+ * %NULL is also returned if an error occurs while attempting to determine the
+ * expansion of this token.
+ *
+ * Typical values look like `lib`, `lib32`, `lib64`, `lib/x86-64-linux-gnu`
+ * or `lib/i386-linux-gnu`.
+ *
+ * Returns: (transfer full) (type filename) (nullable): A filename, or %NULL.
+ */
+gchar *
+srt_system_info_dup_libdl_lib (SrtSystemInfo *self,
+                               const char *multiarch_tuple,
+                               GError **error)
+{
+  GQuark arch_quark;
+  Abi *abi = NULL;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+  g_return_val_if_fail (multiarch_tuple != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  arch_quark = g_quark_from_string (multiarch_tuple);
+  abi = ensure_abi_unless_immutable (self, arch_quark);
+
+  if (abi == NULL)
+    return glnx_null_throw (error, "ABI \"%s\" not included in report",
+                            multiarch_tuple);
+
+  /* If we cached already the result, we return it */
+  if (abi->libdl_lib != NULL)
+    {
+      return g_strdup (abi->libdl_lib);
+    }
+  else if (abi->libdl_lib_error != NULL)
+    {
+      if (error != NULL)
+        *error = g_error_copy (abi->libdl_lib_error);
+      return NULL;
+    }
+
+  if (self->from_report != NULL)
+    return glnx_null_throw (error, "libdl LIB for ABI \"%s\" not included in report",
+                            multiarch_tuple);
+
+  abi->libdl_lib = _srt_libdl_detect_lib (self->runner,
+                                          arch_quark,
+                                          abi->known_architecture,
+                                          &abi->libdl_lib_error);
+
+  if (abi->libdl_lib_error != NULL && error != NULL)
+    *error = g_error_copy (abi->libdl_lib_error);
+
+  return g_strdup (abi->libdl_lib);
+}
+
+/**
+ * srt_system_info_dup_libdl_platform:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: A multiarch tuple defining an ABI, as printed
+ *  by `gcc -print-multiarch` in the Steam Runtime
+ * @error: Used to raise an error on failure.
+ *
+ * Return the expansion of the dynamic linker string token `$PLATFORM`,
+ * if possible.
+ *
+ * If the library path to be loaded with `dlopen()` or similar contains
+ * the literal tokens `$PLATFORM` or `${PLATFORM}`, the dynamic linker will
+ * replace them with the library directory returned by this function. See
+ * `ld.so(8)` section "Dynamic string tokens" for more details.
+ *
+ * Because there is currently no glibc API to determine how this token would
+ * be expanded, only a finite number of known values can currently be detected.
+ * If called on a platform where `$PLATFORM` has a different expansion, this
+ * function will return %NULL.
+ *
+ * %NULL is also returned if an error occurs while attempting to determine the
+ * expansion of this token.
+ *
+ * Typical values look like `x86_64`, `haswell`, `xeon_phi`, `i386`, `i486`,
+ * `i586`, `i686`, or `aarch64`.
+ *
+ * Returns: (transfer full) (type filename) (nullable): A filename, or %NULL.
+ */
+gchar *
+srt_system_info_dup_libdl_platform (SrtSystemInfo *self,
+                                    const char *multiarch_tuple,
+                                    GError **error)
+{
+  GQuark arch_quark;
+  Abi *abi = NULL;
+
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), NULL);
+  g_return_val_if_fail (multiarch_tuple != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  arch_quark = g_quark_from_string (multiarch_tuple);
+  abi = ensure_abi_unless_immutable (self, arch_quark);
+
+  if (abi == NULL)
+    return glnx_null_throw (error, "ABI \"%s\" not included in report",
+                            multiarch_tuple);
+
+  /* If we cached already the result, we return it */
+  if (abi->libdl_platform != NULL)
+    {
+      return g_strdup (abi->libdl_platform);
+    }
+  else if (abi->libdl_platform_error != NULL)
+    {
+      if (error != NULL)
+        *error = g_error_copy (abi->libdl_platform_error);
+      return NULL;
+    }
+
+  if (self->from_report != NULL)
+    return glnx_null_throw (error, "libdl PLATFORM for ABI \"%s\" not included in report",
+                            multiarch_tuple);
+
+  abi->libdl_platform = _srt_libdl_detect_platform (self->runner,
+                                                    arch_quark,
+                                                    abi->known_architecture,
+                                                    &abi->libdl_platform_error);
+
+  if (abi->libdl_platform_error != NULL && error != NULL)
+    *error = g_error_copy (abi->libdl_platform_error);
+
+  return g_strdup (abi->libdl_platform);
+}

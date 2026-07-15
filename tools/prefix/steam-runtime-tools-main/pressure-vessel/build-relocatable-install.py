@@ -1,0 +1,954 @@
+#!/usr/bin/env python3
+
+# Copyright © 2017-2019 Collabora Ltd.
+#
+# SPDX-License-Identifier: MIT
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+import argparse
+import glob
+import logging
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+try:
+    import typing
+except ImportError:
+    pass
+else:
+    typing      # silence pyflakes
+
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote     # type: ignore  # noqa
+
+
+logger = logging.getLogger('pressure-vessel-build-relocatable-install')
+
+
+class Architecture:
+    def __init__(
+        self,
+        name,           # type: str
+        multiarch,      # type: str
+    ):
+        # type: (...) -> None
+        self.name = name
+        self.multiarch = multiarch
+
+    @property
+    def qemu_name(self):
+        return {
+            # Debian architecture => qemu-ARCH suffix
+            'arm64': 'aarch64',
+            'armel': 'arm',
+            'armhf': 'arm',
+            'amd64': 'x86_64',
+            'powerpc': 'ppc',
+        }.get(self.name, self.name)
+
+
+# Debian architecture => Debian multiarch tuple
+X86_ARCHS = [
+    Architecture(
+        name='amd64',
+        multiarch='x86_64-linux-gnu',
+    ),
+    Architecture(
+        name='i386',
+        multiarch='i386-linux-gnu',
+    ),
+]
+# Packages where different binary packages can have different copyright
+# files
+DIFFERENT_COPYRIGHT_FILES = [
+    'util-linux',
+]
+SCRIPTS = [
+    'pressure-vessel-unruntime',
+    'steam-runtime-launch-options',
+]
+EXECUTABLES = [
+    'pressure-vessel-wrap',
+    'pv-verify',
+    'steam-runtime-check-requirements',
+    'steam-runtime-launch-client',
+    'steam-runtime-launcher-interface-0',
+    'steam-runtime-steam-remote',
+    'steam-runtime-supervisor',
+    'steam-runtime-system-info',
+]
+LIBEXEC_EXECUTABLES = [
+    'launch-options.py',
+    'pv-adverb',
+    'pv-locale-gen',
+    'pv-try-setlocale',
+    'srt-bwrap',
+    'srt-logger',
+]
+LIBEXEC_DATA = [
+    'logger-0.bash',
+]
+
+
+def install(src, dst, mode=0o644):
+    # type: (str, str, int) -> None
+
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    shutil.copy(src, dst)
+
+    if os.path.isdir(dst):
+        dst = os.path.join(dst, os.path.basename(src))
+
+    os.chmod(dst, mode)
+
+
+def install_exe(src, dst, mode=0o755):
+    # type: (str, str, int) -> None
+    install(src, dst, mode)
+
+
+def symlink_force(src, dst):
+    # type: (str, str) -> None
+    # Equivalent to ln -fns
+    if os.path.exists(dst):
+        os.remove(dst)
+
+    os.symlink(src, dst)
+
+
+def v_call(command, **kwargs):
+    print('# {}'.format(command))
+    return subprocess.call(command, **kwargs)
+
+
+def v_check_call(command, **kwargs):
+    print('# {}'.format(command))
+    subprocess.check_call(command, **kwargs)
+
+
+def v_check_output(command, **kwargs):
+    print('# {}'.format(command))
+    return subprocess.check_output(command, **kwargs)
+
+
+def is_script(name):
+    # type: (str) -> bool
+    # Return True if `name` is the path to a script, False if it might be
+    # an ELF executable.
+    with open(name, 'rb') as reader:
+        return (reader.read(2) == b'#!')
+
+
+def package_owning_file(real):
+    # type: (str) -> typing.Tuple[str, str]
+    # Return the (binary,source) package that owns real path `real`.
+    assert real.startswith('/'), real
+
+    try:
+        output = v_check_output(
+            ['dpkg-query', '-S', real],
+            universal_newlines=True,
+        ).rstrip('\n')
+    except subprocess.CalledProcessError:
+        if real.startswith('/usr/'):
+            real = real[5:]
+        else:
+            real = '/usr' + real
+
+        output = v_check_output(
+            ['dpkg-query', '-S', real],
+            universal_newlines=True,
+        ).rstrip('\n')
+
+    # If the file has been diverted with dpkg-divert, there would be 2 lines
+    assert '\n' not in output, output
+
+    binary = output.split(':')[0]
+
+    # There should not be a comma unless two packages share ownership
+    assert ',' not in binary, binary
+
+    # There might be more than one architecture's instance of the package,
+    # but they should all (be at the same version and) have come from
+    # the same source package
+    sources = set(
+        v_check_output([
+            'dpkg-query',
+            '-W',
+            '-f', '${source:Package}\n',
+            binary,
+        ], universal_newlines=True).splitlines(),
+    )
+    assert len(sources) == 1, sources
+    return binary, sources.pop()
+
+
+def filename_is_friendly(s: str) -> bool:
+    '''
+    Return true if the filename is non-problematic for Windows
+    filesystems, Steampipe, Unix shells and so on.
+    '''
+
+    # Some relevant restrictions:
+    #
+    # * Windows and Steampipe don't allow <>:"\|?*
+    # * Windows doesn't allow surrogate escapes U+DC80 to U+DCFF
+    # * #$&'()[]{};` are special to Unix shells in general
+    # * !^ are special to interactive Unix shells
+    # * % is special to Windows shells
+    # * , is special to the Steam bootstrapper
+    # * whitespace is awkward and not necessarily handled consistently
+    # * ASCII control characters are not necessarily handled consistently
+    # * non-ASCII is not necessarily handled consistently
+
+    for c in s:
+        if c >= 'A' and c <= 'Z':
+            continue
+        elif c >= 'a' and c <= 'z':
+            continue
+        elif c >= '0' and c <= '9':
+            continue
+        elif c not in '+-./=@_~':
+            return False
+
+    # ~ is special to Unix shells at the beginning of an argument
+    if s.startswith('~') or '/~' in s:
+        return False
+
+    # Unix command-line tools can get confused by basenames starting
+    # with a dash
+    if s.startswith('-') or '/-' in s:
+        return False
+
+    # Also avoid filenames like __pycache__/*.pyc, which might otherwise
+    # be deleted by "helpful" file cleaning tools
+    if (
+        '/.cache/' in s
+        or '/__pycache__/' in s
+        or '/tmp/' in s
+        or s.endswith((
+            '.pyc',
+            '.pyo',
+            'CACHEDIR.TAG',
+        ))
+    ):
+        return False
+
+    return True
+
+
+def main():
+    # type: () -> None
+
+    architectures = []           # type: typing.List[Architecture]
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--architecture-name', default=None,
+        help=(
+            'Debian dpkg architecture to use. Typical values are "amd64", '
+            '"i386", "arm64" etc. [default: "amd64" and "i386"]'
+        ),
+    )
+    parser.add_argument(
+        '--architecture-multiarch', default=None,
+        help=(
+            'Debian multiarch tuple to use. Typical values are '
+            '"x86_64-linux-gnu", "i386-linux-gnu", "aarch64-linux-gnu", etc.'
+            '[default: "x86_64-linux-gnu" and "i386-linux-gnu"]'
+        ),
+    )
+    parser.add_argument(
+        '--destdir', default=os.getenv('DESTDIR'),
+        help=(
+            'Assume steam-runtime-tools is installed in DESTDIR instead of '
+            'in the root directory'
+        ),
+    )
+    parser.add_argument(
+        '--prefix', default=None,
+        help=(
+            'Assume steam-runtime-tools is installed in PREFIX instead of '
+            'in /usr'
+        ),
+    )
+    parser.add_argument(
+        '--pressure-vessel-dir', default='lib/pressure-vessel/relocatable',
+        dest='pv_dir',
+        metavar='PV_DIR',
+        help=(
+            'Assume pressure-vessel is installed in PREFIX/PV_DIR '
+            'instead of in PREFIX/lib/pressure-vessel/relocatable'
+        ),
+    )
+    parser.add_argument(
+        '--cache', default='', metavar='DIR',
+        help='Cache downloaded source code in DIR',
+    )
+    parser.add_argument(
+        '--output', '-o', default=None,
+        help='Write an unpacked binary tree to OUTPUT',
+    )
+    parser.add_argument(
+        '--archive', default=None,
+        help='Write packed source and binary tarballs into ARCHIVE directory',
+    )
+    parser.add_argument(
+        '--check-source-directory', default=None, metavar='DIR',
+        help=(
+            'Instead of building a binary + source release tarball, check '
+            'that all required source code is available in DIR'
+        ),
+    )
+    parser.add_argument(
+        '--allow-missing-sources', action='store_true',
+        help='Missing source code is only a warning [default: error]',
+    )
+    parser.add_argument(
+        '--set-version', dest='version', default=None,
+        help='Assume that steam-runtime-tools is version VERSION',
+    )
+    parser.add_argument(
+        '--archive-versions', action='store_true', default=True,
+        help=(
+            'Embed the version of steam-runtime-tools in the tarballs '
+            '[default]'
+        ),
+    )
+    parser.add_argument(
+        '--no-archive-versions', dest='archive_versions',
+        action='store_false', default=True,
+        help='Do not embed the version of steam-runtime-tools in the tarballs',
+    )
+    args = parser.parse_args()
+
+    srcdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    if args.prefix is None:
+        args.prefix = '/usr'
+
+    if args.pv_dir is None:
+        args.pv_dir = 'lib/pressure-vessel/relocatable'
+
+    args.pv_dir = args.prefix + '/' + args.pv_dir
+
+    if args.destdir:
+        args.prefix = args.destdir + args.prefix
+        args.pv_dir = args.destdir + args.pv_dir
+
+    if args.archive is None and args.output is None:
+        parser.error('Either --archive or --output is required')
+
+    if args.architecture_name and args.architecture_multiarch is None:
+        parser.error('When using --architecture-name, also '
+                     '--architecture-multiarch is required')
+
+    if args.architecture_multiarch and args.architecture_name is None:
+        parser.error('When using --architecture-multiarch, also '
+                     '--architecture-name is required')
+
+    if args.architecture_name:
+        archs = args.architecture_name.split(',')
+        tuples = args.architecture_multiarch.split(',')
+
+        if len(archs) != len(tuples):
+            parser.error(
+                '--architecture-name and --architecture-multiarch '
+                'must have the same number of comma-separated items'
+            )
+
+        for a, t in zip(archs, tuples):
+            architectures.append(Architecture(name=a, multiarch=t))
+    else:
+        architectures += X86_ARCHS
+
+    if args.version is None:
+        path = os.path.join(args.pv_dir, 'bin', 'pressure-vessel-wrap')
+        args.version = v_check_output(
+            [path, '--version-only'],
+            universal_newlines=True,
+        ).rstrip('\n')
+
+    with tempfile.TemporaryDirectory(prefix='pressure-vessel-') as tmpdir:
+        if args.output is None:
+            installation = os.path.join(tmpdir, 'installation')
+        else:
+            installation = args.output
+
+        if os.path.exists(installation):
+            raise RuntimeError('--output directory must not already exist')
+
+        os.makedirs(os.path.join(installation, 'bin'), exist_ok=True)
+        os.makedirs(os.path.join(installation, 'libexec'), exist_ok=True)
+        os.makedirs(os.path.join(installation, 'metadata'), exist_ok=True)
+
+        for arch in architectures:
+            os.makedirs(
+                os.path.join(installation, 'lib', arch.multiarch),
+                exist_ok=True,
+            )
+
+        for script in SCRIPTS:
+            path = os.path.join(args.pv_dir, 'bin', script)
+
+            if not os.path.exists(path):
+                path = os.path.join(args.prefix, 'bin', script)
+
+            install_exe(path, os.path.join(installation, 'bin'))
+
+        for exe in EXECUTABLES:
+            path = os.path.join(args.pv_dir, 'bin', exe)
+
+            if not os.path.exists(path):
+                path = os.path.join(args.prefix, 'bin', exe)
+
+            if not os.path.exists(path):
+                path = '/usr/bin/{}'.format(exe)
+
+            install_exe(path, os.path.join(installation, 'bin'))
+
+        # Primary architecture of the machine or container
+        machine_architecture = subprocess.check_output([
+            'dpkg', '--print-architecture',
+        ]).decode('utf-8').strip()
+        # Primary architecture of the resulting pressure-vessel,
+        # which might be different
+        primary_architecture = architectures[0].name
+
+        # bin/steam-runtime-launcher-service is a symlink
+        # to ../libexec/steam-runtime-tools/TUPLE-srt-launcher-service.
+        # Historically we've avoided relying on Steampipe handling
+        # symlinks gracefully, but in fact it can cope with symlinks now.
+        for arch in architectures:
+            if arch.name == primary_architecture:
+                for exe in [
+                    'launcher-service',
+                ]:
+                    # Where to install the symlink
+                    dest = os.path.join(
+                        installation,
+                        'bin',
+                        'steam-runtime-' + exe,
+                    )
+                    # Relative path from dest to the real executable
+                    rel = (
+                        '../libexec/steam-runtime-tools-0/'
+                        + arch.multiarch
+                        + '-srt-'
+                        + exe
+                    )
+                    symlink_force(rel, dest)
+
+        install(
+            os.path.join(srcdir, 'pressure-vessel', 'THIRD-PARTY.md'),
+            os.path.join(installation, 'metadata', 'README.txt'),
+            0o644,
+        )
+
+        inst_pkglibexecdir = os.path.join(
+            installation,
+            'libexec',
+            'steam-runtime-tools-0',
+        )
+
+        path = os.path.join(
+            args.prefix, 'libexec', 'steam-runtime-tools-0',
+        )
+
+        if not os.path.exists(path):
+            path = '/usr/libexec/steam-runtime-tools-0'
+
+        for exe in LIBEXEC_EXECUTABLES:
+            install_exe(
+                os.path.join(path, exe),
+                os.path.join(inst_pkglibexecdir, exe),
+            )
+
+            # We want to symlink some of these into the PATH
+            if exe in (
+                'srt-logger',
+            ):
+                # Where to install the symlink
+                dest = os.path.join(installation, 'bin', exe)
+                # Relative path from dest to the real executable
+                rel = '../libexec/steam-runtime-tools-0/' + exe
+                symlink_force(rel, dest)
+
+        for data in LIBEXEC_DATA:
+            install(
+                os.path.join(path, data),
+                os.path.join(inst_pkglibexecdir, data),
+            )
+
+        for arch in architectures:
+            path = os.path.join(
+                args.prefix, 'libexec', 'steam-runtime-tools-0',
+            )
+
+            if not os.path.exists(path):
+                path = '/usr/libexec/steam-runtime-tools-0'
+
+            if not os.path.exists(path):
+                package = 'libsteam-runtime-tools-0-helpers'
+                v_check_call([
+                    'apt-get',
+                    'download',
+                    package + ':' + arch.name,
+                ], cwd=tmpdir)
+                v_check_call(
+                    'dpkg-deb -X {}_*_{}.deb build-relocatable'.format(
+                        quote(package),
+                        quote(arch.name),
+                    ),
+                    cwd=tmpdir,
+                    shell=True,
+                )
+                path = '{}/build-relocatable/{}'.format(tmpdir, path)
+
+            for tool in glob.glob(os.path.join(path, arch.multiarch + '-*')):
+                # As a special case, we assume that i386 containers and i386
+                # emulators will always be for (x86_64,i386), which means we
+                # can save ~ 3 MiB by not having i386 srt-launcher-service,
+                # which in turn means we won't need i386 GLib.
+                if arch.name != primary_architecture and arch.name == 'i386':
+                    if os.path.basename(tool).endswith((
+                        '-srt-launcher-service',
+                    )):
+                        continue
+
+                install_exe(
+                    tool,
+                    os.path.join(inst_pkglibexecdir, os.path.basename(tool)),
+                )
+
+            for shader in glob.glob(os.path.join(path, 'shaders', '*.spv')):
+                install(
+                    shader,
+                    os.path.join(
+                        inst_pkglibexecdir,
+                        'shaders', os.path.basename(shader),
+                    )
+                )
+
+            shutil.copytree(
+                os.path.join(path, arch.multiarch),
+                os.path.join(inst_pkglibexecdir, arch.multiarch),
+            )
+
+        # Set of (binary package, source package) pairs
+        get_source = set()      # type: typing.Set[typing.Tuple[str, str]]
+
+        for arch in architectures:
+            os.makedirs(
+                os.path.join(tmpdir, 'build-relocatable', arch.name, 'lib'),
+                exist_ok=True,
+            )
+
+            expressions = []    # type: typing.List[str]
+
+            get_deps_of = [
+                # We intentionally don't take the dependencies of all the
+                # check-* executables, because some of those are basic
+                # libraries like libX11 and libGL which we would prefer to
+                # get from the host system.
+                arch.multiarch + '-capsule-capture-libs',
+                arch.multiarch + '-detect-lib',
+                arch.multiarch + '-detect-platform',
+                arch.multiarch + '-inspect-library',
+                arch.multiarch + '-inspect-library-libelf',
+            ]
+
+            if arch.name == primary_architecture or arch.name != 'i386':
+                get_deps_of.append(
+                    arch.multiarch + '-srt-launcher-service',
+                )
+
+            for exe in get_deps_of:
+                expressions.append(
+                    'only-dependencies:path:' + os.path.abspath(
+                        os.path.join(inst_pkglibexecdir, exe),
+                    )
+                )
+
+            if arch.name == primary_architecture:
+                for exe in EXECUTABLES:
+                    path = os.path.join(installation, 'bin', exe)
+
+                    if is_script(path):
+                        continue
+
+                    expressions.append(
+                        'only-dependencies:path:' + os.path.abspath(path)
+                    )
+
+                for exe in LIBEXEC_EXECUTABLES:
+                    path = os.path.join(inst_pkglibexecdir, exe)
+
+                    if is_script(path):
+                        continue
+
+                    expressions.append(
+                        'only-dependencies:path:' + os.path.abspath(path)
+                    )
+
+            argv = [
+                'env',
+                'CAPSULE_DEBUG=tool',
+            ]
+
+            if (
+                arch.name != machine_architecture
+                and (arch.name != 'i386' or machine_architecture != 'amd64')
+            ):
+                argv.append('qemu-' + arch.qemu_name)
+
+            argv.extend([
+                '{}/{}-capsule-capture-libs'.format(
+                    inst_pkglibexecdir,
+                    arch.multiarch,
+                ),
+                '--dest={}/build-relocatable/{}/lib'.format(
+                    tmpdir,
+                    arch.name,
+                ),
+                '--no-glibc',
+            ])
+            argv.extend(expressions)
+            argv.extend([
+                # We take libwaffle-1.so.0 itself but not its dependencies,
+                # because its dependencies include libGL which we don't
+                # want to bundle
+                'no-dependencies:soname:libwaffle-1.so.0',
+            ])
+
+            v_check_call(argv)
+
+            for so in glob.glob(
+                os.path.join(
+                    tmpdir,
+                    'build-relocatable',
+                    arch.name,
+                    'lib',
+                    '*.so.*',
+                ),
+            ):
+                install(
+                    so,
+                    os.path.join(
+                        installation, 'lib', arch.multiarch,
+                        'steam-runtime-tools-0',
+                        os.path.basename(so)
+                    )
+                )
+
+                real = os.path.realpath(so)
+                package, source = package_owning_file(real)
+                get_source.add((package, source))
+
+        source_to_download = set()      # type: typing.Set[str]
+        installed_binaries = set()      # type: typing.Set[str]
+
+        get_source.add(
+            ('pressure-vessel-relocatable', 'steam-runtime-tools'),
+        )
+
+        for package, source in sorted(get_source):
+            if os.path.exists('/usr/share/doc/{}/copyright'.format(package)):
+                installed_binaries.add(package)
+                source_version = ''
+
+                for expr in set(
+                    v_check_output([
+                        'dpkg-query',
+                        '-W',
+                        '-f', '${source:Package}=${source:Version}\n',
+                        package,
+                    ], universal_newlines=True).splitlines()
+                ):
+                    without_build_suffix = re.sub(
+                        r'[+]srt[0-9a-z.]+$',
+                        '',
+                        expr,
+                    )
+                    source_to_download.add(without_build_suffix)
+                    after_equals = without_build_suffix.split('=', 1)[1]
+                    # We can only have one ${source:Version} installed
+                    assert source_version in ('', after_equals)
+                    source_version = after_equals
+
+                # Omit the optional epoch marker if present, like
+                # dpkg-buildpackage does, to avoid ':' in filenames
+                safe_version = re.sub(r'^[0-9]+:', '', source_version)
+
+                if source in DIFFERENT_COPYRIGHT_FILES:
+                    install(
+                        '/usr/share/doc/{}/copyright'.format(package),
+                        os.path.join(
+                            installation,
+                            'metadata',
+                            '{}_{}.txt'.format(package, safe_version),
+                        ),
+                    )
+                else:
+                    install(
+                        '/usr/share/doc/{}/copyright'.format(package),
+                        os.path.join(
+                            installation,
+                            'metadata',
+                            '{}_{}.txt'.format(source, safe_version),
+                        ),
+                    )
+            else:
+                maybe_version = ''
+
+                if source == 'steam-runtime-tools':
+                    copyright_file = os.path.join(
+                        srcdir, 'debian', 'copyright',
+                    )
+                    source = source + '=' + args.version
+                    maybe_version = '_' + args.version
+                else:
+                    copyright_file = os.path.join(
+                        tmpdir,
+                        'build-relocatable/usr/share/doc',
+                        package,
+                        'copyright',
+                    )
+
+                install(
+                    copyright_file,
+                    os.path.join(
+                        installation,
+                        'metadata',
+                        '{}{}.txt'.format(source, maybe_version),
+                    ),
+                )
+                source_to_download.add(source)
+
+        with open(
+            os.path.join(installation, 'metadata', 'packages.txt'), 'w'
+        ) as writer:
+            writer.write(
+                '#Package[:Architecture]\t#Version\t#Source\t#Installed-Size\n'
+            )
+            writer.flush()
+            v_check_call([
+                'dpkg-query',
+                '-W',
+                '-f',
+                (r'${binary:Package}\t${Version}\t'
+                 r'${Source}\t${Installed-Size}\n'),
+            ] + sorted(installed_binaries), stdout=writer)
+
+        with open(
+            os.path.join(installation, 'metadata', 'VERSION.txt'),
+            'w',
+        ) as writer:
+            writer.write('{}\n'.format(args.version))
+
+        with open(
+            os.path.join(installation, 'metadata', 'sources.txt'), 'w'
+        ) as writer:
+            writer.write(
+                '#Source\t#Version\n'
+            )
+            for source in sorted(source_to_download):
+                writer.write(source.replace('=', '\t') + '\n')
+
+        shutil.copytree(
+            os.path.join(installation, 'metadata'),
+            os.path.join(installation, 'sources'),
+        )
+
+        if args.check_source_directory is None:
+            source_should_be_in = os.path.join(installation, 'sources')
+        else:
+            source_should_be_in = args.check_source_directory
+
+        for source in sorted(source_to_download):
+            package, version = source.split('=')
+
+            if ':' in version:
+                version = version.split(':', 1)[1]
+
+            filename = os.path.join(
+                source_should_be_in,
+                '{}_{}.dsc'.format(package, version),
+            )
+
+            if args.cache:
+                cache_filename = os.path.join(
+                    args.cache,
+                    '{}_{}.dsc'.format(package, version),
+                )
+
+                if (
+                    os.path.exists(cache_filename)
+                    and args.check_source_directory is None
+                ):
+                    if v_call([
+                        'dcmd', 'cp', '-al', cache_filename,
+                        source_should_be_in,
+                    ]) != 0:
+                        try:
+                            os.remove(filename)
+                        except FileNotFoundError:
+                            pass
+
+            if os.path.exists(filename) and v_call([
+                'dscverify', '--no-sig-check', filename,
+            ]) == 0:
+                source_to_download.remove(source)
+            elif args.check_source_directory is None:
+                pass
+            elif args.allow_missing_sources:
+                logger.warning(
+                    'Source code not found in %s', filename)
+            else:
+                raise RuntimeError(
+                    'Source code not found in %s', filename)
+
+        if args.check_source_directory is None and source_to_download:
+            try:
+                v_check_call(
+                    [
+                        'apt-get',
+                        '--download-only',
+                        '--only-source',
+                        'source',
+                    ] + list(source_to_download),
+                    cwd=os.path.join(installation, 'sources'),
+                )
+            except subprocess.CalledProcessError:
+                if args.allow_missing_sources:
+                    logger.warning(
+                        'Some source packages could not be downloaded')
+                    with open(
+                        os.path.join(installation, 'sources', 'INCOMPLETE'),
+                        'w',
+                    ) as writer:
+                        # nothing to write, just create the file
+                        pass
+                else:
+                    raise
+
+            if args.cache:
+                for source in source_to_download:
+                    package, version = source.split('=')
+
+                    if ':' in version:
+                        version = version.split(':', 1)[1]
+
+                    filename = os.path.join(
+                        source_should_be_in,
+                        '{}_{}.dsc'.format(package, version),
+                    )
+
+                    if os.path.exists(filename):
+                        v_check_call([
+                            'dcmd', 'cp', '-al', filename, args.cache + '/',
+                        ])
+
+        for dir_path, dirs, files in os.walk(
+            installation,
+            topdown=True,
+            followlinks=False,
+        ):
+            for item in dirs + files:
+                if not filename_is_friendly(item):
+                    raise AssertionError(
+                        'Filename %r might not be Steampipe-compatible'
+                        % item,
+                    )
+
+        if args.archive:
+            if args.archive_versions:
+                tail = '-' + args.version
+            else:
+                tail = ''
+
+            if args.architecture_name is None:
+                bin_arch = 'bin'
+            else:
+                bin_arch = args.architecture_name.replace(',', '+')
+
+            bin_tar = os.path.join(
+                args.archive,
+                'pressure-vessel{}-{}.tar.gz'.format(tail, bin_arch),
+            )
+
+            if args.check_source_directory is None:
+                src_tar = os.path.join(
+                    args.archive,
+                    'pressure-vessel{}-{}+src.tar.gz'.format(tail, bin_arch),
+                )
+                subprocess.check_call([
+                    'tar',
+                    # Note the S suffix: we only want this transformation
+                    # to be applied to filenames, and not to (relative!)
+                    # symlink targets.
+                    (r'--transform='
+                     r's,^\(\.\(/\|$\)\)\?,pressure-vessel{}/,S').format(
+                        tail,
+                    ),
+                    # metadata/ is all duplicated in sources/
+                    '--exclude=metadata',
+                    '-zcvf', src_tar + '.tmp',
+                    '-C', installation,
+                    '.',
+                ])
+            else:
+                src_tar = ''
+
+            subprocess.check_call([
+                'tar',
+                # Note the S suffix, as above.
+                (r'--transform='
+                 r's,^\(\.\(/\|$\)\)\?,pressure-vessel{}/,S').format(
+                    tail,
+                ),
+                '--exclude=sources',
+                '-zcvf', bin_tar + '.tmp',
+                '-C', installation,
+                '.',
+            ])
+            os.rename(bin_tar + '.tmp', bin_tar)
+            print('Generated {}'.format(os.path.abspath(bin_tar)))
+
+            if src_tar:
+                os.rename(src_tar + '.tmp', src_tar)
+                print('Generated {}'.format(os.path.abspath(src_tar)))
+
+
+if __name__ == '__main__':
+    assert sys.version_info >= (3, 5), \
+        'Python 3.5+ is required (configure with -Dpython=python3.5 ' \
+        'if necessary)'
+    logging.basicConfig()
+    main()
+
+# vim:set sw=4 sts=4 et:

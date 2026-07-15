@@ -1,0 +1,886 @@
+#!/usr/bin/perl
+
+# Copyright © 2017 Collabora Ltd
+# SPDX-License-Identifier: LGPL-2.1-or-later
+#
+# This file is part of libcapsule.
+#
+# libcapsule is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 2.1 of the
+# License, or (at your option) any later version.
+#
+# libcapsule is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with libcapsule.  If not, see <http://www.gnu.org/licenses/>.
+
+use autodie;
+use warnings;
+use strict;
+
+use Cwd qw(abs_path);
+use File::Temp qw();
+use IPC::Run qw(run);
+use Test::More;
+
+use FindBin;
+use lib $FindBin::Bin;
+
+use CapsuleTest;
+
+sub tolerant_readlink ($)
+{
+    no autodie;
+    return readlink shift;
+}
+
+skip_all_unless_bwrap;
+
+my $LIBDIR = qr{/(?:usr/(?:\w+-(?:\w+-)?linux-gnu\w*/)?)?lib(?:32|64|x32)?(?:/\w+-linux-gnu\w*)?(?:/i686)?(?:/cmov)?};
+
+my $test_tempdir = File::Temp->newdir();
+diag "Working directory: $test_tempdir";
+my $host = "${test_tempdir}/host";
+mkdir($host);
+my $container = "${test_tempdir}/container";
+mkdir($container);
+my $libdir = "${test_tempdir}/libdir";
+
+{
+    open(my $fh, '>', "${test_tempdir}/empty");
+    close $fh;
+}
+{
+    open(my $fh, '>', "${test_tempdir}/libc");
+    print $fh "# comment\n";
+    print $fh "\n";
+    print $fh "soname:libc.so.6\n";
+    print $fh "soname:libc.so.6";  # deliberately no trailing newline
+    close $fh;
+}
+{
+    open(my $fh, '>', "${test_tempdir}/capture-libs.ini");
+    print $fh "[Library /opt/libversionedsymbols.so.1]\n";
+    print $fh "CompareBy=versions;name;symbols;\n";
+    print $fh "[Library /opt/libversionedlikedbus.so.1]\n";
+    print $fh "CompareBy=container;\n";
+    print $fh "[Library /opt/libversionedprivatenothidden.so.1]\n";
+    print $fh "CompareBy=versions;\n";
+    print $fh "PublicSymbolVersions=!LIBVERSIONEDPRIVATE*;*;\n";
+    close $fh;
+}
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, 'soname:libc.so.6'], '>&2',
+    init => sub { chdir $libdir or die $!; });
+ok(-e "$libdir/libc.so.6", 'libc.so.6 was captured');
+my $target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> $LIBDIR/libc.so.6");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, qr{^$LIBDIR/libc\.so\.6$},
+    '$libdir/libc.so.6 is a symlink to the real libc.so.6 in some form');
+my $libc_realpath = abs_path("$libdir/libc.so.6");
+my $libc_real_basename = $libc_realpath;
+$libc_real_basename =~ s{.*/}{};
+my $libc_re = qr{$LIBDIR/\Q$libc_real_basename\E};
+ok(-e "$libdir/libBrokenLocale.so.1", 'related libraries were captured');
+ok(-e "$libdir/libm.so.6", 'related libraries were captured');
+ok(-e "$libdir/libpthread.so.0", 'related libraries were captured');
+ok(-e "$libdir/libmemusage.so", 'related libraries were captured');
+like(readlink "$libdir/libm.so.6", qr{^$LIBDIR/libm\.so\.6$},
+    'libm is a symlink to the right place');
+my @libc_family;
+{
+    opendir(my $dir_iter, $libdir);
+    @libc_family = sort grep { $_ ne '.' and $_ ne '..' } readdir $dir_iter;
+    closedir $dir_iter;
+    foreach my $symlink (@libc_family) {
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+}
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+        "--dest=$libdir", 'soname-match:libc.so.6'], '>&2');
+{
+    opendir(my $dir_iter, $libdir);
+    my @links = sort grep { $_ ne '.' and $_ ne '..' } readdir $dir_iter;
+    foreach my $symlink (@links) {
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+    is_deeply(\@links, \@libc_family,
+        'the same libraries are captured when using --link-target');
+}
+$target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> /run/host$libc_re");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, qr{^/run/host$libc_re$},
+     '$libdir/libc.so.6 is a symlink to /run/host + a path to libc.so.6');
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+        '--remap-link-prefix=/run/host/=/run/media/', "--dest=$libdir",
+        'soname-match:libc.so.6'], '>&2');
+{
+    opendir(my $dir_iter, $libdir);
+    my @links = sort grep { $_ ne '.' and $_ ne '..' } readdir $dir_iter;
+    foreach my $symlink (@links) {
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+    is_deeply(\@links, \@libc_family,
+        'the same libraries are captured when using --link-target');
+}
+$target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> /run/media$libc_re");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, qr{^/run/media$libc_re$},
+     '$libdir/libc.so.6 is a symlink to /run/media + a path to libc.so.6');
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+        '--remap-link-prefix=/one=/two', '--remap-link-prefix=/run/ho=/run/co',
+        "--dest=$libdir", 'soname-match:libc.so.6'], '>&2');
+{
+    opendir(my $dir_iter, $libdir);
+    my @links = sort grep { $_ ne '.' and $_ ne '..' } readdir $dir_iter;
+    foreach my $symlink (@links) {
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+    is_deeply(\@links, \@libc_family,
+        'the same libraries are captured when using --link-target');
+}
+$target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> /run/cost$libc_re");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, qr{^/run/cost$libc_re$},
+     '$libdir/libc.so.6 is a symlink to /run/cost + a path to libc.so.6');
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+        '--remap-link-prefix=/run/host2=/run/media', "--dest=$libdir",
+        'soname-match:libc.so.6'], '>&2');
+{
+    opendir(my $dir_iter, $libdir);
+    my @links = sort grep { $_ ne '.' and $_ ne '..' } readdir $dir_iter;
+    foreach my $symlink (@links) {
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+    is_deeply(\@links, \@libc_family,
+        'the same libraries are captured when using --link-target');
+}
+$target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> /run/host$libc_re");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, qr{^/run/host$libc_re$},
+     '$libdir/libc.so.6 is a symlink to /run/host + a path to libc.so.6');
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+# We already asserted that libc will be either in /usr/ or /lib*
+run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--remap-link-prefix=/usr/=/run/host/usr/',
+        '--remap-link-prefix=/lib=/run/host/lib', "--dest=$libdir",
+        'soname-match:libc.so.6'], '>&2');
+$target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> /run/host$libc_re");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, qr{^/run/host$libc_re$},
+     "$libdir/libc.so.6 is a symlink to /run/host + a path to libc.so.6");
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+# We already asserted that libc will be either in /usr/ or /lib*
+run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--remap-link-prefix=/usr/=/tmp+foo=what/usr/',
+        '--remap-link-prefix=/lib=/tmp+foo=what/lib', "--dest=$libdir",
+        'soname-match:libc.so.6'], '>&2');
+$target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> /tmp+foo=what$libc_re");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, qr{^/tmp\+foo=what$libc_re$},
+     "$libdir/libc.so.6 is a symlink to /tmp+foo=what + a path to libc.so.6");
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--remap-link-prefix=/opt/=/OPT/',
+        "--dest=$libdir", 'soname-match:libc.so.6'], '>&2');
+$target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> $LIBDIR/libc.so.6");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, $libc_re,
+     "$libdir/libc.so.6 is a symlink to the real libc.so.6 in some form");
+is(abs_path("$libdir/libc.so.6"), $libc_realpath,
+   "$libdir/libc.so.6 canonicalizes to $libc_realpath");
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+my $stderr;
+run_assert_exit_status(1, [$CAPSULE_CAPTURE_LIBS_TOOL,
+                        '--remap-link-prefix==/run/host',
+                        "--dest=$libdir", 'soname-match:libc.so.6'],
+                       '2>', \$stderr, '>&2');
+like($stderr, qr{--remap-link-prefix value must follow the FROM=TO pattern$},
+     '--remap-link-prefix should follow the pattern FROM=TO');
+
+run_assert_exit_status(1, [$CAPSULE_CAPTURE_LIBS_TOOL, '--remap-link-prefix=/usr=',
+            "--dest=$libdir", 'soname-match:libc.so.6'], '2>', \$stderr, '>&2');
+like($stderr, qr{--remap-link-prefix value must follow the FROM=TO pattern$},
+     '--remap-link-prefix should follow the pattern FROM=TO');
+
+run_assert_exit_status(1, [$CAPSULE_CAPTURE_LIBS_TOOL, '--remap-link-prefix=/usr',
+            "--dest=$libdir", 'soname-match:libc.so.6'], '2>', \$stderr, '>&2');
+like($stderr, qr{--remap-link-prefix value must follow the FROM=TO pattern$},
+     '--remap-link-prefix should follow the pattern FROM=TO');
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([qw(bwrap --ro-bind / / --ro-bind /), $host,
+        '--bind', $libdir, $libdir,
+        qw(--dev-bind /dev /dev),
+        $CAPSULE_CAPTURE_LIBS_TOOL,
+        "--dest=$libdir",
+        "--provider=$host",
+        "from:$test_tempdir/empty",
+        "from:$test_tempdir/libc"], '>&2');
+{
+    opendir(my $dir_iter, $libdir);
+    my @links = sort grep { $_ ne '.' and $_ ne '..' } readdir $dir_iter;
+    foreach my $symlink (@links) {
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+    is_deeply(\@links, \@libc_family,
+        'the same libraries are captured when using $host');
+}
+$target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> ${host}${libc_re}");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, qr{^\Q$host\E$libc_re$},
+     '$libdir/libc.so.6 is a symlink to $host + a path to libc.so.6');
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([qw(bwrap --ro-bind / / --ro-bind /), $host,
+        '--bind', $libdir, $libdir,
+        qw(--dev-bind /dev /dev),
+        $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+        "--dest=$libdir",
+        "--provider=$host", 'soname:libc.so.6'], '>&2');
+{
+    opendir(my $dir_iter, $libdir);
+    my @links = sort grep { $_ ne '.' and $_ ne '..' } readdir $dir_iter;
+    foreach my $symlink (@links) {
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+    is_deeply(\@links, \@libc_family,
+        'the same libraries are captured when using $host and --link-target');
+}
+$target = readlink "$libdir/libc.so.6";
+diag("Expecting: $libdir/libc.so.6 -> /run/host$libc_re");
+diag("Actual:    $libdir/libc.so.6 -> $target");
+like($target, qr{^/run/host$libc_re$},
+     '$libdir/libc.so.6 is a symlink to /run/host + a path to libc.so.6');
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([qw(bwrap --ro-bind / / --ro-bind /), $host,
+        '--bind', $libdir, $libdir,
+        qw(--dev-bind /dev /dev),
+        $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+        "--dest=$libdir", "--provider=$host",
+        'soname-match:lib*ml2.so.2*'], '>&2');
+{
+    opendir(my $dir_iter, $libdir);
+    foreach my $symlink (readdir $dir_iter) {
+        next if $symlink eq '.' || $symlink eq '..';
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+}
+like(readlink "$libdir/libxml2.so.2", qr{^$LIBDIR/libxml2\.so\.2(?:[0-9.]+)$},
+     '$libdir/libxml2.so.2 is a symlink to /run/host + a path to libxml2');
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+my $result = run_verbose([qw(bwrap --ro-bind / / --ro-bind /), $host,
+                          '--bind', $libdir, $libdir,
+                          qw(--dev-bind /dev /dev),
+                          $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+                          "--dest=$libdir", "--provider=$host",
+                          'soname-match:this*library*does?not?exist'],
+                         '2>', \$stderr, '>&2');
+ok(! $result, 'a non-matching wildcard should fail');
+like($stderr, qr{"this\*library\*does\?not\?exist"});
+
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([qw(bwrap --ro-bind / / --ro-bind /), $host,
+        '--bind', $libdir, $libdir,
+        qw(--dev-bind /dev /dev),
+        $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+        "--dest=$libdir", "--provider=$host",
+        'if-exists:soname-match:this*library*does?not?exist']);
+
+# libgobject-2.0.so.0 depends on libglib-2.0.so.0 so normally,
+# capturing GObject captures GLib
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([qw(bwrap --ro-bind / / --ro-bind /), $host,
+        '--bind', $libdir, $libdir,
+        qw(--dev-bind /dev /dev),
+        $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+        "--dest=$libdir", "--provider=$host",
+        'soname:libgobject-2.0.so.0']);
+{
+    opendir(my $dir_iter, $libdir);
+    foreach my $symlink (readdir $dir_iter) {
+        next if $symlink eq '.' || $symlink eq '..';
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+}
+like(readlink "$libdir/libgobject-2.0.so.0",
+     qr{^$LIBDIR/libgobject-2\.0\.so\.0(?:[0-9.]+)$},
+     '$libdir/libgobject-2.0.so.0 is captured');
+like(readlink "$libdir/libglib-2.0.so.0",
+     qr{^$LIBDIR/libglib-2\.0\.so\.0(?:[0-9.]+)$},
+     '$libdir/libglib-2.0.so.0 is captured as a dependency');
+
+# only-dependencies: captures the dependency, GLib but not the
+# dependent library, GObject
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([qw(bwrap --ro-bind / / --ro-bind /), $host,
+        '--bind', $libdir, $libdir,
+        qw(--dev-bind /dev /dev),
+        $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+        "--dest=$libdir", "--provider=$host",
+        'only-dependencies:soname:libgobject-2.0.so.0']);
+{
+    opendir(my $dir_iter, $libdir);
+    foreach my $symlink (readdir $dir_iter) {
+        next if $symlink eq '.' || $symlink eq '..';
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+}
+ok(! -e "$libdir/libgobject-2.0.so.0",
+   'only-dependencies: does not capture the library itself');
+like(readlink "$libdir/libglib-2.0.so.0",
+     qr{^$LIBDIR/libglib-2\.0\.so\.0(?:[0-9.]+)$},
+     '$libdir/libglib-2.0.so.0 is captured as a dependency');
+
+# no-dependencies: captures the dependent library, GObject but not the
+# dependency, GLib (not amazingly useful)
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([qw(bwrap --ro-bind / / --ro-bind /), $host,
+        '--bind', $libdir, $libdir,
+        qw(--dev-bind /dev /dev),
+        $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+        "--dest=$libdir", "--provider=$host",
+        'no-dependencies:soname:libgobject-2.0.so.0']);
+{
+    opendir(my $dir_iter, $libdir);
+    foreach my $symlink (readdir $dir_iter) {
+        next if $symlink eq '.' || $symlink eq '..';
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+}
+like(readlink "$libdir/libgobject-2.0.so.0",
+     qr{^$LIBDIR/libgobject-2\.0\.so\.0(?:[0-9.]+)$},
+     '$libdir/libgobject-2.0.so.0 is captured');
+ok(! -e "$libdir/libglib-2.0.so.0",
+   'no-dependencies: does not capture libglib-2.0.so.0');
+
+# --no-glibc doesn't capture glibc even if other dependencies are
+# captured
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([qw(bwrap --ro-bind / / --ro-bind /), $host,
+        '--bind', $libdir, $libdir,
+        qw(--dev-bind /dev /dev),
+        $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+        "--dest=$libdir", "--provider=$host", "--no-glibc",
+        'soname:libgobject-2.0.so.0']);
+{
+    opendir(my $dir_iter, $libdir);
+    foreach my $symlink (readdir $dir_iter) {
+        next if $symlink eq '.' || $symlink eq '..';
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+}
+like(readlink "$libdir/libgobject-2.0.so.0",
+     qr{^$LIBDIR/libgobject-2\.0\.so\.0(?:[0-9.]+)$},
+     '$libdir/libgobject-2.0.so.0 is captured');
+like(readlink "$libdir/libglib-2.0.so.0",
+     qr{^$LIBDIR/libglib-2\.0\.so\.0(?:[0-9.]+)$},
+     '$libdir/libglib-2.0.so.0 is captured');
+ok(! -e "$libdir/libc.so.6",
+   '--no-glibc does not capture libc.so.6');
+
+# only-dependencies:no-dependencies: (either way round) is completely useless
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+$result = run_verbose([qw(bwrap --ro-bind / / --ro-bind /), $host,
+                       '--bind', $libdir, $libdir,
+                       qw(--dev-bind /dev /dev),
+                       $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+                       "--dest=$libdir", "--provider=$host",
+                       'only-dependencies:no-dependencies:libglib-2.0.so.0'],
+                       '>&2');
+ok(! $result, 'only-dependencies:no-dependencies: is useless');
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+$result = run_verbose([qw(bwrap --ro-bind / / --ro-bind /), $host,
+                       '--bind', $libdir, $libdir,
+                       qw(--dev-bind /dev /dev),
+                       $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+                       "--dest=$libdir", "--provider=$host",
+                       'no-dependencies:only-dependencies:libglib-2.0.so.0'],
+                       '>&2');
+ok(! $result, 'no-dependencies:only-dependencies: is useless');
+
+SKIP: {
+    skip "not on Linux? Good luck!", 1 unless $^O eq 'linux';
+    my $stdout;
+    my $ld_so;
+
+    run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--print-ld.so'], '>', \$ld_so);
+    chomp $ld_so;
+    diag "ld.so is $ld_so";
+
+    run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--resolve-ld.so=/'], '>', \$stdout);
+    my $resolved = $stdout;
+    chomp $resolved;
+
+    is(abs_path($resolved), abs_path($ld_so),
+       '--resolve-ld.so=/ should print a path to '.abs_path($ld_so));
+    ok(! -l $resolved,
+       '--resolve-ld.so=/ should not print a symlink');
+
+    # Autotools considers an unexpected pass to be a test failure, so we
+    # have to second-guess whether this is going to work.
+    if ($stdout eq abs_path($ld_so)."\n") {
+        is($stdout, abs_path($ld_so)."\n",
+           '--resolve-ld.so=/ should print '.abs_path($ld_so));
+    }
+    else {
+        TODO: {
+            local $TODO = 'symlinks before the last component are not resolved, '
+                .'e.g. /lib64 -> usr/lib on Arch Linux';
+            is($stdout, abs_path($ld_so)."\n",
+               '--resolve-ld.so=/ should print '.abs_path($ld_so));
+        }
+    }
+
+    run_ok([qw(bwrap --ro-bind / / --ro-bind /), $host,
+            $CAPSULE_CAPTURE_LIBS_TOOL, "--resolve-ld.so=$host"],
+        '>', \$stdout);
+    $resolved = $stdout;
+    chomp $resolved;
+
+    is(abs_path($resolved), abs_path($ld_so),
+       "--resolve-ld.so=$host should print a path to ".abs_path($ld_so));
+    ok(! -l $resolved,
+       "--resolve-ld.so=$host should not print a symlink");
+
+    if ($stdout eq abs_path($ld_so)."\n") {
+        is($stdout, abs_path($ld_so)."\n",
+           "--resolve-ld.so=$host should print ".abs_path($ld_so));
+    }
+    else {
+        TODO: {
+            local $TODO = 'symlinks before the last component are not resolved, '
+                .'e.g. /lib64 -> usr/lib on Arch Linux';
+            is($stdout, abs_path($ld_so)."\n",
+               "--resolve-ld.so=$host should print ".abs_path($ld_so));
+        }
+    }
+};
+
+SKIP: {
+    my $multiarch;
+    my $other_multiarch;
+    my $stdout;
+    my $stderr;
+
+    # For simplicity, we only consider this case on x86.
+    skip "$ENV{CAPSULE_TESTS_GNU_HOST} not x86_64 or i386", 1
+        unless $ENV{CAPSULE_TESTS_GNU_HOST} =~ m/^(x86_64|i.86)-/;
+
+    if ($ENV{CAPSULE_TESTS_GNU_HOST} =~ m/^x86_64-/) {
+        $other_multiarch = 'i386-linux-gnu';
+    }
+    else {
+        $other_multiarch = 'x86_64-linux-gnu';
+    }
+
+    skip "$other_multiarch libxml2.so.2 not available", 1
+        unless -e "/usr/lib/$other_multiarch/libxml2.so.2";
+
+    # Normally, the wrong ABI is an error...
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / / --ro-bind /), $host,
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+                           "--dest=$libdir", "--provider=$host",
+                           "path:/usr/lib/$other_multiarch/libxml2.so.2"],
+                           '>', \$stdout, '2>', \$stderr);
+    ok(! $result, 'library of wrong ABI yields an error');
+    ok(! -e "$libdir/libxml2.so.2");
+    is($stdout, '', 'no machine-readable output');
+    like($stderr, qr{^\Q$CAPSULE_CAPTURE_LIBS_BASENAME\E: error: }m, 'stderr shows error message');
+
+    # ... but when we're dealing with a glob match, other ABIs are silently
+    # ignored.
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / / --ro-bind /), $host,
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+                           "--dest=$libdir", "--provider=$host",
+                           "path-match:/usr/lib/$other_multiarch/libxml2.so.2"],
+                           '>&2');
+    ok($result, 'library of wrong ABI ignored when using path-match');
+    ok(! -e "$libdir/libxml2.so.2");
+
+    # We can also ignore this case explicitly.
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / / --ro-bind /), $host,
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/',
+                           "--dest=$libdir", "--provider=$host",
+                           "if-same-abi:path:/usr/lib/$other_multiarch/libxml2.so.2"],
+                           '>&2');
+    ok($result, 'library of wrong ABI ignored when using if-same-abi');
+    ok(! -e "$libdir/libxml2.so.2");
+
+    # If we use --level-prefix and repeat the failing case, there's a
+    # marker for the severity level
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / / --ro-bind /), $host,
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           $CAPSULE_CAPTURE_LIBS_TOOL,
+                           '--level-prefix', '--link-target=/',
+                           "--dest=$libdir", "--provider=$host",
+                           "path:/usr/lib/$other_multiarch/libxml2.so.2"],
+                           '>', \$stdout, '2>', \$stderr);
+    ok(! $result, 'library of wrong ABI yields an error');
+    ok(! -e "$libdir/libxml2.so.2");
+    is($stdout, '', 'no machine-readable output');
+    like($stderr, qr{^<3>\Q$CAPSULE_CAPTURE_LIBS_BASENAME\E: error: }m, 'stderr has severity prefix');
+};
+
+SKIP: {
+    my $version1 = "$builddir/tests/version1";
+    $version1 .= '/.libs' if libcapsule_uninstalled;
+    my $version2 = "$builddir/tests/version2";
+    $version2 .= '/.libs' if libcapsule_uninstalled;
+
+    skip "shared libraries disabled", 1 unless -e "$version1/libunversionedsymbols.so.1";
+
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / /),
+                           '--tmpfs', $host,
+                           bind_usr('/', $host),
+                           '--tmpfs', $container,
+                           bind_usr('/', $container),
+                           '--ro-bind', $version1, "$host/opt",
+                           '--ro-bind', $version2, "$container/opt",
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           'env', 'CAPSULE_DEBUG=all',
+                           $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+                           "--dest=$libdir", "--provider=$host",
+                           "--compare-by=versions,name,symbols,provider",
+                           "--container=$container",
+                           'path-match:/opt/lib*.so.1'],
+                           '2>', \$stderr, '>&2');
+    diag $stderr;
+    ok($result);
+    is(tolerant_readlink("$libdir/libunversionedabibreak.so.1"),
+       '/run/host/opt/libunversionedabibreak.so.1.0.0',
+       "should take provider's version when neither's symbols are a superset of the other");
+    ok(! -l "$libdir/libunversionednumber.so.1",
+       "should not take provider's version when container's numeric tail is strictly newer");
+    ok(! -l "$libdir/libunversionedsymbols.so.1",
+       "should not take provider's version when container has strictly more symbols");
+    is(tolerant_readlink("$libdir/libversionedabibreak.so.1"),
+       '/run/host/opt/libversionedabibreak.so.1.0.0',
+       "should take provider's version when neither's symbol-versions are a superset of the other");
+    ok(! -l "$libdir/libversionedlikedbus.so.1",
+       "should not take provider's older fake libdbus");
+    ok(! -l "$libdir/libversionedlikeglibc.so.1",
+       "should not take provider's older fake glibc");
+    ok(! -l "$libdir/libversionednumber.so.1",
+       "should not take provider's version when container's numeric tail is strictly newer and symbols are equal");
+    ok(! -l "$libdir/libversionedsymbols.so.1",
+       "should not take provider's version when container has strictly more symbols");
+    ok(! -l "$libdir/libversionedupgrade.so.1",
+       "should not take provider's version when container has strictly more symbols");
+
+    # The opposite.
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / /),
+                           '--tmpfs', $host,
+                           bind_usr('/', $host),
+                           '--tmpfs', $container,
+                           bind_usr('/', $container),
+                           '--ro-bind', $version1, "$container/opt",
+                           '--ro-bind', $version2, "$host/opt",
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           'env', 'CAPSULE_DEBUG=all',
+                           $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+                           "--dest=$libdir", "--provider=$host",
+                           # This time we leave the trailing ,provider implict
+                           "--compare-by=versions,name,symbols",
+                           "--container=$container",
+                           'path-match:/opt/lib*.so.1'],
+                           '2>', \$stderr, '>&2');
+    diag $stderr;
+    ok($result);
+    is(tolerant_readlink("$libdir/libunversionedabibreak.so.1"),
+       '/run/host/opt/libunversionedabibreak.so.1.0.0',
+       "should take provider's version when neither's symbols are a superset of the other");
+    is(tolerant_readlink("$libdir/libunversionednumber.so.1"),
+       '/run/host/opt/libunversionednumber.so.1.2.3',
+       "should take provider's version when container's numeric tail is strictly older");
+    is(tolerant_readlink("$libdir/libunversionedsymbols.so.1"),
+       '/run/host/opt/libunversionedsymbols.so.1.0.0',
+       "should take provider's version when it has strictly more symbols than container");
+    is(tolerant_readlink("$libdir/libversionedabibreak.so.1"),
+       '/run/host/opt/libversionedabibreak.so.1.0.0',
+       "should take provider's version when neither's symbol-versions are a superset of the other");
+    is(tolerant_readlink("$libdir/libversionedlikedbus.so.1"),
+       '/run/host/opt/libversionedlikedbus.so.1.2.0',
+       "should take provider's newer fake libdbus");
+    is(tolerant_readlink("$libdir/libversionedlikeglibc.so.1"),
+       '/run/host/opt/libversionedlikeglibc.so.1.0.0',
+       "should take provider's newer fake glibc");
+    is(tolerant_readlink("$libdir/libversionednumber.so.1"),
+       '/run/host/opt/libversionednumber.so.1.2.3',
+       "should take provider's version when its numeric tail is strictly newer and symbols are equal");
+    is(tolerant_readlink("$libdir/libversionedsymbols.so.1"),
+       '/run/host/opt/libversionedsymbols.so.1.0.0',
+       "should take provider's version when it has strictly more symbols");
+    is(tolerant_readlink("$libdir/libversionedupgrade.so.1"),
+       '/run/host/opt/libversionedupgrade.so.1.0.0',
+       "should take provider's version when it has strictly more symbols");
+
+    # The default is equivalent to --compare-by=name,provider.
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / /),
+                           '--tmpfs', $host,
+                           bind_usr('/', $host),
+                           '--tmpfs', $container,
+                           bind_usr('/', $container),
+                           '--ro-bind', $version1, "$host/opt",
+                           '--ro-bind', $version2, "$container/opt",
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           'env', 'CAPSULE_DEBUG=all',
+                           $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+                           "--dest=$libdir", "--provider=$host",
+                           "--container=$container",
+                           'path-match:/opt/lib*.so.1'],
+                           '2>', \$stderr, '>&2');
+    diag $stderr;
+    ok($result);
+    is(tolerant_readlink("$libdir/libunversionedabibreak.so.1"),
+       '/run/host/opt/libunversionedabibreak.so.1.0.0',
+       "should take provider's version by default if name is the same");
+    is(tolerant_readlink("$libdir/libunversionedsymbols.so.1"),
+       '/run/host/opt/libunversionedsymbols.so.1.0.0',
+       "should take provider's version by default if name is the same");
+    is(tolerant_readlink("$libdir/libversionedabibreak.so.1"),
+       '/run/host/opt/libversionedabibreak.so.1.0.0',
+       "should take provider's version by default if name is the same");
+    is(tolerant_readlink("$libdir/libversionedsymbols.so.1"),
+       '/run/host/opt/libversionedsymbols.so.1.0.0',
+       "should take provider's version by default if name is the same");
+    is(tolerant_readlink("$libdir/libversionedupgrade.so.1"),
+       '/run/host/opt/libversionedupgrade.so.1.0.0',
+       "should take provider's version by default if name is the same");
+    is(tolerant_readlink("$libdir/libversionedlikeglibc.so.1"),
+       '/run/host/opt/libversionedlikeglibc.so.1.0.0',
+       "should take provider's version by default if name is the same");
+    ok(! -l "$libdir/libunversionednumber.so.1",
+       "should not take provider's version when container's numeric tail is newer");
+    ok(! -l "$libdir/libversionedlikedbus.so.1",
+       "should not take provider's version when container's numeric tail is newer");
+    ok(! -l "$libdir/libversionednumber.so.1",
+       "should not take provider's version when container's numeric tail is newer");
+
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / /),
+                           '--tmpfs', $host,
+                           bind_usr('/', $host),
+                           '--tmpfs', $container,
+                           bind_usr('/', $container),
+                           '--ro-bind', $version1, "$host/opt",
+                           '--ro-bind', $version2, "$container/opt",
+                           '--ro-bind', "$test_tempdir/capture-libs.ini",
+                                        "$test_tempdir/capture-libs.ini",
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           'env', 'CAPSULE_DEBUG=all',
+                           $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+                           "--dest=$libdir", "--provider=$host",
+                           "--container=$container",
+                           "--library-knowledge=$test_tempdir/capture-libs.ini",
+                           'path-match:/opt/lib*.so.1'],
+                           '2>', \$stderr, '>&2');
+    diag $stderr;
+    ok($result);
+    ok(! -l "$libdir/libversionedsymbols.so.1",
+       "should not take provider's version when told to look at container's symbols");
+    ok(! -l "$libdir/libversionedlikedbus.so.1",
+       "should not take provider's version when forced to use container's");
+    is(tolerant_readlink("$libdir/libversionedprivatenothidden.so.1"),
+       '/run/host/opt/libversionedprivatenothidden.so.1.1.1',
+       "should take provider's version by default when they have the same symbol versions");
+
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / /),
+                           '--tmpfs', $host,
+                           bind_usr('/', $host),
+                           '--tmpfs', "$host/more",
+                           '--tmpfs', $container,
+                           bind_usr('/', $container),
+                           '--ro-bind', $version1, "$host/opt",
+                           '--ro-bind', $version2, "$container/opt",
+                           '--symlink', "$host/opt/libunversionedsymbols.so.1", "$host/more/libunversionedsymbols.so.0",
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           'env', 'CAPSULE_DEBUG=all',
+                           "LD_LIBRARY_PATH=/opt:/more",
+                           $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+                           "--dest=$libdir", "--provider=$host",
+                           "--container=$container",
+                           'soname:libunversionedsymbols.so.0'],
+                           '2>', \$stderr, '>&2');
+    diag $stderr;
+    ok($result);
+    is(tolerant_readlink("$libdir/libunversionedsymbols.so.0"),
+       '/run/host/opt/libunversionedsymbols.so.1.0.0',
+       "should take provider's version, even if the DT_SONAME is the unexpected libunversionedsymbols.so.1");
+
+    foreach my $quiet_prefix ("", "quiet:") {
+        run_ok(['rm', '-fr', $libdir]);
+        mkdir($libdir);
+        $result = run_verbose([qw(bwrap --ro-bind / /),
+                               '--tmpfs', $host,
+                               bind_usr('/', $host),
+                               '--tmpfs', "$host/more",
+                               '--tmpfs', $container,
+                               bind_usr('/', $container),
+                               '--ro-bind', $version1, "$host/opt",
+                               '--ro-bind', $version2, "$container/opt",
+                               '--symlink', "$host/opt/libunversionedsymbols.so.1", "$host/more/libunversionedsymbols.so.0",
+                               '--bind', $libdir, $libdir,
+                               qw(--dev-bind /dev /dev),
+                               'env', 'CAPSULE_DEBUG=all',
+                               "LD_LIBRARY_PATH=/opt:/more",
+                               $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+                               "--dest=$libdir", "--provider=$host",
+                               "--container=$container",
+                               "${quiet_prefix}if-exists:exact-soname:libunversionedsymbols.so.0",
+                               'if-exists:exact-soname:libunversionedsymbols.so.1'],
+                               '2>', \$stderr, '>&2');
+        diag $stderr;
+        ok($result);
+        ok (! -l "$libdir/libunversionedsymbols.so.0",
+           "should not take provider's version because the DT_SONAME is not the expected value");
+        is(tolerant_readlink("$libdir/libunversionedsymbols.so.1"),
+           '/run/host/opt/libunversionedsymbols.so.1.0.0',
+           "should take provider's version by default if name is the same");
+
+        if ($quiet_prefix eq '') {
+            like($stderr,
+                qr{^\Q$CAPSULE_CAPTURE_LIBS_BASENAME\E: warning: libunversionedsymbols\.so\.0 has an unexpected DT_SONAME, ignoring: libunversionedsymbols\.so\.1$}m,
+                'stderr shows expected warning message');
+        }
+        else {
+            unlike($stderr, qr{warning:.*unexpected DT_SONAME, ignoring}m,
+                '"quiet:" de-escalates warning message to debug');
+        }
+    }
+
+    run_ok(['rm', '-fr', $libdir]);
+    mkdir($libdir);
+    $result = run_verbose([qw(bwrap --ro-bind / /),
+                           '--tmpfs', $host,
+                           bind_usr('/', $host),
+                           '--tmpfs', "$host/more",
+                           '--tmpfs', $container,
+                           bind_usr('/', $container),
+                           '--ro-bind', $version1, "$host/opt",
+                           '--ro-bind', $version2, "$container/opt",
+                           '--symlink', "$host/opt/libunversionedsymbols.so.1", "$host/more/libunversionedsymbols.so.0",
+                           '--bind', $libdir, $libdir,
+                           qw(--dev-bind /dev /dev),
+                           'env', 'CAPSULE_DEBUG=all',
+                           "LD_LIBRARY_PATH=/opt:/more",
+                           $CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+                           "--dest=$libdir", "--provider=$host",
+                           "--container=$container",
+                           "quiet:exact-soname:libunversionedsymbols.so.0"],
+                           '2>', \$stderr, '>&2');
+    diag $stderr;
+    ok(! $result, 'library with the wrong DT_SONAME yields an error');
+    ok (! -l "$libdir/libunversionedsymbols.so.0",
+       "should not take provider's version because the DT_SONAME is not the expected value");
+    like($stderr,
+        qr{^\Q$CAPSULE_CAPTURE_LIBS_BASENAME\E: error: code [0-9]+: libunversionedsymbols\.so\.0 has an unexpected DT_SONAME: libunversionedsymbols\.so\.1$}m,
+        '"quiet:" does not suppress fatal error messages');
+}
+
+my $testlibs = "$builddir/tests";
+run_ok(['rm', '-fr', $libdir]);
+mkdir($libdir);
+run_ok([$CAPSULE_CAPTURE_LIBS_TOOL, '--link-target=/run/host',
+        "--dest=$libdir", "path:$testlibs/libcapsule-test-dependent-runpath.so.1"], '>&2');
+{
+    opendir(my $dir_iter, $libdir);
+    my @links = sort grep { $_ ne '.' and $_ ne '..' } readdir $dir_iter;
+    foreach my $symlink (@links) {
+        diag "- $symlink -> ".readlink("$libdir/$symlink");
+    }
+    closedir $dir_iter;
+}
+like(readlink "$libdir/libcapsule-test-dependent-runpath.so.1", qr{^/run/host/},
+     '$libdir/libcapsule-test-dependent-runpath.so.1 is a symlink to /run/host + something');
+like(readlink "$libdir/libcapsule-test-dependency.so.1", qr{^/run/host/},
+     '$libdir/libcapsule-test-dependency.so.1 is a symlink to /run/host + something');
+
+done_testing;
+
+# vim:set sw=4 sts=4 et:

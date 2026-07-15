@@ -1,0 +1,32 @@
+{
+  "virtualization" : {
+    "type" : "thought-experiment",
+    "host-machine" : "human-brain"
+  },
+  "container" : {
+    "type" : "better_docker"
+  },
+  "architectures" : {
+    "aarch64-linux-gnu" : {
+      "can-run" : false,
+      "library-issues-summary" : [
+        "cannot-load",
+        "future-issue"
+      ],
+      "graphics-details" : {
+        "x11/vdpau" : {
+          "renderer" : "G3DVL VDPAU Driver Shared Library version 1.0\n",
+          "library-vendor" : "futuristic",
+          "issues" : [
+            "cannot-draw",
+            "another-future-issue"
+          ]
+        }
+      }
+    }
+  },
+  "locale-issues" : [
+    "c-utf8-missing",
+    "future-missing"
+  ]
+}

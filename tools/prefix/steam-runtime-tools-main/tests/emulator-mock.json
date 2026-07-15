@@ -1,0 +1,21 @@
+{
+  "emulator_v0": {
+    "argv": ["./mock-emulator.sh", "--"],
+    "container_argv": "./mock-emulator.sh --in-container --",
+    "main_argv": "./mock-emulator.sh --main-game --",
+    "server_argv": "./mock-emulator-server.sh --argument",
+    "environment": {
+        "SET": "set",
+        "PRECEDENCE": "environment",
+        "UNSET": null
+    },
+    "container_environment": {
+        "PRECEDENCE": "container_environment",
+        "set_inside_slr": "hello",
+        "unset_inside_slr": null
+    },
+    "emulated_architectures": ["mock-emulated"],
+    "required_architectures": ["x86_64-linux-gnu", "i386-linux-gnu"],
+    "required_libraries": ["libc.so.6", "libstdc++.so.6", "libm.so.6", "libgcc_s.so.1"]
+  }
+}

@@ -1,0 +1,690 @@
+/*
+ * Copyright © 2019-2020 Collabora Ltd.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#include "steam-runtime-tools/json-utils-internal.h"
+
+#include "steam-runtime-tools/glib-backports-internal.h"
+#include "steam-runtime-tools/json-glib-backports-internal.h"
+#include "steam-runtime-tools/utils-internal.h"
+
+/**
+ * srt_get_flags_from_json_array:
+ * @flags_type: The type of the flag
+ * @json_obj: (not nullable): A JSON Object used to search for
+ *  @array_member property
+ * @array_member: (not nullable): The JSON member to look up
+ * @flag_if_unknown: flag to use in case of parsing error
+ *
+ * Get the flags from a given JSON object array member.
+ * If @json_obj doesn't have the provided @member, or it is malformed, the
+ * @flag_if_unknown will be returned.
+ * If the parsed JSON array_member has some elements that we can't parse,
+ * @flag_if_unknown will be added to the returned flags.
+ *
+ * Returns: the found flags from the provided @json_obj
+ */
+guint
+srt_get_flags_from_json_array (GType flags_type,
+                               JsonObject *json_obj,
+                               const gchar *array_member,
+                               guint flag_if_unknown)
+{
+  JsonArray *array;
+  guint ret = flag_if_unknown;
+
+  g_return_val_if_fail (G_TYPE_IS_FLAGS (flags_type), 0);
+  g_return_val_if_fail (json_obj != NULL, 0);
+  g_return_val_if_fail (array_member != NULL, 0);
+
+  if (json_object_has_member (json_obj, array_member))
+    {
+      array = json_object_get_array_member (json_obj, array_member);
+
+      if (array == NULL)
+        goto out;
+
+      /* We reset the value out because we found the member we were looking for */
+      ret = 0;
+
+      for (guint j = 0; j < json_array_get_length (array); j++)
+        {
+          const gchar *issue_string = json_array_get_string_element (array, j);
+          if (!srt_add_flag_from_nick (flags_type, issue_string, &ret, NULL))
+            ret |= flag_if_unknown;
+        }
+    }
+
+out:
+  return ret;
+}
+
+/**
+ * _srt_json_object_dup_strv_member:
+ * @json_obj: (not nullable): A JSON Object used to search for
+ *  @array_member property
+ * @array_member: (not nullable): The JSON member to look up
+ * @placeholder: (nullable): If an item in the array is not a string,
+ *  substitute this non-%NULL value; or if %NULL, behave as though it
+ *  was not present
+ *
+ * Returns: (transfer full) (array zero-terminated=1) (element-type utf8) (nullable):
+ *  A string array from the given @json_obj, or %NULL if it doesn't have a
+ *  property @array_member
+ */
+gchar **
+_srt_json_object_dup_strv_member (JsonObject *json_obj,
+                                  const gchar *array_member,
+                                  const gchar *placeholder)
+{
+  JsonArray *array;
+  JsonNode *arr_node;
+  guint length;
+  gchar **ret = NULL;
+
+  g_return_val_if_fail (json_obj != NULL, NULL);
+  g_return_val_if_fail (array_member != NULL, NULL);
+
+  arr_node = json_object_get_member (json_obj, array_member);
+
+  if (arr_node != NULL && JSON_NODE_HOLDS_ARRAY (arr_node))
+    {
+      guint j = 0;
+
+      array = json_node_get_array (arr_node);
+
+      if (array == NULL)
+        return ret;
+
+      length = json_array_get_length (array);
+      ret = g_new0 (gchar *, length + 1);
+
+      for (guint i = 0; i < length; i++)
+        {
+          JsonNode *node = json_array_get_element (array, i);
+          const gchar *element = json_node_get_string (node);
+
+          if (element == NULL)
+            element = placeholder;
+
+          if (element == NULL)
+            continue;
+
+          ret[j++] = g_strdup (element);
+        }
+
+      g_assert (j <= length);
+      ret[j] = NULL;
+    }
+
+  return ret;
+}
+
+/**
+ * _srt_json_object_dup_array_of_lines_member:
+ * @json_obj: (not nullable): A JSON Object used to search for
+ *  @array_member property
+ * @array_member: (not nullable): The JSON member to look up
+ *
+ * If @json_obj has a member named @array_member and it is an array
+ * of strings, concatenate the strings (adding a trailing newline to
+ * each one if not already present) and return them.
+ *
+ * For compatibility with the old representation of diagnostic messages,
+ * if @array_member exists but is a single string, return it.
+ *
+ * Otherwise, return %NULL.
+ *
+ * Returns: (transfer full) (element-type utf8) (nullable):
+ *  A string, or %NULL if not found. Free with g_free().
+ */
+gchar *
+_srt_json_object_dup_array_of_lines_member (JsonObject *json_obj,
+                                            const gchar *array_member)
+{
+  JsonArray *array;
+  JsonNode *arr_node;
+  guint length;
+  g_autoptr(GString) ret = g_string_new ("");
+
+  g_return_val_if_fail (json_obj != NULL, NULL);
+  g_return_val_if_fail (array_member != NULL, NULL);
+
+  arr_node = json_object_get_member (json_obj, array_member);
+
+  if (arr_node == NULL || JSON_NODE_HOLDS_NULL (arr_node))
+    return NULL;
+
+  if (JSON_NODE_HOLDS_VALUE (arr_node))
+    return json_node_dup_string (arr_node);
+
+  if (!JSON_NODE_HOLDS_ARRAY (arr_node))
+    return NULL;
+
+  array = json_node_get_array (arr_node);
+
+  if (array == NULL)
+    return NULL;
+
+  length = json_array_get_length (array);
+
+  for (guint i = 0; i < length; i++)
+    {
+      JsonNode *node = json_array_get_element (array, i);
+      const gchar *element = json_node_get_string (node);
+
+      if (element != NULL)
+        g_string_append (ret, element);
+
+      if (element == NULL || element[strlen (element) - 1] != '\n')
+        g_string_append_c (ret, '\n');
+    }
+
+  return g_string_free_and_steal (g_steal_pointer (&ret));
+}
+
+/**
+ * _srt_json_object_get_string_member:
+ * @object: (not nullable): A JSON object
+ * @member_name: (not nullable): The name of the member
+ *
+ * Convenience function that retrieves the string value stored in
+ * @member_name from the JSON @object.
+ *
+ * Returns: (type UTF-8) (nullable): The string value stored inside the JSON
+ *  object @member_name node. %NULL will be returned if @member_name doesn't
+ *  exist, or the node @member_name doesn't hold a value or the node isn't
+ *  a string.
+ */
+const gchar *
+_srt_json_object_get_string_member (JsonObject *object,
+                                    const char *member_name)
+{
+  JsonNode *node;
+
+  g_return_val_if_fail (object != NULL, FALSE);
+  g_return_val_if_fail (member_name != NULL, FALSE);
+
+  node = json_object_get_member (object, member_name);
+
+  if (node == NULL || !JSON_NODE_HOLDS_VALUE (node))
+    return NULL;
+
+  return json_node_get_string (node);
+}
+
+SrtJsonGetBooleanResult
+_srt_json_object_get_boolean_strict (JsonObject *object,
+                                     const char *member_name,
+                                     GError **error)
+{
+  JsonNode *node = json_object_get_member (object, member_name);
+
+  if (node == NULL)
+    return SRT_JSON_GET_BOOLEAN_RESULT_UNSPECIFIED;
+
+  if (!JSON_NODE_HOLDS_VALUE (node)
+      || json_node_get_value_type (node) != G_TYPE_BOOLEAN)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "\"%s\" member must have a boolean value",
+                   member_name);
+      return SRT_JSON_GET_BOOLEAN_RESULT_ERROR;
+    }
+
+  if (json_node_get_boolean (node))
+    return SRT_JSON_GET_BOOLEAN_RESULT_TRUE;
+
+  return SRT_JSON_GET_BOOLEAN_RESULT_FALSE;
+}
+
+/**
+ * _srt_json_builder_add_array_of_lines:
+ * @builder: (not nullable): A JSON builder to which the provided @value
+ *  will be added
+ * @name: (not nullable): The array member name to use
+ * @value: (nullable): String to be split into an array of lines, or %NULL
+ *
+ * Write an array of lines into a JSON object.
+ *
+ * A non-%NULL @value will be split into lines, removing any trailing
+ * newlines, so
+ *
+ * |[
+ * if (g_file_get_contents ("/etc/passwd", &contents, ...))
+ *   _srt_json_builder_add_array_of_lines (builder, "/etc/passwd", contents);
+ * ]|
+ *
+ * might produce
+ *
+ * |[
+ * "/etc/passwd" : [
+ *   "root:x:0:0:root:/root:/bin/bash",
+ *   ...,
+ *   "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin",
+ * ],
+ * ]|
+ *
+ * A %NULL @value will be emitted as the special JSON constant `null`.
+ */
+void
+_srt_json_builder_add_array_of_lines (JsonBuilder *builder,
+                                      const char *name,
+                                      const char *value)
+{
+  const char *start = value;
+  const char *end;
+
+  json_builder_set_member_name (builder, name);
+
+  if (value == NULL)
+    {
+      json_builder_add_string_value (builder, NULL);
+      return;
+    }
+
+  json_builder_begin_array (builder);
+
+  while (*start != '\0')
+    {
+      g_autofree gchar *valid = NULL;
+
+      while (*start == '\n')
+        start++;
+
+      if (*start == '\0')
+        break;
+
+      end = strchrnul (start, '\n');
+
+      valid = g_utf8_make_valid (start, end - start);
+      json_builder_add_string_value (builder, valid);
+
+      if (*end == '\0')
+        break;
+
+      start = end + 1;
+    }
+
+  json_builder_end_array (builder);
+}
+
+/**
+ * _srt_json_builder_add_required_string_member:
+ * @builder: (not nullable): A JSON builder that is inside an object:
+ *  after json_builder_begin_object(), but before the corresponding
+ *  json_builder_end_object()
+ * @name: (not nullable): Name of a member
+ * @value: (not nullable): Value for the member
+ *
+ * Emit `{ name: value }` as JSON, reporting an internal error if either
+ * @name or @value is %NULL.
+ */
+void
+_srt_json_builder_add_required_string_member (JsonBuilder *builder,
+                                              const char *name,
+                                              const char *value)
+{
+  g_return_if_fail (builder != NULL);
+  g_return_if_fail (name != NULL);
+  g_return_if_fail (value != NULL);
+  json_builder_set_member_name (builder, name);
+  json_builder_add_string_value (builder, value);
+}
+
+/**
+ * _srt_json_builder_add_optional_string_member:
+ * @builder: (not nullable): A JSON builder that is inside an object:
+ *  after json_builder_begin_object(), but before the corresponding
+ *  json_builder_end_object()
+ * @name: (not nullable): Name of a member
+ * @value: (nullable): Value for the member, or %NULL to skip
+ *
+ * If @value is non-%NULL, emit it as a string value.
+ * If @value is %NULL, do not emit anything for @name at all.
+ */
+void
+_srt_json_builder_add_optional_string_member (JsonBuilder *builder,
+                                              const char *name,
+                                              const char *value)
+{
+  g_return_if_fail (builder != NULL);
+  g_return_if_fail (name != NULL);
+
+  if (value != NULL)
+    {
+      json_builder_set_member_name (builder, name);
+      json_builder_add_string_value (builder, value);
+    }
+}
+
+/**
+ * _srt_json_builder_add_strv_value:
+ * @builder: (not nullable): A JSON Builder where the provided @values
+ *  will be appended
+ * @array_name: (not nullable): The array member name to use
+ * @values: (nullable): Array of strings to be added in the JSON Builder
+ * @allow_empty_array: If %TRUE, a new array in JSON Builder will be always
+ *  created, even if @values is %NULL or without any elements. Otherwise the
+ *  new array will be created only if there is at least a non-NULL element in
+ *  @values
+ */
+void
+_srt_json_builder_add_strv_value (JsonBuilder *builder,
+                                  const gchar *array_name,
+                                  const gchar * const *values,
+                                  gboolean allow_empty_array)
+{
+  gsize i;
+
+  g_return_if_fail (builder != NULL);
+  g_return_if_fail (array_name != NULL);
+
+  if ((values != NULL && values[0] != NULL) ||
+      allow_empty_array)
+    {
+      json_builder_set_member_name (builder, array_name);
+      json_builder_begin_array (builder);
+      for (i = 0; values != NULL && values[i] != NULL; i++)
+        {
+          g_autofree gchar *valid = NULL;
+
+          valid = g_utf8_make_valid (values[i], -1);
+          json_builder_add_string_value (builder, valid);
+        }
+      json_builder_end_array (builder);
+    }
+}
+
+void
+_srt_json_builder_add_error_members (JsonBuilder *builder,
+                                     const GError *error)
+{
+  g_return_if_fail (builder != NULL);
+  g_return_if_fail (error != NULL);
+
+  json_builder_set_member_name (builder, "error-domain");
+  json_builder_add_string_value (builder,
+                                 g_quark_to_string (error->domain));
+  json_builder_set_member_name (builder, "error-code");
+  json_builder_add_int_value (builder, error->code);
+  json_builder_set_member_name (builder, "error");
+  json_builder_add_string_value (builder, error->message);
+}
+
+void
+_srt_json_builder_add_string_force_utf8 (JsonBuilder *builder,
+                                         const char *key,
+                                         const char *value)
+{
+  g_autofree gchar *valid = NULL;
+
+  json_builder_set_member_name (builder, key);
+
+  if (value != NULL)
+    valid = g_utf8_make_valid (value, -1);
+
+  json_builder_add_string_value (builder, valid);
+}
+
+/*
+ * _srt_json_object_get_hex_uint32_member:
+ * @object: A JSON object
+ * @member_name: A member of @object
+ * @value_out: (out) (optional): Used to return the value
+ *  of `object[member_name]`
+ *
+ * Try to parse `object[member_name]` as a 32-bit unsigned integer in
+ * hexadecimal, with an optional `0x` prefix.
+ *
+ * Returns: %TRUE if `object[member_name]` can be parsed; %FALSE without
+ *  altering `*value_out` if not
+ */
+gboolean
+_srt_json_object_get_hex_uint32_member (JsonObject *object,
+                                        const gchar *member_name,
+                                        guint32 *value_out)
+{
+  JsonNode *node;
+  guint64 ret;
+  gchar *endptr;
+  const char *tmp;
+
+  g_return_val_if_fail (object != NULL, 0);
+  g_return_val_if_fail (member_name != NULL, 0);
+
+  node = json_object_get_member (object, member_name);
+
+  if (node == NULL)
+    return FALSE;
+
+  if (JSON_NODE_HOLDS_NULL (node))
+    return FALSE;
+
+  if (JSON_NODE_TYPE (node) != JSON_NODE_VALUE)
+    return FALSE;
+
+  tmp = json_node_get_string (node);
+
+  if (tmp == NULL)
+    return FALSE;
+
+  if (tmp[0] == '0' && (tmp[1] == 'x' || tmp[1] == 'X'))
+    tmp += 2;
+
+  if (tmp[0] == '\0')
+    return FALSE;
+
+  ret = g_ascii_strtoull (tmp, &endptr, 16);
+
+  if (endptr == NULL
+      || (*endptr != '\0' && *endptr != '\n')
+      || ret > G_MAXUINT32)
+    return FALSE;
+
+  if (value_out != NULL)
+    *value_out = (guint32) ret;
+
+  return TRUE;
+}
+
+/*
+ * _srt_json_object_get_enum_member:
+ * @object: A JSON object
+ * @member_name: A member of @object
+ * @type: An enum type
+ * @value_out: (out) (optional): Used to return the value
+ *  of `object[member_name]`
+ *
+ * Try to parse `object[member_name]` as the nickname of a possible value
+ * of @type.
+ *
+ * Returns: %TRUE if `object[member_name]` can be parsed; %FALSE without
+ *  altering `*value_out` if not
+ */
+gboolean
+_srt_json_object_get_enum_member (JsonObject *object,
+                                  const gchar *member_name,
+                                  GType type,
+                                  int *value_out)
+{
+  const char *value;
+  int parsed;
+
+  if (!json_object_has_member (object, member_name))
+    return FALSE;
+
+  value = json_object_get_string_member (object, member_name);
+
+  if (!srt_enum_from_nick (type, value, &parsed, NULL))
+    {
+      g_debug ("Not a known %s: '%s'", g_type_name (type), value);
+      return FALSE;
+    }
+
+  if (value_out)
+    *value_out = parsed;
+
+  return TRUE;
+}
+
+gboolean
+_srt_json_builder_print (JsonBuilder *builder,
+                         FILE *fh,
+                         SrtJsonOutputFlags flags,
+                         GError **error)
+{
+  g_autoptr(JsonGenerator) generator = NULL;
+  g_autofree gchar *text = NULL;
+  g_autoptr(JsonNode) root = NULL;
+
+  root = json_builder_get_root (builder);
+  generator = json_generator_new ();
+  json_generator_set_root (generator, root);
+
+  if (flags & SRT_JSON_OUTPUT_FLAGS_SEQ)
+    fputs (JSON_SEQ_RECORD_SEPARATOR, fh);
+
+  if (flags & SRT_JSON_OUTPUT_FLAGS_PRETTY)
+    json_generator_set_pretty (generator, TRUE);
+
+  text = json_generator_to_data (generator, NULL);
+
+  if (fputs (text, fh) < 0)
+    return glnx_throw_errno_prefix (error, "Unable to write output");
+
+  if (fputs ("\n", fh) < 0)
+    return glnx_throw_errno_prefix (error, "Unable to write final newline");
+
+  return TRUE;
+}
+
+/**
+ * _srt_json_object_get_issues_from_report
+ * @object: (not nullable): A JSON Object used to search for issues-related
+ *  properties, like for example "issues" and "ok".
+ * @object_description: a description of @object in the JSON data.
+ *  Used for debug messages.
+ * @flags_type: the type of the issues being handled, for example
+ *  SRT_TYPE_RUNTIME_ISSUES.
+ * @issues_member: name of the JSON member in @object that indicates that
+ *  some issues have been found, for example "issues" or "locale-issues".
+ *  The member value is an array of strings.
+ * @no_issues_member: (nullable): name of the JSON member
+ *  in @object that indicates that no issues have been found,
+ *  for example "ok" or "locales-ok".
+ *  The value is expected to be %TRUE.
+ *  If %NULL, the absence of @issues_member is assumed to be
+ *  enough to imply that there were no issues.
+ * @set_flag_if_unknown: value to represent "unknown" issues for
+ *  the given type @flags_type.
+ *
+ * If the provided @object has @no_issues_member set to true,
+ * or @issues_member set to an empty array,
+ * 0 will be returned, to represent that no issues have been found.
+ * If the provided @object has @no_issues_member set to true,
+ * and @issues_member set to a non-empty array,
+ * then @set_flag_if_unknown will be returned in addition to
+ * the issues that can be parsed.
+ * If the provided @object doesn't have either @no_issues_member
+ * or @issues_member, or if either is
+ * malformed, then @set_flag_if_unknown will be returned.
+ * If @object has some elements that we can't parse,
+ * then @set_flag_if_unknown will be added to the returned issues.
+ *
+ * Returns: The issues that has been found
+ */
+guint
+_srt_json_object_get_issues_from_report (JsonObject *object,
+                                         const char *object_description,
+                                         GType flags_type,
+                                         const char *issues_member,
+                                         const char *no_issues_member,
+                                         guint set_flag_if_unknown)
+{
+  /*
+   * The success case where no_issues_member is TRUE or issues_member is empty
+   * is handled implicitly.
+   */
+  guint issues = 0;
+
+  g_return_val_if_fail (object != NULL, set_flag_if_unknown);
+  g_return_val_if_fail (issues_member != NULL, set_flag_if_unknown);
+
+  /* 
+   * If there is no member that explicitly indicates "no issues",
+   * then the implementation can be greatly simplified.
+   */
+  if (no_issues_member == NULL)
+    {
+      if (json_object_has_member (object, issues_member))
+        issues = srt_get_flags_from_json_array (flags_type,
+                                                object,
+                                                issues_member,
+                                                set_flag_if_unknown);
+      return issues;
+    }
+
+  /* When no_issues_member is FALSE or invalid, signal that somehow */
+  if (json_object_has_member (object, no_issues_member) &&
+      !json_object_get_boolean_member (object, no_issues_member))
+    {
+      g_debug ("Report is invalid: %s \"%s\" value other than true",
+               object_description, no_issues_member);
+      issues |= set_flag_if_unknown;
+    }
+
+  /*
+   * One of no_issues_member or issues_member is always supposed to be
+   * in the JSON.
+   * If neither is present then we don't know whether the area of interest was
+   * found to be OK, or not tested at all.
+   */
+  if (!json_object_has_member (object, no_issues_member) &&
+      !json_object_has_member (object, issues_member))
+    issues |= set_flag_if_unknown;
+
+  if (json_object_has_member (object, issues_member) &&
+      json_array_get_length (json_object_get_array_member (object, issues_member)) != 0)
+    {
+      issues |= srt_get_flags_from_json_array (flags_type,
+                                               object,
+                                               issues_member,
+                                               set_flag_if_unknown);
+
+      /*
+       * It doesn't make sense to have no_issues_member : TRUE if issues
+       * were discovered, so signal that as "something is wrong".
+       */
+      if (json_object_has_member (object, no_issues_member) &&
+          json_object_get_boolean_member (object, no_issues_member))
+        {
+          g_debug ("Report is invalid: %s has both \"%s\" and \"%s\"",
+                   object_description, issues_member, no_issues_member);
+          issues |= set_flag_if_unknown;
+        }
+    }
+
+  return issues;
+}

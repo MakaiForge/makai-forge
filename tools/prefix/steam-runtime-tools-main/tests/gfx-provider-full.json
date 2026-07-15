@@ -1,0 +1,30 @@
+{
+  "graphics_provider_v0": {
+    "root": "./",
+    "locales": false,
+    "va_api": false,
+    "vdpau": true,
+    "hypothetical future member": 42,
+    "architectures": {
+      "x86_64-linux-gnu": {
+        "dri": "/usr/lib/dri",
+        "gbm": "/usr/lib/gbm",
+        "fallback_library_paths": ["/usr/lib", "/usr/lib64"],
+        "gconv": "/usr/lib/gconv",
+        "va_api": true,
+        "hypothetical future member": 86.64
+      },
+      "i386-linux-gnu": {
+        "dri": "/usr/lib32/dri",
+        "gbm": "/usr/lib32/gbm",
+        "fallback_library_paths": ["/usr/lib32"],
+        "gconv": "/usr/lib32/gconv",
+        "vdpau": false,
+        "hypothetical future member": 386
+      }
+    }
+  },
+  "graphics_provider_v1": {
+    "hypothetically": "we could have info for newer versions here"
+  }
+}

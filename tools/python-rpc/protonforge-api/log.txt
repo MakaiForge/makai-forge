@@ -742,3 +742,213 @@ KeyboardInterrupt
 [14/07/2026, 17:23:27] init ready
 [14/07/2026, 17:23:27] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
   warnings.warn(
+[14/07/2026, 17:31:15] init spawning server.py...
+[14/07/2026, 17:31:15] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 17:31:15] spawn executando server.py --stdio...
+[14/07/2026 17:31:15] API started --stdio
+[14/07/2026, 17:31:15] spawn READY
+[14/07/2026, 17:31:15] init ready
+[14/07/2026, 17:31:15] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 18:14:13] init spawning server.py...
+[14/07/2026, 18:14:13] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 18:14:13] spawn executando server.py --stdio...
+[14/07/2026 18:14:13] API started --stdio
+[14/07/2026, 18:14:13] spawn READY
+[14/07/2026, 18:14:13] init ready
+[14/07/2026, 18:14:13] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 18:30:38] init spawning server.py...
+[14/07/2026, 18:30:38] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 18:30:38] spawn executando server.py --stdio...
+[14/07/2026 18:30:38] API started --stdio
+[14/07/2026, 18:30:38] spawn READY
+[14/07/2026, 18:30:38] init ready
+[14/07/2026, 18:30:38] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 18:32:47] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.config/makai-forger/compat-tools/compatibilitytools.d/GE-Proton11-1","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2
+[14/07/2026 18:32:47] OK create_prefix 1
+[14/07/2026, 18:32:49] call create_prefix params={"game_id":"skyrim","proton_path":"/home/cas/.config/makai-forger/compat-tools/compatibilitytools.d/GE-Proton11-1","prefix_path":"/home/cas/Games/Prefix/skyrim","auto_dlls":true,"extra_verbs":["vcrun2
+[14/07/2026 18:32:49] OK create_prefix 2
+[14/07/2026, 18:44:11] stderr Traceback (most recent call last):
+  File "/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py", line 212, in <module>
+    main()
+  File "/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py", line 187, in main
+    start_stdio_rpc_loop()
+  File "/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py", line 148, in start_stdio_rpc_loop
+    for raw_line in sys.stdin:
+KeyboardInterrupt
+[14/07/2026, 18:44:11] spawn EXIT code=null signal=SIGINT
+[14/07/2026, 18:44:11] exit code=null signal=SIGINT
+[14/07/2026, 18:44:47] init spawning server.py...
+[14/07/2026, 18:44:47] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 18:44:47] spawn executando server.py --stdio...
+[14/07/2026 18:44:47] API started --stdio
+[14/07/2026, 18:44:47] spawn READY
+[14/07/2026, 18:44:47] init ready
+[14/07/2026, 18:44:47] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 18:51:51] stderr Traceback (most recent call last):
+  File "/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py", line 212, in <module>
+    main()
+  File "/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py", line 187, in main
+    start_stdio_rpc_loop()
+  File "/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py", line 148, in start_stdio_rpc_loop
+    for raw_line in sys.stdin:
+KeyboardInterrupt
+[14/07/2026, 18:51:51] spawn EXIT code=null signal=SIGINT
+[14/07/2026, 18:51:51] exit code=null signal=SIGINT
+[14/07/2026, 18:52:29] init spawning server.py...
+[14/07/2026, 18:52:29] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 18:52:29] spawn executando server.py --stdio...
+[14/07/2026 18:52:29] API started --stdio
+[14/07/2026, 18:52:29] spawn READY
+[14/07/2026, 18:52:29] init ready
+[14/07/2026, 18:52:29] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 22:32:27] stderr Traceback (most recent call last):
+  File "/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py", line 212, in <module>
+    main()
+  File "/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py", line 187, in main
+    start_stdio_rpc_loop()
+  File "/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py", line 148, in start_stdio_rpc_loop
+    for raw_line in sys.stdin:
+KeyboardInterrupt
+[14/07/2026, 22:32:27] spawn EXIT code=null signal=SIGINT
+[14/07/2026, 22:32:27] exit code=null signal=SIGINT
+[14/07/2026, 23:01:31] init spawning server.py...
+[14/07/2026, 23:01:31] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 23:01:31] spawn executando server.py --stdio...
+[14/07/2026 23:01:32] API started --stdio
+[14/07/2026, 23:01:32] spawn READY
+[14/07/2026, 23:01:32] init ready
+[14/07/2026, 23:01:32] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 23:08:42] init spawning server.py...
+[14/07/2026, 23:08:42] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 23:08:42] spawn executando server.py --stdio...
+[14/07/2026 23:08:42] API started --stdio
+[14/07/2026, 23:08:42] spawn READY
+[14/07/2026, 23:08:42] init ready
+[14/07/2026, 23:08:42] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 23:15:36] init spawning server.py...
+[14/07/2026, 23:15:36] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 23:15:36] spawn executando server.py --stdio...
+[14/07/2026 23:15:36] API started --stdio
+[14/07/2026, 23:15:36] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[14/07/2026, 23:15:36] spawn READY
+[14/07/2026, 23:15:36] init ready
+[14/07/2026, 23:23:42] init spawning server.py...
+[14/07/2026, 23:23:42] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[14/07/2026, 23:23:42] spawn executando server.py --stdio...
+[14/07/2026 23:23:42] API started --stdio
+[14/07/2026, 23:23:42] spawn READY
+[14/07/2026, 23:23:42] init ready
+[14/07/2026, 23:23:42] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 00:20:01] init spawning server.py...
+[15/07/2026, 00:20:01] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 00:20:01] spawn executando server.py --stdio...
+[15/07/2026 00:20:01] API started --stdio
+[15/07/2026, 00:20:01] spawn READY
+[15/07/2026, 00:20:01] init ready
+[15/07/2026, 00:20:01] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 00:26:00] init spawning server.py...
+[15/07/2026, 00:26:00] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 00:26:00] spawn executando server.py --stdio...
+[15/07/2026 00:26:00] API started --stdio
+[15/07/2026, 00:26:00] spawn READY
+[15/07/2026, 00:26:00] init ready
+[15/07/2026, 00:26:00] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 00:34:34] init spawning server.py...
+[15/07/2026, 00:34:34] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 00:34:34] spawn executando server.py --stdio...
+[15/07/2026 00:34:35] API started --stdio
+[15/07/2026, 00:34:35] spawn READY
+[15/07/2026, 00:34:35] init ready
+[15/07/2026, 00:34:35] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 00:35:44] init spawning server.py...
+[15/07/2026, 00:35:44] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 00:35:44] spawn executando server.py --stdio...
+[15/07/2026 00:35:44] API started --stdio
+[15/07/2026, 00:35:44] spawn READY
+[15/07/2026, 00:35:44] init ready
+[15/07/2026, 00:35:44] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 00:41:48] init spawning server.py...
+[15/07/2026, 00:41:48] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 00:41:48] spawn executando server.py --stdio...
+[15/07/2026 00:41:48] API started --stdio
+[15/07/2026, 00:41:48] spawn READY
+[15/07/2026, 00:41:48] init ready
+[15/07/2026, 00:41:48] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 00:44:44] init spawning server.py...
+[15/07/2026, 00:44:44] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 00:44:44] spawn executando server.py --stdio...
+[15/07/2026 00:44:44] API started --stdio
+[15/07/2026, 00:44:44] spawn READY
+[15/07/2026, 00:44:44] init ready
+[15/07/2026, 00:44:44] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 00:48:09] init spawning server.py...
+[15/07/2026, 00:48:09] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 00:48:09] spawn executando server.py --stdio...
+[15/07/2026 00:48:09] API started --stdio
+[15/07/2026, 00:48:10] spawn READY
+[15/07/2026, 00:48:10] init ready
+[15/07/2026, 00:48:10] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 14:47:48] init spawning server.py...
+[15/07/2026, 14:47:48] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 14:47:48] spawn executando server.py --stdio...
+[15/07/2026 14:47:48] API started --stdio
+[15/07/2026, 14:47:48] spawn READY
+[15/07/2026, 14:47:48] init ready
+[15/07/2026, 14:47:48] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 15:03:44] init spawning server.py...
+[15/07/2026, 15:03:44] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 15:03:44] spawn executando server.py --stdio...
+[15/07/2026, 15:03:45] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026 15:03:45] API started --stdio
+[15/07/2026, 15:03:45] spawn READY
+[15/07/2026, 15:03:45] init ready
+[15/07/2026, 15:05:23] init spawning server.py...
+[15/07/2026, 15:05:23] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 15:05:23] spawn executando server.py --stdio...
+[15/07/2026 15:05:23] API started --stdio
+[15/07/2026, 15:05:23] spawn READY
+[15/07/2026, 15:05:23] init ready
+[15/07/2026, 15:05:23] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 15:07:58] init spawning server.py...
+[15/07/2026, 15:07:58] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 15:07:58] spawn executando server.py --stdio...
+[15/07/2026 15:07:58] API started --stdio
+[15/07/2026, 15:07:58] spawn READY
+[15/07/2026, 15:07:58] init ready
+[15/07/2026, 15:07:58] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 15:11:21] init spawning server.py...
+[15/07/2026, 15:11:21] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 15:11:21] spawn executando server.py --stdio...
+[15/07/2026 15:11:21] API started --stdio
+[15/07/2026, 15:11:21] spawn READY
+[15/07/2026, 15:11:21] init ready
+[15/07/2026, 15:11:21] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(
+[15/07/2026, 15:15:17] init spawning server.py...
+[15/07/2026, 15:15:17] spawn python=/home/cas/Documentos/Makai-forge/tools/venv/bin/python3 script=/home/cas/Documentos/Makai-forge/tools/python-rpc/protonforge-api/server.py
+[15/07/2026, 15:15:17] spawn executando server.py --stdio...
+[15/07/2026 15:15:17] API started --stdio
+[15/07/2026, 15:15:17] spawn READY
+[15/07/2026, 15:15:17] init ready
+[15/07/2026, 15:15:17] stderr /home/cas/Documentos/Makai-forge/tools/prefix/python/prefix/__init__.py:20: UserWarning: Makai Forge prefix module: expected venv Python at /home/cas/Documentos/Makai-forge/tools/venv/bin/python3, but running with /home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin. Use tools/venv/bin/python3 for compatibility.
+  warnings.warn(

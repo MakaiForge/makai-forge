@@ -1,0 +1,5 @@
+# Copyright 2025 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
+check_data_consistency = 0
+lcov_excl_line = ^\s*(?:g_return_if_fail|g_return_val_if_fail|g_assert|g_warn_if_fail)\s*[(]
