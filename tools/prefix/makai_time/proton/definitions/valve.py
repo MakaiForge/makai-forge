@@ -1,0 +1,31 @@
+FORK_ID = "valve"
+
+DEFINITION = {
+    "name": 'Valve Proton',
+    "author": 'Valve',
+    "base": 'upstream',
+    "branch": 'experimental',
+    "wine_version": None,
+    "dxvk": True,
+    "vkd3d": True,
+    "dxvk_nvapi": True,
+    "features": {
+        "async": False,
+        "dlss_upgrader": False,
+        "fsr": False,
+        "fsr4": False,
+        "gamemode": False,
+        "hdr": True,
+        "local_shader_cache": False,
+        "ntsync": False,
+        "per_game_shader_cache": False,
+        "raytracing": True,
+        "wayland": True,
+        "xess_upgrader": False,
+    },
+    "patches": ['steamclient', 'mf_media_foundation'],
+    "dll_overrides": {},
+    "env_defaults": {},
+    "ld_library_path_extra": [],
+    "notes": 'Official Proton by Valve. Most stable but least features.',
+}

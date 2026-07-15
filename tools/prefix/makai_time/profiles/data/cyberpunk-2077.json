@@ -1,0 +1,11 @@
+{
+  "name": "Cyberpunk 2077",
+  "exe": "Cyberpunk2077.exe",
+  "engine": "unreal",
+  "runtime": "steamrt4",
+  "env": {
+    "VKD3D_CONFIG": "dxr",
+    "DXVK_ENABLE_NVAPI": "1"
+  },
+  "notes": "D3D12. VKD3D dxr para ray tracing. NVIDIA DLSS funciona com Proton."
+}

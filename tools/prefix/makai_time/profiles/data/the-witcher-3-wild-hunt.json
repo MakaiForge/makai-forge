@@ -1,0 +1,10 @@
+{
+  "name": "The Witcher 3: Wild Hunt",
+  "exe": "witcher3.exe",
+  "engine": "unreal",
+  "env": {
+    "VKD3D_CONFIG": "dxr",
+    "DXVK_ENABLE_NVAPI": "1"
+  },
+  "notes": "D3D11/12. D3D12 via VKD3D tem melhor performance. DLSS funciona."
+}

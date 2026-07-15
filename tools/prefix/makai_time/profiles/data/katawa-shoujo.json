@@ -1,0 +1,7 @@
+{
+  "name": "Katawa Shoujo",
+  "exe": "Katawa Shoujo.exe",
+  "engine": "renpy",
+  "env": {},
+  "notes": "Ren'Py cl\u00e1ssico. Funciona sem problemas."
+}

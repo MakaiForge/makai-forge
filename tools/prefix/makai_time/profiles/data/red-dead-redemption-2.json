@@ -1,0 +1,10 @@
+{
+  "name": "Red Dead Redemption 2",
+  "exe": "RDR2.exe",
+  "engine": "unreal",
+  "env": {
+    "VKD3D_CONFIG": "dxr",
+    "PROTON_HIDE_NVIDIA_GPU": "1"
+  },
+  "notes": "Vulkan recommended. D3D12 tem problemas. Esconder GPU NVIDIA ajuda em certas configs."
+}

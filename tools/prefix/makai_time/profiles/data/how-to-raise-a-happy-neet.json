@@ -1,0 +1,11 @@
+{
+  "name": "How to Raise a Happy NEET",
+  "exe": "Game.exe",
+  "exe_pattern": "*NEET*",
+  "engine": "nwjs",
+  "runtime": "steamrt4",
+  "env": {
+    "PROTON_NO_SANDBOX": "1"
+  },
+  "notes": "NW.js app. Testado com Proton-CachyOS-11.0. GPU 18%, 51\u00b0C. Funciona perfeitamente."
+}

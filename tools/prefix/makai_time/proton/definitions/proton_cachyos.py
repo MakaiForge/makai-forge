@@ -1,0 +1,36 @@
+FORK_ID = "proton-cachyos"
+
+DEFINITION = {
+    "name": 'Proton-CachyOS',
+    "author": 'CachyOS Team',
+    "base": 'valve',
+    "branch": 'experimental-11.0',
+    "wine_version": None,
+    "dxvk": True,
+    "vkd3d": True,
+    "dxvk_nvapi": True,
+    "features": {
+        "async": False,
+        "dlss_upgrader": True,
+        "fsr": True,
+        "fsr4": True,
+        "gamemode": True,
+        "hdr": True,
+        "local_shader_cache": True,
+        "ntsync": True,
+        "per_game_shader_cache": True,
+        "raytracing": True,
+        "wayland": True,
+        "xess_upgrader": True,
+    },
+    "patches": ['bolsacompiler', 'winewayland', 'dxvk_sarek', 'dxvk_low_latency', 'physx_nvidia_bundled', 'nvidia_libs_bundled', 'protonfixes', 'media_fixes', 'fsr4_rdna3', 'ntsync'],
+    "dll_overrides": {},
+    "env_defaults": {
+        'PROTON_LOCAL_SHADER_CACHE': '1',
+        'WINE_FULLSCREEN_FSR': '1',
+        'WINE_FULLSCREEN_FSR_STRENGTH': '2',
+    },
+    "ld_library_path_extra": [],
+    "notes": 'Most feature-rich. DLSS/XeSS upgrader, FSR4, NTSync, dxvk-sarek fallback, PhysX bundled.',
+    "container_overrides": {'ntsync': True, 'nvidia_libs_bundled': True},
+}

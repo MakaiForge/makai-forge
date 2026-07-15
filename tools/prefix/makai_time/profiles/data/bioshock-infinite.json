@@ -1,0 +1,7 @@
+{
+  "name": "BioShock Infinite",
+  "exe": "BioShockInfinite.exe",
+  "engine": "unreal",
+  "env": {},
+  "notes": "D3D9/11. Funciona bem. Problemas ocasionais de \u00e1udio."
+}

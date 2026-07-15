@@ -198,14 +198,17 @@ def build_bwrap_cmd(
         "--new-session",
         "--hostname", "makaiforge",
 
-        # Host root como base (read-only, mantém /proc, /dev, /run)
+        # Host root como base (read-only)
         "--ro-bind", "/", "/",
+
+        # /dev próprio sobrepõe o do host (cria devtmpfs acessível)
+        "--dev", "/dev",
 
         # Writable paths necessários
         "--tmpfs", "/tmp",
         "--bind", "/dev/shm", "/dev/shm",
 
-    # GPU device access
+    # GPU device access (precisa vir DEPOIS de --dev)
     "--dev-bind", "/dev/dri", "/dev/dri",
     "--dev-bind", "/dev/nvidia0", "/dev/nvidia0",
     "--dev-bind", "/dev/nvidiactl", "/dev/nvidiactl",

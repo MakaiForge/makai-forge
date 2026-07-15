@@ -1,0 +1,9 @@
+{
+  "name": "Doki Doki Literature Club!",
+  "exe": "DDLC.exe",
+  "engine": "nwjs",
+  "env": {
+    "PROTON_NO_SANDBOX": "1"
+  },
+  "notes": "Ren'Py com NW.js wrapper. --no-sandbox necess\u00e1rio."
+}

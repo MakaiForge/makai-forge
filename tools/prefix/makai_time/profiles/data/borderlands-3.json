@@ -1,0 +1,7 @@
+{
+  "name": "Borderlands 3",
+  "exe": "Borderlands3.exe",
+  "engine": "unreal",
+  "env": {},
+  "notes": "D3D12. Funciona bem com Proton Experimental/CachyOS."
+}

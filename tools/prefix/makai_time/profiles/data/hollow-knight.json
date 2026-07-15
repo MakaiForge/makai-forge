@@ -1,0 +1,7 @@
+{
+  "name": "Hollow Knight",
+  "exe": "Hollow Knight.exe",
+  "engine": "unity",
+  "env": {},
+  "notes": "Funciona perfeitamente com Proton. Nenhum workaround necess\u00e1rio."
+}

@@ -1,0 +1,7 @@
+{
+  "name": "Portal 2",
+  "exe": "portal2.exe",
+  "engine": "unreal",
+  "env": {},
+  "notes": "Source Engine. Funciona nativamente, mas via Proton tamb\u00e9m funciona."
+}

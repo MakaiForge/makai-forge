@@ -1,0 +1,11 @@
+{
+  "name": "The Elder Scrolls V: Skyrim Special Edition",
+  "exe": "SkyrimSE.exe",
+  "engine": "bethesda",
+  "sync": "esync",
+  "no_fsync": true,
+  "env": {
+    "PROTON_NO_FSYNC": "1"
+  },
+  "notes": "FSync causa crash em save games. Usar esync. bUseTemporaryFiles=0 recomendado no SkyrimPrefs.ini"
+}
