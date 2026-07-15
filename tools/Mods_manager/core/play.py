@@ -18,7 +18,6 @@ import traceback
 
 from core import storage
 from core.detection import detect_game
-from core.engine.proton import find_steam_compatdata_path
 
 # ─── Event emitter ─────────────────────────────────────────────
 
@@ -308,11 +307,6 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
 
             # ── Script Extender ──
             se_path = _step_script_extender(game_path, game_id)
-            if se_path and steam_app_id:
-                steam_prefix = find_steam_compatdata_path(steam_app_id)
-                if steam_prefix:
-                    _emit("log", level="info", message=f"Usando prefixo Steam: {steam_prefix}")
-                    prefix_path = steam_prefix
             _emit("progress", step="skse", message="Script Extender OK", percent=70)
         else:
             _emit("progress", step="proton", message="Jogo nativo Linux", percent=20)
@@ -322,7 +316,7 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
         _step_deploy(game_path, staging_dir, modlist, game_id)
 
         # ── Launch ──
-        prefer_custom = bool(config.get("protonPrefix")) and bool(proton_version)
+        prefer_custom = bool(prefix_path)
 
         if native:
             launch_result = {"success": True, "pid": None, "method": "native"}

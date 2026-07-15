@@ -38,6 +38,16 @@ def _find_umu() -> str | None:
     return None
 
 
+MANAGED_RUNTIME_DIR = os.path.expanduser("~/.local/share/makaiforge/steamrt4")
+
+
+def _find_managed_runtime() -> str | None:
+    entry = os.path.join(MANAGED_RUNTIME_DIR, "_v2-entry-point")
+    if os.path.isfile(entry) and os.access(entry, os.X_OK):
+        return MANAGED_RUNTIME_DIR
+    return None
+
+
 def _find_xdg_open() -> str | None:
     import shutil
     return shutil.which("xdg-open") or None
@@ -118,6 +128,24 @@ def _launch_with_proton(
         env.setdefault("GAMEID", f"umu-{steam_app_id}")
         env.setdefault("STORE", "steam")
 
+    # Attempt 1: managed Steam Runtime + Proton
+    runtime_dir = _find_managed_runtime()
+    if runtime_dir:
+        entry = os.path.join(runtime_dir, "_v2-entry-point")
+        shim = os.path.join(runtime_dir, "umu-shim")
+        try:
+            proc = subprocess.Popen(
+                [entry, "--verb=waitforexitandrun", "--", shim, expanded_proton, "waitforexitandrun", full_exe],
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            return {"success": True, "pid": proc.pid, "method": "steamrt"}
+        except FileNotFoundError:
+            pass
+
+    # Attempt 2: external umu-run
     umu = _find_umu()
     if umu:
         try:
@@ -132,6 +160,7 @@ def _launch_with_proton(
         except FileNotFoundError:
             pass
 
+    # Attempt 3: direct Proton
     try:
         proc = subprocess.Popen(
             [expanded_proton, "run", full_exe],

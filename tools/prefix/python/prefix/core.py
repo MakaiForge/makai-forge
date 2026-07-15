@@ -8,11 +8,15 @@ import os
 import shutil
 import stat
 import subprocess
+import tarfile
+import urllib.request
 from pathlib import Path
 
 from .makaitricks import install_recommended_dlls
 
 DEFAULT_PREFIX_BASE = os.path.expanduser("~/games/proton-forger")
+STEAM_RUNTIME_DIR = os.path.expanduser("~/.local/share/makaiforge/steamrt4")
+STEAM_RUNTIME_URL = "https://repo.steampowered.com/steamrt4/images/latest-public-beta/SteamLinuxRuntime_4.tar.xz"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -107,6 +111,74 @@ def build_env(prefix_path: str, compat_data_path: str | None = None) -> dict:
     return env
 
 
+# ── Steam Runtime ─────────────────────────────────────────────────────────────
+
+def ensure_steam_runtime(on_progress=None) -> str | None:
+    """Baixa e extrai o Steam Linux Runtime se ausente em STEAM_RUNTIME_DIR."""
+    emit = on_progress or (lambda m: None)
+    runtime_dir = Path(STEAM_RUNTIME_DIR)
+    entry_point = runtime_dir / "_v2-entry-point"
+
+    if entry_point.is_file():
+        emit("Steam Runtime já presente")
+        return str(runtime_dir)
+
+    emit("Steam Runtime não encontrado. Baixando... (~200MB)")
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    tmp = runtime_dir / "download.tmp"
+
+    try:
+        urllib.request.urlretrieve(STEAM_RUNTIME_URL, tmp)
+    except Exception as e:
+        emit(f"Falha ao baixar Steam Runtime: {e}")
+        shutil.rmtree(runtime_dir, ignore_errors=True)
+        return None
+
+    emit("Extraindo Steam Runtime...")
+    try:
+        with tarfile.open(tmp, "r:xz") as tar:
+            tar.extractall(path=runtime_dir)
+    except Exception as e:
+        emit(f"Falha ao extrair Steam Runtime: {e}")
+        shutil.rmtree(runtime_dir, ignore_errors=True)
+        return None
+
+    tmp.unlink(missing_ok=True)
+
+    # O tarball extrai para SteamLinuxRuntime_4/
+    extracted = runtime_dir / "SteamLinuxRuntime_4"
+    if extracted.is_dir():
+        for item in list(extracted.iterdir()):
+            shutil.move(str(item), str(runtime_dir / item.name))
+        extracted.rmdir()
+
+    # Valida que temos os arquivos necessários
+    if not entry_point.is_file():
+        emit("_v2-entry-point não encontrado após extração")
+        return None
+
+    # Cria umu-shim (configura DISPLAY para gamescope)
+    shim = runtime_dir / "umu-shim"
+    shim.write_text(
+        "#!/bin/sh\n"
+        'if [ "${XDG_CURRENT_DESKTOP}" = "gamescope" ] || [ "${XDG_SESSION_DESKTOP}" = "gamescope" ]; then\n'
+        '    if [ "${STEAM_MULTIPLE_XWAYLANDS}" = "1" ]; then\n'
+        '        if [ -z "${DISPLAY}" ]; then\n'
+        '            export DISPLAY=":1"\n'
+        "        fi\n"
+        "    fi\n"
+        "fi\n"
+        'exec "$@"\n'
+    )
+    shim.chmod(0o700)
+
+    # Cria symlink umu → _v2-entry-point
+    (runtime_dir / "umu").symlink_to("_v2-entry-point")
+
+    emit("Steam Runtime pronto!")
+    return str(runtime_dir)
+
+
 # ── Unified create_prefix ────────────────────────────────────────────────────
 
 def create_prefix(
@@ -127,6 +199,11 @@ def create_prefix(
       3. `proton wineboot -u`
       4. `proton run wineboot -u`
     """
+    emit = on_progress or (lambda m: None)
+
+    # Garante Steam Runtime instalado antes de criar o prefixo
+    ensure_steam_runtime(on_progress=emit)
+
     resolved = resolve_prefix_path(game_id, prefix_path)
     result = {
         "success": False,
@@ -135,8 +212,6 @@ def create_prefix(
         "dlls_installed": [],
         "errors": [],
     }
-
-    emit = on_progress or (lambda m: None)
 
     if not ensure_proton_valid(proton_path):
         result["errors"].append(f"Proton not found at {proton_path}")

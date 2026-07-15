@@ -11,6 +11,15 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+STEAM_RUNTIME_DIR = os.path.expanduser("~/.local/share/makaiforge/steamrt4")
+
+
+def _find_steam_runtime() -> str | None:
+    entry = os.path.join(STEAM_RUNTIME_DIR, "_v2-entry-point")
+    if os.path.isfile(entry) and os.access(entry, os.X_OK):
+        return STEAM_RUNTIME_DIR
+    return None
+
 
 def run_proton_command_for_game(
     proton_path: str,
@@ -23,7 +32,7 @@ def run_proton_command_for_game(
 
     Builds environment from os.environ + env_override.
     Sets defaults for STEAM_COMPAT_* vars only if not already provided.
-    Uses umu-run if available and requested.
+    Uses managed Steam Runtime if available and requested.
     """
     run_env = os.environ.copy()
     if env_override:
@@ -36,11 +45,17 @@ def run_proton_command_for_game(
     run_env.setdefault("STEAM_COMPAT_CLIENT_INSTALL_PATH", str(proton.parent))
 
     if use_umu:
-        umu = shutil.which("umu-run")
-        if umu:
-            cmd = [umu] + command
+        runtime_dir = _find_steam_runtime()
+        if runtime_dir:
+            entry = os.path.join(runtime_dir, "_v2-entry-point")
+            shim = os.path.join(runtime_dir, "umu-shim")
+            cmd = [entry, "--verb=waitforexitandrun", "--", shim, str(proton), "run"] + command
         else:
-            cmd = [str(proton), "run"] + command
+            umu = shutil.which("umu-run")
+            if umu:
+                cmd = [umu] + command
+            else:
+                cmd = [str(proton), "run"] + command
     else:
         cmd = [str(proton), "run"] + command
 
