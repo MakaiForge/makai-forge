@@ -114,6 +114,10 @@ def _launch_with_proton(
     if proton_dir and os.path.isdir(proton_dir):
         env["PROTONPATH"] = proton_dir
 
+    if steam_app_id:
+        env.setdefault("GAMEID", f"umu-{steam_app_id}")
+        env.setdefault("STORE", "steam")
+
     umu = _find_umu()
     if umu:
         try:
