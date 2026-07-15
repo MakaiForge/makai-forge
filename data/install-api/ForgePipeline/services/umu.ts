@@ -31,7 +31,7 @@ const getUmuLogPath = () => path.join(logsPath, "umu.log");
 const getUmuBinaryPath = () =>
   app.isPackaged
     ? path.join(process.resourcesPath, "umu-run")
-    : path.join(__dirname, "..", "..", "..", "resources", "binaries", "umu-run");
+    : path.join(__dirname, "..", "..", "resources", "binaries", "umu-run");
 
 
 const getCompatiblePythonPath = (): string | null => {
