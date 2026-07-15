@@ -129,6 +129,7 @@ def run(
     base_path: str = None,
     dry_run: bool = False,
     verbose: bool = True,
+    env_overrides: dict[str, str] | None = None,
 ) -> int:
     """
     Entry point principal.
@@ -378,7 +379,13 @@ def run(
             pname = final_profile.get("name", "desconhecido")
             print(f"  Perfil: {pname}")
 
-    # ── Build bwrap command ─────────────────────────────────────────────
+    # 7h. Env overrides da CLI/Electron (maior prioridade)
+    if env_overrides:
+        env.update(env_overrides)
+        if verbose:
+            print(f"  {len(env_overrides)} env overrides aplicados")
+
+    # ── Step 8: Build bwrap command ─────────────────────────────────────
     proton_script = os.path.join(proton_path, "proton")
     wine_binary = os.path.join(proton_path, "dist", "bin", "wine")
     if os.path.isfile(proton_script):
@@ -452,8 +459,16 @@ def cli():
     parser.add_argument("--quiet", "-q", action="store_false", dest="verbose")
     parser.add_argument("--dry-run", action="store_true",
                         help="Mostra o comando bwrap sem executar")
+    parser.add_argument("--env", "-e", action="append", default=[],
+                        help="Variável de ambiente adicional (KEY=VALUE, pode repetir)")
 
     args = parser.parse_args()
+
+    env_overrides = {}
+    for e in args.env:
+        if "=" in e:
+            key, val = e.split("=", 1)
+            env_overrides[key] = val
 
     return run(
         game_exe=args.game_exe,
@@ -465,6 +480,7 @@ def cli():
         base_path=args.base_path,
         dry_run=args.dry_run,
         verbose=args.verbose,
+        env_overrides=env_overrides or None,
     )
 
 

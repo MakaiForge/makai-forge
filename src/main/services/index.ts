@@ -26,6 +26,7 @@ export * from "@provision/ForgePipeline/services/download";
 export * from "@provision/ForgePipeline/services/game-files-manager";
 export * from "@provision/ForgePipeline/services/wine";
 export * from "@provision/ForgePipeline/services/umu";
+export { MakaiTime } from "@provision/ForgePipeline/services/makai-time";
 export { ProtonRecommendationService } from "@provision/proton_recommended/services/proton-recommendation";
 export * from "@mods/services/mod-manager-service";
 export * from "@mods/services/mod-storage-service";

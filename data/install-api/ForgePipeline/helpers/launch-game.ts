@@ -10,6 +10,7 @@ import {
   Wine,
   NativeAddon,
   Umu,
+  MakaiTime,
 } from "@main/services";
 import { GameLogManager } from "@main/services/game-log-manager";
 import { checkAndCreateWinePrefix } from "@prefix/core/init";
@@ -317,7 +318,7 @@ export const launchGame = async (options: LaunchGameOptions): Promise<void> => {
       try {
         const logShop = shop;
         const logObjectId = objectId;
-        await Umu.launchExecutable(parsedPath, [], {
+        await MakaiTime.runExecutable(parsedPath, {
           winePrefixPath,
           protonPath,
           gameId: options.objectId,
@@ -330,21 +331,7 @@ export const launchGame = async (options: LaunchGameOptions): Promise<void> => {
         PowerSaveBlockerManager.markCompatibilityLaunchStarted(gameKey);
         return;
       } catch (error) {
-        logger.error("Failed to launch game with umu-run, falling back", error);
-      }
-
-      const launchedWithWine = await launchWithWine(
-        parsedPath,
-        launchOptions,
-        useMangohud,
-        useGamemode,
-        gameEnv,
-        winePrefixPath
-      );
-
-      if (launchedWithWine) {
-        PowerSaveBlockerManager.markCompatibilityLaunchStarted(gameKey);
-        return;
+        logger.error("Failed to launch game with Makai Time", error);
       }
     }
 
