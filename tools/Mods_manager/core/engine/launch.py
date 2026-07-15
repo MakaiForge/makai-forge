@@ -4,6 +4,15 @@ import signal
 import time
 
 
+# Env vars do jogo que devem ser passadas para o Makai Time
+_ENV_PASSTHROUGH = [
+    "SteamAppId", "GAMEID", "STORE", "PROTONPATH", "WINEDLLPATH",
+    "DXVK_ENABLE", "DXVK_ASYNC", "DXVK_STATE_CACHE",
+    "WINEESYNC", "WINEFSYNC",
+    "PROTON_EAC_ENABLE", "PROTON_BATTLEYE_ENABLE",
+]
+
+
 def _find_steam() -> str | None:
     import shutil
     candidates = [
@@ -128,29 +137,33 @@ def _launch_with_proton(
         env.setdefault("GAMEID", f"umu-{steam_app_id}")
         env.setdefault("STORE", "steam")
 
-    # Attempt 1: custom bwrap container
+    # Attempt 1: Makai Time (new container)
     try:
         import sys as _sys
-        _prefix_lib = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "tools", "prefix", "python")
-        if _prefix_lib not in _sys.path:
-            _sys.path.insert(0, _prefix_lib)
-        from prefix.container import build_bwrap_cmd, _find_runtime_root
-        rt = _find_runtime_root()
-        if rt:
-            proc = subprocess.Popen(
-                build_bwrap_cmd(
-                    [expanded_proton, "waitforexitandrun", full_exe],
-                    game_path=os.path.dirname(full_exe),
-                    prefix_path=env.get("WINEPREFIX"),
-                    proton_path=expanded_proton,
-                    env_extra=env,
-                ),
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-            return {"success": True, "pid": proc.pid, "method": "bwrap"}
-    except (ImportError, RuntimeError, FileNotFoundError):
+        _prefix_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+            "prefix",
+        )
+        _cmd = [
+            _sys.executable, "-m", "makai_time.makai_time",
+            "--game-exe", full_exe,
+            "--proton-path", expanded_proton,
+            "--prefix-path", os.path.expanduser(prefix_path),
+            "--game-path", os.path.dirname(full_exe),
+            "--quiet",
+        ]
+        for _k in _ENV_PASSTHROUGH:
+            if _k in env:
+                _cmd.extend(["-e", f"{_k}={env[_k]}"])
+        _proc = subprocess.Popen(
+            _cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            cwd=_prefix_dir,
+        )
+        return {"success": True, "pid": _proc.pid, "method": "makai_time"}
+    except (FileNotFoundError, ImportError):
         pass
 
     # Attempt 2: managed Steam Runtime + Proton

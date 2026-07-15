@@ -27,6 +27,9 @@ from makai_time.profiles import manager as profile_manager
 from makai_time.utils import sysinfo
 
 
+
+
+
 def build_bwrap_cmd(
     command: list[str],
     *,
@@ -54,11 +57,17 @@ def build_bwrap_cmd(
         "--die-with-parent",
         "--new-session",
         "--hostname", "makaiforge",
-        "--ro-bind", "/", "/",
-        "--dev", "/dev",
-        "--tmpfs", "/tmp",
         "--bind", "/dev/shm", "/dev/shm",
     ]
+
+    # Overrides GPU + ICDs ANTES de --ro-bind / / para criar mount points
+    if overrides_base:
+        cmd.extend(ov_mount.override_bwrap_args(overrides_base))
+
+    cmd.extend(["--ro-bind", "/", "/"])
+
+    # --tmpfs e --dev DEPOIS de --ro-bind / / para sobrescrever bind recursivo
+    cmd.extend(["--tmpfs", "/tmp", "--dev", "/dev"])
 
     # GPU devices
     cmd.extend(ov_mount.gpu_device_args())
@@ -67,16 +76,7 @@ def build_bwrap_cmd(
     if sync_info and sync_info["method"] == "ntsync":
         cmd.extend(["--dev-bind", "/dev/ntsync", "/dev/ntsync"])
 
-    # Overrides GPU (se disponível)
-    if overrides_base:
-        cmd.extend(ov_mount.override_bwrap_args(overrides_base))
-
-    # Runtime overlay (se for formato tradicional com lib/)
-    if runtime_path:
-        rt_root = runtime.find_lib_dir(runtime_path)
-        if rt_root:
-            if os.path.isdir(os.path.join(rt_root, "lib")):
-                cmd.extend(["--ro-bind", os.path.join(rt_root, "lib"), "/lib"])
+    # Runtime libs são providas via LD_LIBRARY_PATH (--ro-bind /lib quebra host executables)
 
     # Display + audio
     cmd.extend(display.all_display_args(uid))
@@ -111,6 +111,9 @@ def build_bwrap_cmd(
 
     if "WINEPREFIX" not in (env_vars or {}):
         cmd.extend(["--setenv", "WINEPREFIX", prefix_path])
+
+    if "STEAM_COMPAT_DATA_PATH" not in (env_vars or {}):
+        cmd.extend(["--setenv", "STEAM_COMPAT_DATA_PATH", prefix_path])
 
     # Comando
     cmd.append("--")
@@ -324,6 +327,16 @@ def run(
     # 7c. Profile env vars (override hardware)
     env.update(merged["env"])
 
+    # 7c2. UMU_ID / GAMEID para compatibilidade com protonfixes
+    if "UMU_ID" not in env:
+        game_name = (final_profile or {}).get("name", "") or os.path.basename(game_exe)
+        safe_id = "".join(c for c in game_name if c.isalnum()).lower()[:32] or "game"
+        env["UMU_ID"] = f"makai-{safe_id}"
+    if "GAMEID" not in env:
+        env["GAMEID"] = env["UMU_ID"]
+    if "STEAM_COMPAT_CLIENT_INSTALL_PATH" not in env:
+        env["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = ""
+
     # 7d. Proton-specific config
     if proton_id:
         proton_intel.apply_proton_config(proton_id, env)
@@ -359,6 +372,7 @@ def run(
         overrides_dir=overrides_base if overrides_active else None,
         runtime_dir=rt_path,
         include_host=True,
+        container_paths=True,
     )
     if ld_lib_path:
         env["LD_LIBRARY_PATH"] = ld_lib_path

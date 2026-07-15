@@ -51,7 +51,8 @@ def symlink_library(
 
 
 def symlink_vulkan_icd(
-    json_path: str, override_lib_dir: str, override_data_dir: str, verbose: bool = False
+    json_path: str, override_lib_dir: str, override_data_dir: str,
+    arch: str = "x86_64-linux-gnu", verbose: bool = False,
 ) -> str | None:
     """Copia/symlink ICD JSON para os overrides.
     
@@ -120,7 +121,7 @@ def capture_vulkan_icds(
     for icd in vulkan_icds():
         if icd["lib_path"]:
             symlink_library(icd["lib_path"], lib_dir, verbose)
-        result = symlink_vulkan_icd(icd["json_path"], lib_dir, data_dir, verbose)
+        result = symlink_vulkan_icd(icd["json_path"], lib_dir, data_dir, arch, verbose)
         if result:
             created.append(result)
 
@@ -193,7 +194,7 @@ def _capture_non_nvidia_icds(
             continue
         if icd["lib_path"]:
             symlink_library(icd["lib_path"], lib_dir, verbose)
-        result = symlink_vulkan_icd(icd["json_path"], lib_dir, data_dir, verbose)
+        result = symlink_vulkan_icd(icd["json_path"], lib_dir, data_dir, arch, verbose)
         if result:
             created.append(result)
 

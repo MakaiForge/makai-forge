@@ -32,7 +32,12 @@ def _i386_arch() -> str:
     return "i386-linux-gnu"
 
 
-def runtime_paths(runtime_dir: str) -> list[str]:
+def runtime_paths(runtime_dir: str = None, container_paths: bool = False) -> list[str]:
+    if container_paths:
+        native = _native_arch()
+        i386 = _i386_arch()
+        return [f"/lib/{native}", f"/lib/{i386}"]
+
     global _runtime_ld_paths
     if _runtime_ld_paths:
         return _runtime_ld_paths
@@ -71,7 +76,12 @@ def host_paths() -> list[str]:
     return [p for p in paths if os.path.isdir(p)]
 
 
-def override_paths(overrides_dir: str) -> list[str]:
+def override_paths(overrides_dir: str = None, container_paths: bool = False) -> list[str]:
+    if container_paths:
+        native = _native_arch()
+        i386 = _i386_arch()
+        return [f"/overrides/{native}/lib", f"/overrides/{i386}/lib"]
+
     native = _native_arch()
     i386 = _i386_arch()
 
@@ -87,10 +97,12 @@ def build_ld_library_path(
     overrides_dir: str | None = None,
     runtime_dir: str | None = None,
     include_host: bool = True,
+    container_paths: bool = False,
 ) -> str:
     """Constrói LD_LIBRARY_PATH no formato 'path1:path2:...'.
     
     Prioridade (maior primeiro): prefix > overrides > runtime > host.
+    Se container_paths=True, usa paths dentro do container (/overrides/, /lib/).
     """
     parts = []
 
@@ -100,13 +112,14 @@ def build_ld_library_path(
             parts.append(system32)
 
     if overrides_dir:
-        parts.extend(override_paths(overrides_dir))
+        parts.extend(override_paths(overrides_dir, container_paths=container_paths))
 
     if runtime_dir:
-        parts.extend(runtime_paths(runtime_dir))
+        parts.extend(runtime_paths(runtime_dir, container_paths=container_paths))
 
     if include_host:
-        parts.extend(host_paths())
+        for p in host_paths():
+            parts.append(p)
 
     return ":".join(parts)
 

@@ -129,6 +129,10 @@ def env_vars(
     env["WINENTSYNC"] = env.get("WINENTSYNC", "0")
     env["WINE"] = "/usr/bin/wine"
 
+    # GStreamer: evitar scan de plugins com arch mismatch (Proton bundled)
+    env["GST_PLUGIN_SYSTEM_PATH"] = ""
+    env["GST_REGISTRY_FORK"] = "no"
+
     return env
 
 
