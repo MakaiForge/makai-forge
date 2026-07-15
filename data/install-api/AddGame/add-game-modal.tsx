@@ -20,7 +20,9 @@ export function AddGameModal({
   const [prefix, setPrefix] = useState("");
   const [runner, setRunner] = useState<"proton" | "wine" | "steam">("proton");
   const [protonVersion, setProtonVersion] = useState("");
+  const [protonPath, setProtonPath] = useState("");
   const [installedProtons, setInstalledProtons] = useState<string[]>([]);
+  const [installedProtonPaths, setInstalledProtonPaths] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const initialRender = useRef(true);
@@ -38,6 +40,7 @@ export function AddGameModal({
     setPrefix("");
     setRunner("proton");
     setProtonVersion("");
+    setProtonPath("");
     initialRender.current = true;
   };
 
@@ -47,16 +50,24 @@ export function AddGameModal({
         (await window.electron.getInstalledProtonTools()) as any[];
       console.log("Loaded protons:", protons);
 
-      const protonNames = protons
-        .map((p) => {
-          if (p.version) return p.version;
-          if (p.tool?.title) return p.tool.title;
-          if (p.path) return p.path.split("/").pop();
-          return "Unknown";
-        })
-        .filter(Boolean);
+      const names: string[] = [];
+      const paths: Record<string, string> = {};
 
-      setInstalledProtons(protonNames);
+      for (const p of protons) {
+        const name = p.version
+          ? p.version
+          : p.tool?.title
+            ? p.tool.title
+            : p.path
+              ? p.path.split("/").pop()
+              : "Unknown";
+        if (!name) continue;
+        names.push(name);
+        paths[name] = p.path || "";
+      }
+
+      setInstalledProtons(names);
+      setInstalledProtonPaths(paths);
     } catch (e) {
       console.error("Failed to load protons:", e);
     }
@@ -114,6 +125,7 @@ export function AddGameModal({
       executablePath: executable.trim() || undefined,
       prefix: prefix.trim() || undefined,
       protonVersion: protonVersion || undefined,
+      protonPath: protonPath || undefined,
       coverImageUrl: coverResult.coverUrl || undefined,
       isDeleted: false,
       favorite: false,
@@ -211,20 +223,22 @@ export function AddGameModal({
                 Proton Version ({installedProtons.length} installed)
               </label>
               {installedProtons.length > 0 ? (
-                <select
-                  value={protonVersion}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                    setProtonVersion(e.target.value)
-                  }
-                  className="add-game-modal__select"
-                >
-                  <option value="">Auto (System)</option>
-                  {installedProtons.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    value={protonVersion}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                      const ver = e.target.value;
+                      setProtonVersion(ver);
+                      setProtonPath(installedProtonPaths[ver] || "");
+                    }}
+                    className="add-game-modal__select"
+                  >
+                    <option value="">Auto (System)</option>
+                    {installedProtons.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
               ) : (
                 <div className="add-game-modal__no-protons">
                   <span>No protons installed</span>
