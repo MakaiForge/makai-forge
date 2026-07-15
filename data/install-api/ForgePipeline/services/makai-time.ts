@@ -10,20 +10,27 @@ import { resolveLaunchCommand } from "@main/helpers/resolve-launch-command";
 
 const MAKAI_PREFIX_DIR = "tools/prefix";
 
+const getAppRoot = () =>
+  app.isPackaged ? process.resourcesPath : app.getAppPath();
+
 const getMakaiPrefixDir = () =>
-  app.isPackaged
-    ? path.join(process.resourcesPath, MAKAI_PREFIX_DIR)
-    : path.join(__dirname, "..", "..", "..", MAKAI_PREFIX_DIR);
+  path.join(getAppRoot(), MAKAI_PREFIX_DIR);
 
 const getMakaiLogPath = () => path.join(logsPath, "makai-time.log");
 
-function getVenvPython(): string | null {
+function getPython(): string {
   const candidates = [
-    path.join(__dirname, "..", "..", "..", "tools", "venv", "bin", "python3"),
-    path.join(app.getPath("userData"), "venv", "bin", "python3"),
+    path.join(getAppRoot(), "tools", "venv", "bin", "python3"),
+    "/usr/bin/python3",
+    "/usr/bin/python3.10",
+    "/usr/bin/python3.11",
+    "/usr/bin/python3.12",
+    "/usr/bin/python",
   ];
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch { continue; }
   }
   return "python3";
 }
@@ -45,7 +52,7 @@ export class MakaiTime {
     const workingDirectory = path.dirname(executablePath);
     const prefixDir = getMakaiPrefixDir();
     const logPath = getMakaiLogPath();
-    const pythonPath = getVenvPython();
+    const pythonPath = getPython();
 
     const args: string[] = [
       "-m", "makai_time.makai_time",
@@ -171,7 +178,7 @@ export class MakaiTime {
     const workingDirectory = path.dirname(executablePath);
     const prefixDir = getMakaiPrefixDir();
     const logPath = getMakaiLogPath();
-    const pythonPath = getVenvPython();
+    const pythonPath = getPython();
 
     const args: string[] = [
       "-m", "makai_time.makai_time",
