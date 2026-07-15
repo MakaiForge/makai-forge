@@ -204,8 +204,7 @@ def start_stdio_rpc_loop():
             })
             continue
 
-        thread = threading.Thread(target=handle_request, args=(payload,), daemon=True)
-        thread.start()
+        handle_request(payload)
 
 
 def main():
