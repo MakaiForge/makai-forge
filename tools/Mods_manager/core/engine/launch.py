@@ -27,9 +27,12 @@ def _find_umu() -> str | None:
         "umu",
         os.path.expanduser("~/.local/bin/umu-run"),
         "/usr/bin/umu-run",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "..", "tools", "prefix", "umu-run"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "..", "resources", "binaries", "umu-run"),
     ]
     for c in candidates:
-        path = shutil.which(c) or (c if os.path.isfile(c) else None)
+        expanded = os.path.expanduser(c)
+        path = shutil.which(c) or (expanded if os.path.isfile(expanded) else None)
         if path:
             return path
     return None
