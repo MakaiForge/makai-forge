@@ -1,5 +1,6 @@
 import { shell } from "electron";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { GameShop, type UserPreferences, type Game } from "@types";
 import { db, gamesStore, storeKeys } from "@main/store";
 import {
