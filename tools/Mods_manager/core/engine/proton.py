@@ -12,6 +12,7 @@ STEAM_COMPAT_TOOLS_DIRS = [
     os.path.expanduser("~/.steam/root/compatibilitytools.d"),
     os.path.expanduser("~/.steam/compatibilitytools.d"),
     os.path.expanduser("~/.local/share/Steam/compatibilitytools.d"),
+    os.path.expanduser("~/.config/makai-forger/compat-tools/compatibilitytools.d"),
 ]
 
 
