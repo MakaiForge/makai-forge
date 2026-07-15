@@ -121,6 +121,19 @@ def find_compatibility_tool_path(game_path: str, steam_app_id: str | None) -> st
     return None
 
 
+def find_steam_compatdata_path(steam_app_id: str) -> str | None:
+    """Retorna o caminho do prefixo Steam compatdata para um appId."""
+    if not steam_app_id:
+        return None
+    steam_paths = _find_all_steam_libraries()
+    for lib in steam_paths:
+        compat_dir = os.path.join(lib, "compatdata", steam_app_id)
+        pfx = os.path.join(compat_dir, "pfx")
+        if os.path.isdir(pfx):
+            return pfx
+    return None
+
+
 def _find_all_steam_libraries() -> list[str]:
     """Retorna todas as Steam libraries (pastas steamapps)."""
     libraries = []

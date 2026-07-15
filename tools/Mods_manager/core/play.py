@@ -18,6 +18,7 @@ import traceback
 
 from core import storage
 from core.detection import detect_game
+from core.engine.proton import find_steam_compatdata_path
 
 # ─── Event emitter ─────────────────────────────────────────────
 
@@ -181,7 +182,7 @@ def _step_script_extender(game_path: str, game_id: str) -> str | None:
     """Instala Script Extender se ausente. Retorna caminho do loader."""
     from core.games_registry import (
         get_script_extender_info, check_script_extender,
-        install_script_extender, swap_launcher,
+        install_script_extender,
     )
 
     info = get_script_extender_info(game_id)
@@ -198,12 +199,6 @@ def _step_script_extender(game_path: str, game_id: str) -> str | None:
             return None
 
     if se_path:
-        loader = info.get("loader_exe", "")
-        if loader:
-            try:
-                swap_launcher(game_path, game_id, loader)
-            except Exception as e:
-                _emit("log", level="warn", message=f"Launcher swap: {e}")
         _emit("log", level="info", message=f"Script Extender ativo: {os.path.basename(se_path)}")
     return se_path
 
@@ -313,6 +308,11 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
 
             # ── Script Extender ──
             se_path = _step_script_extender(game_path, game_id)
+            if se_path and steam_app_id:
+                steam_prefix = find_steam_compatdata_path(steam_app_id)
+                if steam_prefix:
+                    _emit("log", level="info", message=f"Usando prefixo Steam: {steam_prefix}")
+                    prefix_path = steam_prefix
             _emit("progress", step="skse", message="Script Extender OK", percent=70)
         else:
             _emit("progress", step="proton", message="Jogo nativo Linux", percent=20)

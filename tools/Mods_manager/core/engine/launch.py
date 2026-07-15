@@ -106,10 +106,10 @@ def _launch_with_proton(
     env.setdefault("WINEDLLPATH", os.path.join(os.path.dirname(proton_path), "files", "lib", "wine"))
 
     expanded_proton = os.path.expanduser(proton_path)
-    proton_dir = os.path.dirname(os.path.dirname(expanded_proton))
-
     if expanded_proton.endswith("proton"):
-        proton_dir = os.path.dirname(os.path.dirname(expanded_proton))
+        proton_dir = os.path.dirname(expanded_proton)
+    else:
+        proton_dir = expanded_proton
 
     if proton_dir and os.path.isdir(proton_dir):
         env["PROTONPATH"] = proton_dir
