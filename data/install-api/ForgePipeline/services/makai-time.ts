@@ -8,12 +8,12 @@ import { logsPath } from "@main/constants";
 import { logger } from "@main/services/logger";
 import { resolveLaunchCommand } from "@main/helpers/resolve-launch-command";
 
-const MAKAI_TIME_MODULE = "tools/prefix/makai_time/makai_time.py";
+const MAKAI_PREFIX_DIR = "tools/prefix";
 
-const getMakaiTimePath = () =>
+const getMakaiPrefixDir = () =>
   app.isPackaged
-    ? path.join(process.resourcesPath, MAKAI_TIME_MODULE)
-    : path.join(__dirname, "..", "..", "..", MAKAI_TIME_MODULE);
+    ? path.join(process.resourcesPath, MAKAI_PREFIX_DIR)
+    : path.join(__dirname, "..", "..", "..", MAKAI_PREFIX_DIR);
 
 const getMakaiLogPath = () => path.join(logsPath, "makai-time.log");
 
@@ -43,12 +43,12 @@ export class MakaiTime {
     }
   ): Promise<void> {
     const workingDirectory = path.dirname(executablePath);
-    const makaiPath = getMakaiTimePath();
+    const prefixDir = getMakaiPrefixDir();
     const logPath = getMakaiLogPath();
     const pythonPath = getVenvPython();
 
     const args: string[] = [
-      makaiPath,
+      "-m", "makai_time.makai_time",
       "--game-exe", executablePath,
       "--proton-path", options?.protonPath ?? "",
       "--prefix-path", options?.winePrefixPath ?? "",
@@ -75,13 +75,13 @@ export class MakaiTime {
 
     const launchHeader =
       `\n[${new Date().toISOString()}] Launching with Makai Time\n` +
-      `Command: ${[resolvedLaunchCommand.command, ...resolvedLaunchCommand.args].join(" ")}\n`;
+      `Command: cd ${prefixDir} && ${[resolvedLaunchCommand.command, ...resolvedLaunchCommand.args].join(" ")}\n`;
     fs.appendFileSync(logPath, launchHeader);
 
     logger.info("Launching game with Makai Time", {
       command: resolvedLaunchCommand.command,
       args: resolvedLaunchCommand.args,
-      cwd: workingDirectory,
+      cwd: prefixDir,
       logPath,
     });
 
@@ -103,7 +103,7 @@ export class MakaiTime {
           detached: true,
           stdio: ["ignore", "pipe", "pipe"],
           shell: false,
-          cwd: workingDirectory,
+          cwd: prefixDir,
           env: { ...process.env },
         }
       );
@@ -169,12 +169,12 @@ export class MakaiTime {
     }
   ): Promise<{ exitCode: number | null; signal: string | null; exitTimestamp: number }> {
     const workingDirectory = path.dirname(executablePath);
-    const makaiPath = getMakaiTimePath();
+    const prefixDir = getMakaiPrefixDir();
     const logPath = getMakaiLogPath();
     const pythonPath = getVenvPython();
 
     const args: string[] = [
-      makaiPath,
+      "-m", "makai_time.makai_time",
       "--game-exe", executablePath,
       "--proton-path", options?.protonPath ?? "",
       "--prefix-path", options?.winePrefixPath ?? "",
@@ -198,12 +198,12 @@ export class MakaiTime {
 
     const launchHeader =
       `\n[${new Date().toISOString()}] Launching installer with Makai Time\n` +
-      `Command: ${[resolvedLaunchCommand.command, ...resolvedLaunchCommand.args].join(" ")}\n`;
+      `Command: cd ${prefixDir} && ${[resolvedLaunchCommand.command, ...resolvedLaunchCommand.args].join(" ")}\n`;
     fs.appendFileSync(logPath, launchHeader);
 
     logger.info("Launching installer with Makai Time (waiting for exit)", {
       command: resolvedLaunchCommand.command,
-      cwd: workingDirectory,
+      cwd: prefixDir,
       logPath,
     });
 
@@ -219,7 +219,7 @@ export class MakaiTime {
           detached: true,
           stdio: shouldPipeToTerminal ? "inherit" : ["ignore", "pipe", "pipe"],
           shell: false,
-          cwd: workingDirectory,
+          cwd: prefixDir,
           env: { ...process.env },
         }
       );
