@@ -8,6 +8,7 @@ import {
   PowerSaveBlockerManager,
   Wine,
   NativeAddon,
+  Umu,
 } from "@main/services";
 import { GameLogManager } from "@main/services/game-log-manager";
 import { checkAndCreateWinePrefix } from "@prefix/core/init";
