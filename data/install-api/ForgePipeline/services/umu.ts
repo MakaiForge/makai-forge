@@ -11,7 +11,6 @@ import type { ProtonVersion } from "@types";
 import { resolveLaunchCommand } from "@main/helpers/resolve-launch-command";
 import { ensureVenv } from "@bootstrap/venv";
 import { findToolByFolder } from "@proton/main/services/tools";
-import { getVenvPythonPath } from "@prefix/core/venv";
 
 const isValidProtonDirectory = (directoryPath: string) => {
   const protonFilePath = path.join(directoryPath, "proton");
@@ -35,7 +34,10 @@ const getUmuBinaryPath = () =>
 
 
 const getCompatiblePythonPath = (): string | null => {
-  return getVenvPythonPath();
+  // Do NOT use the venv Python — umu-run is a zipapp with a shebang
+  // (#!/usr/bin/env python3). The venv Python (python3.10.bin) fails
+  // with "No module named 'encodings'" when executing zipapps.
+  return null;
 };
 
 const ensureExecutablePermission = (binaryPath: string) => {
