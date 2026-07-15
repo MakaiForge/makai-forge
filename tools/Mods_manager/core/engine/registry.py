@@ -166,6 +166,20 @@ _BETHESDA_REG_NAMES = {
 }
 
 
+def _find_wine_binary(proton_path: str) -> str | None:
+    """Localiza o binário wine dentro do diretório Proton."""
+    proto_dir = os.path.dirname(proton_path)
+    candidates = [
+        os.path.join(proto_dir, "files", "bin", "wine"),
+        os.path.join(proto_dir, "dist", "bin", "wine"),
+        os.path.join(proto_dir, "bin", "wine"),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return None
+
+
 def register_bethesda_game_path(
     prefix_path: str,
     proton_path: str,
@@ -177,14 +191,14 @@ def register_bethesda_game_path(
     if not reg_name:
         return False
 
-    if not os.path.isfile(proton_path):
+    wine_binary = _find_wine_binary(proton_path)
+    if not wine_binary:
         return False
 
     wine_path = "Z:" + game_path.replace("/", "\\") + "\\"
 
     env = os.environ.copy()
-    env["STEAM_COMPAT_DATA_PATH"] = prefix_path
-    env["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = os.path.expanduser("~/.steam/steam")
+    env["WINEPREFIX"] = prefix_path
     if steam_app_id:
         env["SteamAppId"] = steam_app_id
 
@@ -197,12 +211,11 @@ def register_bethesda_game_path(
     for key in keys:
         try:
             r = subprocess.run(
-                [proton_path, "run", "reg", "add", key,
+                [wine_binary, "reg", "add", key,
                  "/v", "Installed Path", "/t", "REG_SZ", "/d", wine_path, "/f"],
                 env=env,
                 timeout=30,
                 capture_output=True,
-                text=True,
             )
             if r.returncode != 0:
                 success = False
@@ -221,13 +234,16 @@ def apply_registry_file(prefix_path: str, reg_file: str, proton_path: str | None
     if not proton_path:
         return False
 
+    wine_binary = _find_wine_binary(proton_path)
+    if not wine_binary:
+        return False
+
     env = os.environ.copy()
-    env["STEAM_COMPAT_DATA_PATH"] = prefix_path
-    env["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = os.path.expanduser("~/.steam/steam")
+    env["WINEPREFIX"] = prefix_path
 
     try:
         subprocess.run(
-            [proton_path, "run", "regedit", reg_file],
+            [wine_binary, "regedit", reg_file],
             env=env,
             timeout=30,
             stdout=subprocess.DEVNULL,
@@ -243,8 +259,13 @@ def run_makaitricks(prefix_path: str, components: list[str], proton_path: str) -
         return {"success": True, "log": []}
 
     env = os.environ.copy()
-    env["STEAM_COMPAT_DATA_PATH"] = prefix_path
-    env["WINEPREFIX"] = os.path.join(prefix_path, "pfx")
+    pfx_dir = os.path.join(prefix_path, "pfx")
+    env["WINEPREFIX"] = pfx_dir if os.path.isdir(pfx_dir) else prefix_path
+
+    wine_dir = _find_wine_binary(proton_path)
+    if wine_dir:
+        wine_bin = os.path.dirname(wine_dir)
+        env["PATH"] = wine_bin + os.pathsep + env.get("PATH", "")
 
     results = []
     all_ok = True

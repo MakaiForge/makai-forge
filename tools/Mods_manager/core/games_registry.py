@@ -473,7 +473,7 @@ def get_launch_exe(game_id: str, se_path: str | None) -> str | None:
 # ─── Launcher Swap ────────────────────────────────────────────
 
 _GAME_LAUNCHER_EXE: dict[str, str] = {
-    "skyrim":             "TESV.exe",
+    "skyrim":             "SkyrimLauncher.exe",
     "skyrim_se":          "SkyrimSE.exe",
     "skyrim_vr":          "SkyrimVR.exe",
     "enderal":            "TESV.exe",

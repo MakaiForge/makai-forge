@@ -66,7 +66,13 @@ def _step_proton(proton_version: str, game_path: str, steam_app_id: str) -> str:
     """Encontra Proton. Retorna caminho ou levanta exceção."""
     from core.engine.proton import find_proton, find_compatibility_tool_path, find_any_proton
 
-    p = find_proton(proton_version) if proton_version else None
+    p = None
+    if proton_version:
+        proton_exe = os.path.join(os.path.expanduser(proton_version), "proton")
+        if os.path.isfile(proton_exe):
+            p = proton_exe
+        else:
+            p = find_proton(proton_version)
     if not p and steam_app_id:
         p = find_compatibility_tool_path(game_path, steam_app_id)
     if not p:
@@ -171,8 +177,8 @@ def _step_makaitricks(prefix_path: str, proton_path: str, game_id: str):
         _emit("log", level="warn", message="Makaitricks teve falhas", results=result.get("results"))
 
 
-def _step_script_extender(game_path: str, game_id: str):
-    """Instala Script Extender se ausente."""
+def _step_script_extender(game_path: str, game_id: str) -> str | None:
+    """Instala Script Extender se ausente. Retorna caminho do loader."""
     from core.games_registry import (
         get_script_extender_info, check_script_extender,
         install_script_extender, swap_launcher,
@@ -180,26 +186,26 @@ def _step_script_extender(game_path: str, game_id: str):
 
     info = get_script_extender_info(game_id)
     if not info:
-        return
+        return None
 
     _emit("progress", step="skse", message="Verificando Script Extender...", percent=60)
     se_path = check_script_extender(game_path, info)
-    if se_path:
-        _emit("log", level="info", message=f"Script Extender já instalado: {os.path.basename(se_path)}")
-        return
-
-    _emit("progress", step="skse", message="Instalando Script Extender...", percent=65)
-    se_path = install_script_extender(game_path, info)
     if not se_path:
-        _emit("log", level="warn", message="Script Extender não pôde ser instalado")
-        return
+        _emit("progress", step="skse", message="Instalando Script Extender...", percent=65)
+        se_path = install_script_extender(game_path, info)
+        if not se_path:
+            _emit("log", level="warn", message="Script Extender não pôde ser instalado")
+            return None
 
-    loader = info.get("loader_exe", "")
-    if loader:
-        try:
-            swap_launcher(game_path, game_id, loader)
-        except Exception as e:
-            _emit("log", level="warn", message=f"Launcher swap: {e}")
+    if se_path:
+        loader = info.get("loader_exe", "")
+        if loader:
+            try:
+                swap_launcher(game_path, game_id, loader)
+            except Exception as e:
+                _emit("log", level="warn", message=f"Launcher swap: {e}")
+        _emit("log", level="info", message=f"Script Extender ativo: {os.path.basename(se_path)}")
+    return se_path
 
 
 def _step_deploy(game_path: str, staging_dir: str, modlist: list, game_id: str):
@@ -218,20 +224,23 @@ def _step_deploy(game_path: str, staging_dir: str, modlist: list, game_id: str):
         _emit("log", level="warn", message=f"Deploy: {e}")
 
 
-def _step_launch(game_path: str, prefix_path: str, proton_path: str, steam_app_id: str, game_id: str) -> dict:
+def _step_launch(game_path: str, prefix_path: str, proton_path: str, steam_app_id: str, game_id: str, se_path: str | None = None, prefer_custom_prefix: bool = False) -> dict:
     """Lança o jogo."""
     _emit("progress", step="launch", message="Iniciando jogo...", percent=90)
 
-    from core.games_registry import get_launch_exe
-    exe_path = get_launch_exe(game_id, None)
-    if not exe_path:
-        for root, dirs, files in os.walk(game_path):
-            for f in files:
-                if f.endswith(".exe") and "launcher" not in f.lower() and "setup" not in f.lower():
-                    exe_path = os.path.relpath(os.path.join(root, f), game_path)
+    if se_path:
+        exe_path = os.path.relpath(se_path, game_path)
+    else:
+        from core.games_registry import get_launch_exe
+        exe_path = get_launch_exe(game_id, None)
+        if not exe_path:
+            for root, dirs, files in os.walk(game_path):
+                for f in files:
+                    if f.endswith(".exe") and "launcher" not in f.lower() and "setup" not in f.lower():
+                        exe_path = os.path.relpath(os.path.join(root, f), game_path)
+                        break
+                if exe_path:
                     break
-            if exe_path:
-                break
     if not exe_path:
         raise RuntimeError("Nenhum executável encontrado")
 
@@ -240,6 +249,7 @@ def _step_launch(game_path: str, prefix_path: str, proton_path: str, steam_app_i
         game_path=game_path, exe_path=exe_path,
         prefix_path=prefix_path, proton_path=proton_path,
         steam_app_id=steam_app_id.strip() if steam_app_id else None,
+        prefer_custom_prefix=prefer_custom_prefix,
     )
 
 
@@ -299,11 +309,10 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
             _emit("progress", step="configs", message="Verificando configurações...", percent=35)
             _step_dll_overrides(prefix_path, game_id)
             _step_bethesda_registry(prefix_path, proton_path, game_id, game_path, steam_app_id)
-            _step_makaitricks(prefix_path, proton_path, game_id)
             _emit("progress", step="configs", message="Configurações aplicadas", percent=55)
 
             # ── Script Extender ──
-            _step_script_extender(game_path, game_id)
+            se_path = _step_script_extender(game_path, game_id)
             _emit("progress", step="skse", message="Script Extender OK", percent=70)
         else:
             _emit("progress", step="proton", message="Jogo nativo Linux", percent=20)
@@ -313,10 +322,12 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
         _step_deploy(game_path, staging_dir, modlist, game_id)
 
         # ── Launch ──
+        prefer_custom = bool(config.get("protonPrefix")) and bool(proton_version)
+
         if native:
             launch_result = {"success": True, "pid": None, "method": "native"}
         else:
-            launch_result = _step_launch(game_path, prefix_path, proton_path, steam_app_id, game_id)
+            launch_result = _step_launch(game_path, prefix_path, proton_path, steam_app_id, game_id, se_path, prefer_custom_prefix=prefer_custom)
 
         total_ms = (time.monotonic() - _start_all) * 1000
 

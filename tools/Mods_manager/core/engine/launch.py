@@ -1,14 +1,43 @@
-"""
-core/engine/launch.py — Lançamento do jogo via Proton/umu-run.
-
-Gerencia o spawn do processo do jogo, monitoramento,
-e limpeza de processos órfãos.
-"""
-
 import os
 import subprocess
 import signal
 import time
+
+
+def _find_steam() -> str | None:
+    import shutil
+    candidates = [
+        "steam",
+        "/usr/bin/steam",
+        "/usr/games/steam",
+        os.path.expanduser("~/.local/share/Steam/ubuntu12_32/steam"),
+        os.path.expanduser("~/.steam/steam/ubuntu12_32/steam"),
+    ]
+    for c in candidates:
+        path = shutil.which(c) or (c if os.path.isfile(c) else None)
+        if path:
+            return path
+    return None
+
+
+def _find_umu() -> str | None:
+    import shutil
+    candidates = [
+        "umu-run",
+        "umu",
+        os.path.expanduser("~/.local/bin/umu-run"),
+        "/usr/bin/umu-run",
+    ]
+    for c in candidates:
+        path = shutil.which(c) or (c if os.path.isfile(c) else None)
+        if path:
+            return path
+    return None
+
+
+def _find_xdg_open() -> str | None:
+    import shutil
+    return shutil.which("xdg-open") or None
 
 
 def launch_game(
@@ -18,83 +47,100 @@ def launch_game(
     proton_path: str,
     steam_app_id: str | None = None,
     env_overrides: dict | None = None,
+    prefer_custom_prefix: bool = False,
 ) -> dict:
-    """
-    Lança o jogo usando umu-run ou Proton.
+    full_exe = os.path.join(game_path, exe_path)
 
-    Args:
-        game_path: Caminho do jogo (STEAM_COMPAT_DATA_PATH parent)
-        exe_path: Caminho do executável relativo (ex: "SkyrimSE.exe")
-        prefix_path: Caminho do wrapper de prefixo
-        proton_path: Caminho do Proton
-        steam_app_id: Steam AppID
-        env_overrides: Variáveis de ambiente extras
-
-    Returns:
-        dict com pid, method, success
-    """
     env = os.environ.copy()
-    env["STEAM_COMPAT_DATA_PATH"] = prefix_path
-    env["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = os.path.expanduser("~/.steam/steam")
-
-    # Garante steam_app_id informacional (para configs de prefixo)
-    if steam_app_id:
-        env["SteamAppId"] = steam_app_id
-
-    # Monta caminho completo do executável
-    # Tenta drive_c primeiro, depois caminho absoluto
-    drive_c = os.path.join(prefix_path, "pfx", "drive_c")
-    full_exe = os.path.join(drive_c, exe_path.lstrip("/"))
-
-    if not os.path.exists(full_exe):
-        full_exe = os.path.join(game_path, exe_path)
-
-    if not os.path.exists(full_exe):
-        return {"success": False, "error": f"Executável não encontrado: {full_exe}", "method": None}
-
     if env_overrides:
         env.update(env_overrides)
 
-    # Tenta Proton run primeiro (Makai Forge gerencia Proton + prefixo)
-    if proton_path and os.path.isfile(proton_path):
-        try:
-            env_proton = env.copy()
-            if steam_app_id:
-                env_proton["STEAM_COMPAT_APPID"] = steam_app_id
-            proc = subprocess.Popen(
-                [proton_path, "run", full_exe],
-                env=env_proton,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-            return {"success": True, "pid": proc.pid, "method": "proton"}
-        except FileNotFoundError as e:
-            return {"success": False, "error": str(e), "method": "proton"}
+    if steam_app_id:
+        env.setdefault("SteamAppId", steam_app_id)
 
-    # Fallback: umu-run (se Proton não foi encontrado)
+    if prefer_custom_prefix:
+        return _launch_with_proton(full_exe, prefix_path, proton_path, steam_app_id, env)
+
+    if steam_app_id:
+        url = f"steam://rungameid/{steam_app_id}"
+        steam = _find_steam()
+        if steam:
+            try:
+                proc = subprocess.Popen(
+                    [steam, url],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                return {"success": True, "pid": proc.pid, "method": "steam"}
+            except FileNotFoundError:
+                pass
+
+        xdg = _find_xdg_open()
+        if xdg:
+            try:
+                proc = subprocess.Popen(
+                    [xdg, url],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                return {"success": True, "pid": proc.pid, "method": "steam"}
+            except FileNotFoundError:
+                pass
+
+    return _launch_with_proton(full_exe, prefix_path, proton_path, steam_app_id, env)
+
+
+def _launch_with_proton(
+    full_exe: str,
+    prefix_path: str,
+    proton_path: str,
+    steam_app_id: str | None,
+    env: dict,
+) -> dict:
+    env["WINEPREFIX"] = os.path.expanduser(prefix_path)
+    env.setdefault("WINEDLLPATH", os.path.join(os.path.dirname(proton_path), "files", "lib", "wine"))
+
+    expanded_proton = os.path.expanduser(proton_path)
+    proton_dir = os.path.dirname(os.path.dirname(expanded_proton))
+
+    if expanded_proton.endswith("proton"):
+        proton_dir = os.path.dirname(os.path.dirname(expanded_proton))
+
+    if proton_dir and os.path.isdir(proton_dir):
+        env["PROTONPATH"] = proton_dir
+
     umu = _find_umu()
     if umu:
         try:
-            env_umu = env.copy()
             proc = subprocess.Popen(
                 [umu, full_exe],
-                env=env_umu,
+                env=env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
-            return {"success": True, "pid": proc.pid, "method": "umu-run"}
+            return {"success": True, "pid": proc.pid, "method": "umu"}
         except FileNotFoundError:
             pass
-        except Exception as e:
-            return {"success": False, "error": f"umu-run error: {e}", "method": "umu-run"}
 
-    return {"success": False, "error": "No launch method available", "method": None}
+    try:
+        proc = subprocess.Popen(
+            [expanded_proton, "run", full_exe],
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        return {"success": True, "pid": proc.pid, "method": "proton"}
+    except FileNotFoundError:
+        pass
+
+    return {"success": False, "error": "Nenhum método de launch disponível", "method": None}
 
 
 def kill_game(pid: int | None = None, game_id: str | None = None) -> bool:
-    """Mata o processo do jogo e wineservers órfãos."""
     if pid:
         try:
             os.kill(pid, signal.SIGTERM)
@@ -105,14 +151,11 @@ def kill_game(pid: int | None = None, game_id: str | None = None) -> bool:
                 pass
         except ProcessLookupError:
             pass
-
-    # Mata wineservers órfãos
     kill_stale_wineserver()
     return True
 
 
 def kill_stale_wineserver():
-    """Mata processos wineserver que possam ter travado."""
     try:
         subprocess.run(
             ["pkill", "-9", "wineserver"],
@@ -122,28 +165,3 @@ def kill_stale_wineserver():
         )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
-
-
-def _find_umu() -> str | None:
-    """Localiza umu-run."""
-    candidates = [
-        "umu-run",
-        "/usr/bin/umu-run",
-        "/usr/local/bin/umu-run",
-        os.path.expanduser("~/.local/bin/umu-run"),
-        os.path.expanduser("~/.cargo/bin/umu-run"),
-        os.path.expanduser("~/Documentos/Makai-forge/tools/prefix/umu-run"),
-    ]
-    import shutil
-    for c in candidates:
-        path = shutil.which(c) or c if os.path.isfile(c) else None
-        if path:
-            return path
-    # Tenta python -m umu
-    try:
-        r = subprocess.run(["python3", "-m", "umu", "--help"], capture_output=True, timeout=5)
-        if r.returncode == 0:
-            return "python3 -m umu"
-    except Exception:
-        pass
-    return None

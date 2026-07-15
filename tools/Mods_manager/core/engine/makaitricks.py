@@ -13,13 +13,32 @@ MAKAITRICKS_PATH = os.path.expanduser(
 )
 
 
+def _find_wine_binary(proton_path: str) -> str | None:
+    """Localiza o binário wine dentro do diretório Proton."""
+    proto_dir = os.path.dirname(proton_path)
+    candidates = [
+        os.path.join(proto_dir, "files", "bin", "wine"),
+        os.path.join(proto_dir, "dist", "bin", "wine"),
+        os.path.join(proto_dir, "bin", "wine"),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return None
+
+
 def run(component: str, prefix_path: str, proton_path: str) -> dict:
     if not os.path.isfile(MAKAITRICKS_PATH):
         return {"success": False, "error": f"Makaitricks não encontrado em {MAKAITRICKS_PATH}"}
 
     env = os.environ.copy()
-    env["STEAM_COMPAT_DATA_PATH"] = prefix_path
-    env["WINEPREFIX"] = os.path.join(prefix_path, "pfx")
+    pfx_dir = os.path.join(prefix_path, "pfx")
+    env["WINEPREFIX"] = pfx_dir if os.path.isdir(pfx_dir) else prefix_path
+
+    wine_binary = _find_wine_binary(proton_path)
+    if wine_binary:
+        wine_bin = os.path.dirname(wine_binary)
+        env["PATH"] = wine_bin + os.pathsep + env.get("PATH", "")
 
     try:
         result = subprocess.run(
