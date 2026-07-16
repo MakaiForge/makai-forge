@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
         alias: {
           "@main": resolve("src/main"),
           "@mods": resolve("tools/Mods_manager"),
+          "@mods-manager": resolve("tools/Mods_manager"),
           "@games": resolve("tools/Mods_manager/games"),
           "@locales": resolve("src/locales"),
           "@resources": resolve("resources"),
@@ -51,6 +52,7 @@ export default defineConfig(({ mode }) => {
         alias: {
           "@renderer": resolve("src/renderer/src"),
           "@mods": resolve("tools/Mods_manager"),
+          "@mods-manager": resolve("tools/Mods_manager"),
           "@locales": resolve("src/locales"),
           "@shared": resolve("src/shared"),
           "@resources": resolve("resources"),
