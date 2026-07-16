@@ -25,11 +25,33 @@ import traceback
 import threading
 from datetime import datetime, timezone
 
-LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.log")
+# ── sys.path setup — MUST be before rpc_base import ──────────────
+_LOG_DIR = os.path.dirname(os.path.abspath(__file__))
+_MODS_DIR = os.path.abspath(os.path.join(_LOG_DIR, ".."))
+_TOOLS_DIR = os.path.abspath(os.path.join(_LOG_DIR, "..", ".."))
+_PREFIX_PYTHON_DIR = os.path.abspath(os.path.join(_TOOLS_DIR, "prefix", "python"))
+_PREFIX_DIR = os.path.abspath(os.path.join(_TOOLS_DIR, "prefix"))
 
-_TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-if _TOOLS_DIR not in sys.path:
-    sys.path.insert(0, _TOOLS_DIR)
+for d in (_MODS_DIR, _TOOLS_DIR, _PREFIX_PYTHON_DIR, _PREFIX_DIR):
+    if d not in sys.path:
+        sys.path.insert(0, d)
+
+from rpc_base import (
+    METHODS, register, dispatch, RpcError,
+    write_event, write_response,
+)
+
+LOG_FILE = os.path.join(_LOG_DIR, "server.log")
+
+# Register handlers from subsystem modules
+from rpc_base import register as _register
+import game_launcher.rpc as _game_launcher_rpc
+import prefix_rpc as _prefix_rpc
+import makai_time.rpc as _makai_time_rpc
+
+_game_launcher_rpc.register_handlers(_register)
+_prefix_rpc.register_handlers(_register)
+_makai_time_rpc.register_handlers(_register)
 
 
 def log_msg(*args):
@@ -40,41 +62,6 @@ def log_msg(*args):
             f.write(line + "\n")
     except Exception:
         pass
-
-
-def write_event(event_type: str, **data):
-    sys.stdout.write(
-        json.dumps({"event": event_type, **data}, ensure_ascii=True, separators=(",", ":")) + "\n"
-    )
-    sys.stdout.flush()
-
-
-def write_response(payload: dict):
-    serialized = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
-    sys.stdout.write(serialized + "\n")
-    sys.stdout.flush()
-
-
-class RpcError(Exception):
-    def __init__(self, code: str, message: str | None = None):
-        self.code = code
-        self.message = message or code
-
-
-METHODS: dict[str, callable] = {}
-
-
-def register(method: str):
-    def wrapper(func):
-        METHODS[method] = func
-        return func
-    return wrapper
-
-
-def dispatch(method: str, params: object | None) -> object:
-    if method not in METHODS:
-        raise RpcError("method_not_found", f"Unknown method: {method}")
-    return METHODS[method](params or {})
 
 
 # ─── Métodos RPC ────────────────────────────────────────────────
@@ -280,80 +267,6 @@ def handle_container_run_installer(params: dict):
         return {"exitCode": -1, "signal": None, "exitTimestamp": time.time(), "error": "python not found"}
 
 
-# ─── Game Installation ──────────────────────────────────────────
-
-@register("detect_installer_type")
-def handle_detect_installer_type(params: dict):
-    from game_launcher.game_install import detect_installer_type
-    source_path = params.get("source_path") if isinstance(params, dict) else None
-    if not source_path:
-        raise RpcError("invalid_params", "source_path required")
-    return detect_installer_type(str(source_path))
-
-
-@register("copy_to_prefix")
-def handle_copy_to_prefix(params: dict):
-    from game_launcher.game_install import copy_to_prefix
-    source_path = params.get("source_path") if isinstance(params, dict) else None
-    prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
-    if not source_path or not prefix_path:
-        raise RpcError("invalid_params", "source_path and prefix_path required")
-    return copy_to_prefix(str(source_path), str(prefix_path))
-
-
-@register("scan_prefix_for_exes")
-def handle_scan_prefix_for_exes(params: dict):
-    from game_launcher.game_install import scan_prefix_for_exes
-    prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
-    if not prefix_path:
-        raise RpcError("invalid_params", "prefix_path required")
-    return scan_prefix_for_exes(str(prefix_path))
-
-
-@register("snapshot_prefix")
-def handle_snapshot_prefix(params: dict):
-    from game_launcher.game_install import snapshot_prefix
-    prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
-    if not prefix_path:
-        raise RpcError("invalid_params", "prefix_path required")
-    return snapshot_prefix(str(prefix_path))
-
-
-@register("find_new_executables")
-def handle_find_new_executables(params: dict):
-    from game_launcher.game_install import find_new_executables
-    before = params.get("before") if isinstance(params, dict) else None
-    after = params.get("after") if isinstance(params, dict) else None
-    if before is None or after is None:
-        raise RpcError("invalid_params", "before and after required")
-    return find_new_executables(list(before), list(after))
-
-
-@register("install_game")
-def handle_install_game(params: dict):
-    """Fluxo completo de instalação de jogo (portátil ou instalador)."""
-    from game_launcher.game_install import install_game
-    source_path = params.get("source_path") if isinstance(params, dict) else None
-    prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
-    proton_path = params.get("proton_path") if isinstance(params, dict) else None
-    game_id = params.get("game_id", "") if isinstance(params, dict) else ""
-    existing_exe_path = params.get("existing_exe_path") if isinstance(params, dict) else None
-    if not source_path or not prefix_path or not proton_path:
-        raise RpcError("invalid_params", "source_path, prefix_path, proton_path required")
-
-    def _progress(step, pct, msg):
-        write_event("install_progress", step=step, percent=pct, message=msg)
-
-    return install_game(
-        source_path=str(source_path),
-        prefix_path=str(prefix_path),
-        proton_path=str(proton_path),
-        game_id=str(game_id),
-        existing_exe_path=str(existing_exe_path) if existing_exe_path else None,
-        progress_callback=_progress,
-    )
-
-
 @register("health_check")
 def handle_health_check(params: dict):
     import shutil
@@ -443,62 +356,6 @@ def handle_get_recommended_dlls(params: dict):
     return dlls.get_recommended_dlls(str(game_id))
 
 
-@register("install_game_dlls")
-def handle_install_game_dlls(params: dict):
-    from api.services import prefix
-    game_id = params.get("game_id")
-    prefix_path = params.get("prefix_path")
-    proton_path = params.get("proton_path")
-    if not all([game_id, prefix_path, proton_path]):
-        raise RpcError("missing_param", "game_id, prefix_path, proton_path are required")
-    return prefix.install_recommended_dlls(
-        game_id=str(game_id),
-        prefix_path=str(prefix_path),
-        proton_path=str(proton_path),
-        extra_verbs=params.get("extra_verbs"),
-    )
-
-
-@register("install_makaitricks")
-def handle_install_makaitricks(params: dict):
-    prefix_path = params.get("prefix_path")
-    proton_path = params.get("proton_path")
-    verbs = params.get("verbs")
-    if not prefix_path or not proton_path or not verbs:
-        raise RpcError("missing_param", "prefix_path, proton_path, verbs are required")
-    if not isinstance(verbs, list):
-        raise RpcError("invalid_param", "verbs must be a list")
-    from core.engine.makaitricks import run_multiple
-    result = run_multiple(verbs, prefix_path, proton_path)
-    return result
-
-
-@register("create_prefix")
-def handle_create_prefix(params: dict):
-    game_id = params.get("game_id")
-    proton_path = params.get("proton_path")
-    if not game_id or not proton_path:
-        raise RpcError("missing_param", "game_id and proton_path are required")
-    prefix_path = params.get("prefix_path")
-    auto_dlls = params.get("auto_dlls", True)
-    extra_verbs = params.get("extra_verbs")
-    game_path = params.get("game_path", "")
-
-    if prefix_path:
-        os.environ.setdefault("STEAM_COMPAT_DATA_PATH", prefix_path)
-        os.environ.setdefault("WINEPREFIX", prefix_path)
-    if game_path:
-        os.environ.setdefault("STEAM_COMPAT_INSTALL_PATH", game_path)
-    from prefix.core import create_prefix as cp
-    return cp(
-        game_id=str(game_id),
-        proton_path=str(proton_path),
-        prefix_path=str(prefix_path) if prefix_path else None,
-        auto_dlls=bool(auto_dlls),
-        extra_verbs=extra_verbs,
-    )
-
-
 @register("get_launch_command")
 def handle_get_launch_command(params: dict):
     from core.engine.launch import launch_game
@@ -518,89 +375,6 @@ def handle_get_launch_command(params: dict):
         env_overrides=params.get("env_overrides"),
     )
     return result
-
-
-# ─── Prefix Management ─────────────────────────────────────────
-
-@register("delete_prefix")
-def handle_delete_prefix(params: dict):
-    prefix_path = params.get("prefix_path")
-    if not prefix_path:
-        raise RpcError("missing_param", "prefix_path is required")
-    from prefix.core import delete_prefix
-    return {"success": delete_prefix(str(prefix_path))}
-
-
-@register("clean_prefix")
-def handle_clean_prefix(params: dict):
-    prefix_path = params.get("prefix_path")
-    if not prefix_path:
-        raise RpcError("missing_param", "prefix_path is required")
-    from prefix.core import clean_prefix
-    return {"success": clean_prefix(str(prefix_path))}
-
-
-@register("get_prefix_saves")
-def handle_get_prefix_saves(params: dict):
-    import os
-    from pathlib import Path
-    prefix_path = params.get("prefix_path")
-    if not prefix_path:
-        raise RpcError("missing_param", "prefix_path is required")
-    pfx = Path(prefix_path)
-    if not pfx.is_dir():
-        return {"saves": [], "error": "prefix directory not found"}
-    saves = []
-    game_id = params.get("game_id", "")
-    search_bases = [
-        "drive_c/users/*/Documents/My Games",
-        "drive_c/users/*/AppData/Local",
-        "drive_c/users/*/AppData/Roaming",
-    ]
-    for pattern in search_bases:
-        for base in pfx.glob(pattern):
-            if not base.is_dir():
-                continue
-            for child in base.iterdir():
-                if not child.is_dir():
-                    continue
-                child_lower = child.name.lower()
-                if game_id:
-                    gid = game_id.lower().replace("_", "").replace("-", "")
-                    cname = child_lower.replace("_", "").replace("-", "").replace(" ", "")
-                    if gid not in cname and cname not in gid:
-                        continue
-                saves.append(str(child.relative_to(pfx)))
-    return {"saves": saves}
-
-
-@register("restore_saves")
-def handle_restore_saves(params: dict):
-    import shutil
-    from pathlib import Path
-    prefix_path = params.get("prefix_path")
-    saves_backup = params.get("saves_backup", [])
-    backup_source = params.get("backup_source")
-    if not all([prefix_path, backup_source]):
-        raise RpcError("missing_param", "prefix_path and backup_source are required")
-    pfx = Path(prefix_path)
-    src = Path(backup_source)
-    restored = []
-    errors = []
-    for save_rel in saves_backup:
-        src_path = src / save_rel
-        dst_path = pfx / save_rel
-        if not src_path.exists():
-            errors.append(f"{save_rel}: fonte não encontrada em {backup_source}")
-            continue
-        try:
-            if dst_path.exists():
-                shutil.rmtree(dst_path)
-            shutil.copytree(src_path, dst_path)
-            restored.append(save_rel)
-        except Exception as e:
-            errors.append(f"{save_rel}: {str(e)[:150]}")
-    return {"restored": restored, "errors": errors}
 
 
 # ─── Mod Management ─────────────────────────────────────────────
@@ -1051,20 +825,6 @@ def handle_launch_native_tool(params: dict):
         start_new_session=True,
     )
     return {"success": True, "pid": None}
-
-
-# ─── System Info ─────────────────────────────────────────────────
-
-@register("gpu_info")
-def handle_gpu_info(params: dict):
-    from makai_time.core.gpu import info
-    return info()
-
-
-@register("sync_info")
-def handle_sync_info(params: dict):
-    from makai_time.core.sync import info
-    return info()
 
 
 @register("runtime_info")
