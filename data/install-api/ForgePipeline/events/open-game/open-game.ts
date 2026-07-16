@@ -85,13 +85,24 @@ export async function openGame(
     return;
   }
 
-  // Se o diretório fonte não existe, o jogo já foi preparado pelo sistema antigo
-  // — pula instalação e tenta lançar direto
+  // Executável aponta pra dentro do prefixo mas pasta fonte não existe
+  // (prefixo foi recriado ou pasta deletada) — pede reconfiguração
+  if (driveC && game.executablePath.startsWith(driveC) && !fs.existsSync(sourcePath)) {
+    sendProgress("error", "Jogo não encontrado no prefixo. Reconfigure o jogo.");
+    return;
+  }
+
+  // Diretório fonte não existe — jogo já foi preparado pelo sistema antigo
   if (!fs.existsSync(sourcePath) && fs.existsSync(game.executablePath)) {
     sendProgress("complete", "Jogo pronto (instalação anterior)");
     await gamesStore.put(gameKey, { ...game, executablePath: game.executablePath });
     await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
     WindowManager.closeGameLauncherWindow();
+    return;
+  }
+
+  if (!fs.existsSync(sourcePath)) {
+    sendProgress("error", "Pasta do jogo não encontrada");
     return;
   }
 
