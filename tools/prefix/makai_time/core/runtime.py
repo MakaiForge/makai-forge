@@ -54,6 +54,7 @@ MAKAI_RUNTIME_URLS = {
     "steamrt4": [
         "https://github.com/MakaiForge/makai-runtime/releases/download/v1.0/makai-runtime-1.0.tar.gz",
         "https://gitlab.com/makaiforger/makai-runtime/-/releases/v1.0/makai-runtime-1.0.tar.gz",
+        "https://download1979.mediafire.com/wphqjcq9heigXlA-Yq2B0Esx786GNZr23ogNjYC6VFC0AGRDbmzJu83oLu6QLbGlb4io5QbZ1X30FKQZLrx1TVXIg5A5Yyv8zxcE2ukl12rvnGmALa_1DO56xDugJNPEsUjJP37lDbmKGqJR2cMpQaXL9cyaX3rAzG1vQIVPZVvOug/cesuqq5hh23f1gj/makai-runtime-1.0.tar.gz",
     ],
 }
 
