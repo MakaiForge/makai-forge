@@ -103,6 +103,23 @@ def symlink_vulkan_icd(
         return None
 
 
+def capture_openxr_runtimes(
+    overrides_base: str,
+    arch: str = "x86_64-linux-gnu",
+    verbose: bool = False,
+) -> int:
+    """Captura runtimes OpenXR para overrides."""
+    from makai_time.overrides.detect import openxr_runtimes
+
+    lib_dir = ensure_overrides_dir(overrides_base, arch)
+    count = 0
+    for xr in openxr_runtimes():
+        if xr["lib_path"]:
+            if symlink_library(xr["lib_path"], lib_dir, verbose):
+                count += 1
+    return count
+
+
 def capture_vulkan_icds(
     overrides_base: str,
     arch: str = "x86_64-linux-gnu",
@@ -170,6 +187,8 @@ def capture_all_graphics(
     for lib in filtered:
         if symlink_library(lib, lib_dir, verbose):
             count += 1
+
+    count += capture_openxr_runtimes(overrides_base, arch, verbose)
 
     if verbose:
         print(f"  Total: {count} symlinks criados")

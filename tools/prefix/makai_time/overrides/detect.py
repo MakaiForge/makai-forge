@@ -239,6 +239,56 @@ def openxr_runtimes() -> list[dict]:
     return runtimes
 
 
+def gbm_drivers() -> list[str]:
+    """Detecta GBM backend drivers (*.so em /usr/lib/gbm/)."""
+    gbm_paths = ["/usr/lib/gbm", "/usr/lib/x86_64-linux-gnu/gbm"]
+    drivers = []
+    for p in gbm_paths:
+        if not os.path.isdir(p):
+            continue
+        try:
+            for f in os.listdir(p):
+                if f.endswith(".so"):
+                    drivers.append(os.path.join(p, f))
+        except OSError:
+            continue
+    return drivers
+
+
+def egl_vendors() -> list[str]:
+    """Detecta EGL vendors via glvnd JSONs (/usr/share/glvnd/egl_*.json).
+    
+    Retorna lista de library_path extraídos dos JSONs.
+    """
+    glvnd_paths = ["/usr/share/glvnd", "/usr/local/share/glvnd"]
+    libs = []
+    for base in glvnd_paths:
+        egl_dir = os.path.join(base, "egl_vendor.d")
+        if not os.path.isdir(egl_dir):
+            continue
+        try:
+            for fname in os.listdir(egl_dir):
+                if not fname.endswith(".json"):
+                    continue
+                json_path = os.path.join(egl_dir, fname)
+                try:
+                    with open(json_path) as f:
+                        data = json.load(f)
+                    lib = data.get("file", data.get("library_path", ""))
+                    if lib:
+                        if not os.path.isabs(lib):
+                            found = _find_lib(lib)
+                            if found:
+                                libs.append(found)
+                        elif os.path.isfile(lib):
+                            libs.append(lib)
+                except (json.JSONDecodeError, OSError):
+                    continue
+        except OSError:
+            continue
+    return libs
+
+
 def all_graphics_libraries() -> list[str]:
     """Retorna lista completa de todas as bibliotecas gráficas detectadas."""
     libs = []
@@ -252,6 +302,8 @@ def all_graphics_libraries() -> list[str]:
     libs.extend(vdpau_drivers())
     libs.extend(nvidia_libs())
     libs.extend(drm_libs())
+    libs.extend(gbm_drivers())
+    libs.extend(egl_vendors())
     libs.extend(vulkan_layers())
 
     for xr in openxr_runtimes():

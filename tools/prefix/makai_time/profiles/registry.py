@@ -81,6 +81,23 @@ GAME_PROFILES = [
         },
         "notes": "D3D9 antigo. Wined3d funciona melhor que DXVK para este título.",
     },
+    {
+        "name": "The Elder Scrolls III: Morrowind",
+        "exe": "Morrowind.exe",
+        "engine": "bethesda",
+        "runtime": "sniper",
+        "env": {},
+        "notes": "DX8/9 antigo. Sniper runtime recomendado.",
+    },
+    {
+        "name": "Fallout 3",
+        "exe": "Fallout3.exe",
+        "engine": "bethesda",
+        "runtime": "sniper",
+        "sync": "esync",
+        "env": {},
+        "notes": "Games for Windows Live. Usar GFWL disable patch. Sniper runtime.",
+    },
 
     # ── Unity ─────────────────────────────────────────────────────────────
     {

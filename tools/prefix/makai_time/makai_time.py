@@ -229,7 +229,13 @@ def run(
     # ── Step 1: Runtime ───────────────────────────────────────────────────
     if verbose:
         print(f"\n[1/9] Garantindo runtime: {runtime_name}")
-    rt_path = runtime.ensure_runtime(base_path, runtime_name, verbose=verbose)
+    try:
+        rt_path = runtime.ensure_runtime(base_path, runtime_name, verbose=verbose)
+    except Exception:
+        if verbose:
+            print(f"  Runtime {runtime_name} indisponivel, fallback para steamrt4")
+        rt_path = runtime.ensure_runtime(base_path, "steamrt4", verbose=verbose)
+        runtime_name = "steamrt4"
 
     # ── Step 2: GPU info ──────────────────────────────────────────────────
     if verbose:
