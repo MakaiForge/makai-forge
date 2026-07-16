@@ -80,7 +80,6 @@ export const gamesService = {
   async getAll(): Promise<GameConfig[]> {
     try {
       const library = await window.electron.getLibrary();
-      console.log("Library loaded:", library);
       const games = library as unknown as GameConfig[];
       return games.map((g: any) => ({
         ...g,

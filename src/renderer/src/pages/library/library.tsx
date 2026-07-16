@@ -135,17 +135,14 @@ export default function Library() {
   useEffect(() => {
     dispatch(setHeaderTitle(t("library")));
 
-    const unsubscribe = window.electron.onLibraryBatchComplete(() => {
-      updateLibrary();
-      void loadCollections();
-    });
+    const unsubscribe = window.electron.onLibraryBatchComplete(() => {});
 
     window.electron.refreshLibraryAssets().finally(() => {
       const collectionsPromise = hasLoadedCollections
         ? Promise.resolve([])
         : loadCollections();
 
-      void Promise.all([updateLibrary(), collectionsPromise]);
+      void collectionsPromise;
     });
 
     return () => {

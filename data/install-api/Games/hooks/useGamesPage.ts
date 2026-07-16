@@ -80,6 +80,12 @@ export function useGamesPage(): GamesPageState {
 
   useGameEffects({ dispatch, t, setDllCheckModal: ui.setDllCheckModal });
 
+  const handleSyncSteam = useCallback(async () => {
+    await steam.handleSyncSteam();
+    loadGames();
+    updateLibrary();
+  }, [steam.handleSyncSteam, loadGames, updateLibrary]);
+
   const handleWineTool = useCallback(
     (tool: string) => {
       if (steam.selectedSteamGame) {
@@ -104,10 +110,10 @@ export function useGamesPage(): GamesPageState {
       saveGameConfig({
         updatedGame, clearPrefix,
         onSteamGamesUpdate: steam.setSteamGames,
-        onLoadGames: loadGames,
+        onLoadGames: () => {},
         onError: (title, msg) => showErrorToast(title, msg),
       }),
-    [steam.setSteamGames, loadGames, showErrorToast]
+    [steam.setSteamGames, showErrorToast]
   );
 
   const handleClearLocalPrefix = useCallback(async (game: GameConfig) => {
@@ -120,14 +126,13 @@ export function useGamesPage(): GamesPageState {
         { prefix: undefined, winePrefixPath: undefined }
       );
       showSuccessToast("Prefixo limpo", prefixPath ? "O caminho do prefixo foi removido da configuração." : "Nenhum prefixo configurado para este jogo.");
-      loadGames();
     } catch (error) {
       console.error("Failed to clear local prefix:", error);
       showErrorToast("Erro", "Não foi possível limpar o prefixo do jogo.");
     } finally {
       ui.setClearingPrefix(false);
     }
-  }, [showSuccessToast, showErrorToast, loadGames]);
+  }, [showSuccessToast, showErrorToast]);
 
   const handleSelectGame = useCallback((game: GameConfig) => {
     setSelectedGame(game);
@@ -182,7 +187,7 @@ export function useGamesPage(): GamesPageState {
     revealFolder,
     revealWinePrefix,
     hasHiddenGames,
-    handleSyncSteam: steam.handleSyncSteam,
+    handleSyncSteam,
     handlePlaySteam: steam.handlePlaySteam,
     handleWineTool,
     handleFavoriteSteam: steam.handleFavoriteSteam,

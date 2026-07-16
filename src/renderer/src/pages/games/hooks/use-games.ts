@@ -80,19 +80,7 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
     loadGames();
   }, [loadGames]);
 
-  useEffect(() => {
-    const handler = () => loadGames();
-    const events = [
-      "protonforge:game-removed-from-library",
-      "protonforge:game-favorite-toggled",
-    ];
-    events.forEach((event) => window.addEventListener(event, handler));
-    const unsubIpc = window.electron.onGameExecutableUpdated?.(handler);
-    return () => {
-      events.forEach((event) => window.removeEventListener(event, handler));
-      unsubIpc?.();
-    };
-  }, [loadGames]);
+  // Library only reloads on mount and Sync Steam button
 
   const filteredGames = useMemo(() => {
     let result = [...games];
@@ -132,8 +120,6 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
         game.executablePath || "",
         game.gameArgs || null
       );
-
-      loadGames();
     } catch (error) {
       console.error("Failed to play game:", error);
       setLaunchingGameIds((prev) => {
@@ -142,7 +128,7 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
         return next
       })
     }
-  }, [loadGames]);
+  }, []);
 
   const stopGame = useCallback(async (game: GameConfig) => {
     try {
@@ -163,12 +149,18 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
           game.objectId,
           { isDeleted: !game.isDeleted }
         );
-        loadGames();
+        setGames((prev) =>
+          prev.map((g) =>
+            g.objectId === game.objectId && g.shop === game.shop
+              ? { ...g, isDeleted: !g.isDeleted }
+              : g
+          )
+        );
       } catch (error) {
         console.error("Failed to hide game:", error);
       }
     },
-    [loadGames]
+    []
   );
 
   const favoriteGame = useCallback(
@@ -185,7 +177,13 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
             game.objectId
           );
         }
-        loadGames();
+        setGames((prev) =>
+          prev.map((g) =>
+            g.objectId === game.objectId && g.shop === game.shop
+              ? { ...g, favorite: !game.favorite }
+              : g
+          )
+        );
         setSelectedGame((prev) =>
           prev?.objectId === game.objectId && prev?.shop === game.shop
             ? { ...prev, favorite: !game.favorite }
@@ -195,25 +193,33 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
         console.error("Failed to toggle favorite:", error);
       }
     },
-    [loadGames]
+    []
   );
 
   const deleteGame = useCallback(
     async (game: GameConfig) => {
       await gamesService.delete(game.shop, game.objectId);
+      setGames((prev) =>
+        prev.filter(
+          (g) => g.objectId !== game.objectId || g.shop !== game.shop
+        )
+      );
       setSelectedGame(null);
-      loadGames();
     },
-    [loadGames]
+    []
   );
 
   const deleteGameWithPrefix = useCallback(
     async (game: GameConfig) => {
       await gamesService.deleteWithPrefix(game.shop, game.objectId);
+      setGames((prev) =>
+        prev.filter(
+          (g) => g.objectId !== game.objectId || g.shop !== game.shop
+        )
+      );
       setSelectedGame(null);
-      loadGames();
     },
-    [loadGames]
+    []
   );
 
   const duplicateGame = useCallback(
@@ -228,13 +234,12 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
           game.libraryHeroImageUrl
         );
         showSuccessToast("Jogo duplicado", `"${duplicateTitle}" foi criado.`);
-        loadGames();
       } catch (error) {
         console.error("Failed to duplicate game:", error);
         showErrorToast("Erro ao duplicar", "Não foi possível duplicar o jogo.");
       }
     },
-    [loadGames, showSuccessToast, showErrorToast]
+    [showSuccessToast, showErrorToast]
   );
 
   const addToSteam = useCallback(async (game: GameConfig) => {

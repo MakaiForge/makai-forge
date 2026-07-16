@@ -84,7 +84,6 @@ export function App() {
           !downloadProgress.isDownloadingMetadata
         ) {
           clearDownload();
-          updateLibrary();
           return;
         }
 
@@ -109,12 +108,10 @@ export function App() {
   }, [clearDownload, setLastPacket, updateLibrary]);
 
   useEffect(() => {
-    const unsubscribe = window.electron.onHardDelete(() => {
-      updateLibrary();
-    });
+    const unsubscribe = window.electron.onHardDelete(() => {});
 
     return () => unsubscribe();
-  }, [updateLibrary]);
+  }, []);
 
   const setupExternalResources = useCallback(async () => {
     const cachedUserDetails = window.localStorage.getItem("userDetails");
@@ -177,20 +174,16 @@ export function App() {
   useEffect(() => {
     const listeners = [
       window.electron.onSignIn(onSignIn),
-      window.electron.onLibraryBatchComplete(() => {
-        updateLibrary();
-      }),
+      window.electron.onLibraryBatchComplete(() => {}),
       window.electron.onSignOut(() => clearUserDetails()),
       window.electron.onExtractionProgress((shop, objectId, progress) => {
         dispatch(setExtractionProgress({ shop, objectId, progress }));
       }),
       window.electron.onExtractionComplete(() => {
         dispatch(clearExtraction());
-        updateLibrary();
       }),
       window.electron.onExtractionFailed(() => {
         dispatch(clearExtraction());
-        updateLibrary();
         showErrorToast(
           t("extraction_failed_title", { ns: "downloads" }),
           t("extraction_failed_description", { ns: "downloads" })
