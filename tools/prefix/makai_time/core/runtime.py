@@ -51,7 +51,11 @@ STEAMRT_REGISTRY = {
 }
 
 MAKAI_RUNTIME_URLS = {
-    "steamrt4": "https://download1979.mediafire.com/wphqjcq9heigXlA-Yq2B0Esx786GNZr23ogNjYC6VFC0AGRDbmzJu83oLu6QLbGlb4io5QbZ1X30FKQZLrx1TVXIg5A5Yyv8zxcE2ukl12rvnGmALa_1DO56xDugJNPEsUjJP37lDbmKGqJR2cMpQaXL9cyaX3rAzG1vQIVPZVvOug/cesuqq5hh23f1gj/makai-runtime-1.0.tar.gz",
+    "steamrt4": [
+        "https://github.com/MakaiForge/makai-runtime/releases/download/v1.0/makai-runtime-1.0.tar.gz",
+        "https://gitlab.com/makaiforger/makai-runtime/-/releases/v1.0/makai-runtime-1.0.tar.gz",
+        "https://download1979.mediafire.com/wphqjcq9heigXlA-Yq2B0Esx786GNZr23ogNjYC6VFC0AGRDbmzJu83oLu6QLbGlb4io5QbZ1X30FKQZLrx1TVXIg5A5Yyv8zxcE2ukl12rvnGmALa_1DO56xDugJNPEsUjJP37lDbmKGqJR2cMpQaXL9cyaX3rAzG1vQIVPZVvOug/cesuqq5hh23f1gj/makai-runtime-1.0.tar.gz",
+    ],
 }
 
 
@@ -123,14 +127,14 @@ def _resolve_latest_version(name: str) -> str:
     return ""
 
 
-def _build_url(name: str) -> str:
+def _build_urls(name: str) -> list[str]:
     if name in MAKAI_RUNTIME_URLS:
-        return MAKAI_RUNTIME_URLS[name]
+        return list(MAKAI_RUNTIME_URLS[name])
     info = STEAMRT_REGISTRY.get(name)
     if not info:
         raise ValueError(f"Runtime desconhecido: {name}")
     version = _resolve_latest_version(name) or info["version"]
-    return info["base_url"] + version + "/" + info["tarball"]
+    return [info["base_url"] + version + "/" + info["tarball"]]
 
 
 def ensure_runtime(
@@ -151,20 +155,33 @@ def ensure_runtime(
             print(f"Runtime {name} já em cache: {rt_dir}")
         return rt_dir
 
-    if name not in STEAMRT_REGISTRY:
-        raise ValueError(f"Runtime desconhecido: {name}. Disponíveis: {list(STEAMRT_REGISTRY.keys())}")
+    if name not in MAKAI_RUNTIME_URLS and name not in STEAMRT_REGISTRY:
+        raise ValueError(f"Runtime desconhecido: {name}")
 
-    url = _build_url(name)
-    tarball_ext = os.path.splitext(url)[1]
-    if tarball_ext == ".gz":
-        tarball_ext = ".tar.gz"
+    urls = _build_urls(name)
+    tarball_ext = ".tar.gz"
     tarball = os.path.join(base_path, f"{name}{tarball_ext}")
 
     os.makedirs(os.path.dirname(rt_dir), exist_ok=True)
 
-    if verbose:
-        print(f"Baixando {name} de {url}...")
-    _download(url, tarball, verbose)
+    last_error = None
+    for url in urls:
+        if verbose:
+            print(f"Baixando {name} de {url}...")
+        try:
+            _download(url, tarball, verbose)
+            last_error = None
+            break
+        except Exception as e:
+            last_error = e
+            if verbose:
+                print(f"  Falha: {e}. Tentando próximo mirror...")
+            continue
+
+    if last_error:
+        raise RuntimeError(
+            f"Falha ao baixar runtime {name} de {len(urls)} mirror(s): {last_error}"
+        )
 
     if verbose:
         print(f"Extraindo para {rt_dir}...")
@@ -361,7 +378,7 @@ def resolve_runtime_chain(
     preferred: str | None = None,
     verbose: bool = False,
 ) -> tuple[str | None, str | None]:
-    if preferred and preferred in STEAMRT_REGISTRY:
+    if preferred and (preferred in MAKAI_RUNTIME_URLS or preferred in STEAMRT_REGISTRY):
         found = _search_known_paths(preferred) or (
             is_runtime_cached(runtime_dir(base_path, preferred))
             and runtime_dir(base_path, preferred)
