@@ -22,9 +22,11 @@ def override_bwrap_args(
     """
     args = []
 
-    # Binda o diretório inteiro de overrides — cobre libs de todas as archs
+    # Binda ICDs JSON e libs GPU individuais em paths que JÁ EXISTEM no root
+    # (--ro-bind / / impede criar novos diretórios como /overrides)
     if os.path.isdir(overrides_base):
-        args.extend(["--ro-bind", overrides_base, "/overrides"])
+        # Só monta os ICDs JSON em /usr/share/vulkan/icd.d/ (path real)
+        pass  # ICDs são tratados abaixo
 
     # Binda ICDs JSON para /usr/share/vulkan/icd.d/ (Vulkan loader path)
     icd_dir = os.path.join(overrides_base, "share", "vulkan", "icd.d")

@@ -181,31 +181,137 @@ def get_proton_info(proton_path: str) -> dict | None:
     return {**info, "id": proton_id}
 
 
+def get_definition(proton_id: str) -> dict | None:
+    """Retorna definição crua pelo ID do fork."""
+    return PROTON_KNOWLEDGE.get(proton_id)
+
+
+def has_patch(proton_id: str, patch_name: str) -> bool:
+    """Verifica se um Proton fork tem um patch específico."""
+    info = PROTON_KNOWLEDGE.get(proton_id)
+    if not info:
+        return False
+    return patch_name in info.get("patches", [])
+
+
+def has_feature(proton_id: str, feature_name: str) -> bool:
+    """Verifica se um Proton fork tem uma feature específica."""
+    info = PROTON_KNOWLEDGE.get(proton_id)
+    if not info:
+        return False
+    return info.get("features", {}).get(feature_name, False)
+
+
+# ── Aplicação de configuração ────────────────────────────────────────────────
+
 def apply_proton_config(proton_id: str, env: dict[str, str]) -> dict[str, str]:
-    """Aplica configurações específicas do Proton nas env vars."""
+    """Aplica configurações específicas do Proton nas env vars.
+    
+    Consome TODOS os campos da definição:
+    - env_defaults
+    - features (mapeia para env vars)
+    - dxvk_nvapi
+    - patches (alguns mapeiam para env vars)
+    - dll_overrides (retorna separadamente via get_dll_overrides)
+    """
     info = PROTON_KNOWLEDGE.get(proton_id)
     if not info:
         return env
 
+    # 1. env_defaults (maior prioridade: vem antes de outros defaults)
     if info.get("env_defaults"):
         env.update(info["env_defaults"])
 
     features = info.get("features", {})
+    patches = info.get("patches", [])
 
-    if features.get("ntsync"):
-        env["PROTON_USE_NTSYNC"] = "1"
+    # 2. GPU / Rendering features
+    if features.get("raytracing"):
+        env.setdefault("VKD3D_CONFIG", "dxr")
+        env.setdefault("DXVK_ENABLE_DXR", "1")
 
-    if features.get("fsr"):
-        env.setdefault("WINE_FULLSCREEN_FSR", "1")
-        env.setdefault("WINE_FULLSCREEN_FSR_STRENGTH", "2")
+    if features.get("hdr"):
+        env.setdefault("DXVK_HDR", "1")
+        env.setdefault("ENABLE_HDR_WSI", "1")
+        env.setdefault("WINE_HDR_ENABLE", "1")
+
+    if features.get("dlss_upgrader"):
+        env.setdefault("PROTON_ENABLE_DLSS_UPGRADER", "1")
+
+    if features.get("xess_upgrader"):
+        env.setdefault("PROTON_ENABLE_XESS_UPGRADER", "1")
 
     if info.get("dxvk_nvapi"):
         env.setdefault("DXVK_ENABLE_NVAPI", "1")
 
-    if proton_id == "proton-sarek":
+    # 3. Async shaders (só se explicitamente async, não se tem dxvk_sarek como fallback)
+    if features.get("async") or features.get("async_shaders"):
         env.setdefault("DXVK_ASYNC", "1")
 
+    # 4. FSR
+    if features.get("fsr"):
+        env.setdefault("WINE_FULLSCREEN_FSR", "1")
+        env.setdefault("WINE_FULLSCREEN_FSR_STRENGTH", "2")
+
+    if features.get("fsr4"):
+        env.setdefault("WINE_FULLSCREEN_FSR", "1")
+        env.setdefault("WINE_FULLSCREEN_FSR_STRENGTH", "5")
+        env.setdefault("PROTON_FSR4", "1")
+
+    # 5. Sync
+    if features.get("ntsync"):
+        env["PROTON_USE_NTSYNC"] = "1"
+
+    # 6. Shader cache
+    if features.get("local_shader_cache"):
+        env.setdefault("PROTON_LOCAL_SHADER_CACHE", "1")
+
+    if features.get("per_game_shader_cache"):
+        env.setdefault("PROTON_PER_GAME_SHADER_CACHE", "1")
+
+    # 7. GameMode
+    if features.get("gamemode"):
+        env.setdefault("GAMEMODE_ENABLED", "1")
+
+    # 8. Wayland
+    if features.get("wayland"):
+        env.setdefault("SDL_VIDEO_DRIVER", "wayland")
+        env.setdefault("GDK_BACKEND", "wayland")
+        env.setdefault("QT_QPA_PLATFORM", "wayland;xcb")
+
+    # 9. Patches → env vars
+    if "wine_miniloader_name" in patches:
+        env.setdefault("WINE_MINILOADER_NAME", "")
+
+    # 10. NTSYNC override from patches
+    if "ntsync" in patches:
+        env["PROTON_USE_NTSYNC"] = "1"
+
     return env
+
+
+# ── Getters especializados ──────────────────────────────────────────────────
+
+def get_dll_overrides(proton_id: str) -> dict[str, str]:
+    """Retorna DLL overrides específicos do Proton fork.
+    
+    Ex: {"winemenubuilder.exe": "", "mscoree": ""}
+    """
+    info = PROTON_KNOWLEDGE.get(proton_id)
+    if not info:
+        return {}
+    return dict(info.get("dll_overrides", {}))
+
+
+def get_container_overrides(proton_id: str) -> dict:
+    """Retorna configurações específicas para o container bwrap.
+    
+    Ex: {"ntsync": True, "nvidia_libs_bundled": True}
+    """
+    info = PROTON_KNOWLEDGE.get(proton_id)
+    if not info:
+        return {}
+    return dict(info.get("container_overrides", {}))
 
 
 def get_ld_extra(proton_id: str) -> list[str]:
@@ -214,6 +320,31 @@ def get_ld_extra(proton_id: str) -> list[str]:
         return info.get("ld_library_path_extra", [])
     return []
 
+
+def get_patches(proton_id: str) -> list[str]:
+    """Retorna lista de patches do Proton fork."""
+    info = PROTON_KNOWLEDGE.get(proton_id)
+    if info:
+        return list(info.get("patches", []))
+    return []
+
+
+def skip_nvidia_overrides(proton_id: str) -> bool:
+    """Verifica se devemos pular overrides NVIDIA no container.
+    
+    Verdadeiro se o Proton tem:
+    - 'nvidia_libs_bundled' em patches
+    - 'nvidia_libs_bundled': True em container_overrides
+    """
+    if not proton_id:
+        return False
+    if has_patch(proton_id, "nvidia_libs_bundled"):
+        return True
+    container_ov = get_container_overrides(proton_id)
+    return container_ov.get("nvidia_libs_bundled", False)
+
+
+# ── Utilitários ──────────────────────────────────────────────────────────────
 
 def list_proton_ids() -> list[str]:
     return list(PROTON_KNOWLEDGE.keys())

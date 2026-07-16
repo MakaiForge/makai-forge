@@ -36,7 +36,7 @@ def runtime_paths(runtime_dir: str = None, container_paths: bool = False) -> lis
     if container_paths:
         native = _native_arch()
         i386 = _i386_arch()
-        return [f"/lib/{native}", f"/lib/{i386}"]
+        return [f"/runtime/lib/{native}", f"/runtime/lib/{i386}"]
 
     global _runtime_ld_paths
     if _runtime_ld_paths:
@@ -45,9 +45,13 @@ def runtime_paths(runtime_dir: str = None, container_paths: bool = False) -> lis
     native = _native_arch()
     i386 = _i386_arch()
 
+    rt_lib = os.path.join(runtime_dir, "lib")
+    if not os.path.isdir(rt_lib):
+        rt_lib = os.path.join(runtime_dir, "files", "lib")
+
     paths = []
     for arch in [native, i386]:
-        base = os.path.join(runtime_dir, "lib", arch)
+        base = os.path.join(rt_lib, arch)
         if os.path.isdir(base):
             paths.append(base)
 

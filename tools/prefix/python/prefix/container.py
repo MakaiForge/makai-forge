@@ -246,11 +246,10 @@ def build_bwrap_cmd(
         resolved_pfx = os.path.realpath(os.path.expanduser(prefix_path))
         cmd.extend(["--bind", resolved_pfx, resolved_pfx])
 
-    # Proton
+    # Proton (read-only — instalação fixa, não precisa escrever)
     if proton_path:
         resolved_proton = os.path.realpath(os.path.expanduser(proton_path))
-        # Proton precisa de ser read-write para criar compatdata etc.
-        cmd.extend(["--bind", resolved_proton, resolved_proton])
+        cmd.extend(["--ro-bind", resolved_proton, resolved_proton])
 
     # PATH mínimo dentro do container
     cmd.extend([
