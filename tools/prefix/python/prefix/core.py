@@ -113,6 +113,9 @@ def _run_command(
 
 def build_env(prefix_path: str, compat_data_path: str | None = None) -> dict:
     env = os.environ.copy()
+    for var in ("PYTHONHOME", "PYTHONPATH", "PYTHONSTARTUP", "PYTHONEXECUTABLE",
+                "VIRTUAL_ENV", "PIP_REQUIRE_VIRTUALENV"):
+        env.pop(var, None)
     env["WINEPREFIX"] = prefix_path
     env["WINEARCH"] = "win64"
     if compat_data_path:

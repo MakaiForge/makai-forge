@@ -17,6 +17,13 @@ import shutil
 import sys
 import time
 
+def _resolve_actual_prefix(prefix_path: str) -> str:
+    drive_c = os.path.join(prefix_path, "drive_c")
+    if os.path.isdir(os.path.join(drive_c, "windows", "system32")):
+        return prefix_path
+    pfx = os.path.join(prefix_path, "pfx")
+    return pfx if os.path.isdir(os.path.join(pfx, "drive_c", "windows", "system32")) else prefix_path
+
 
 # ─── detect_installer_type ───────────────────────────────────────
 
@@ -137,14 +144,15 @@ def _compute_hashes(files: list[str], base_path: str) -> dict[str, str]:
 def copy_to_prefix(source_path: str, prefix_path: str,
                    progress_callback=None) -> dict:
     """
-    Copia pasta source_path para winePrefixPath/drive_c/<folderName>/
+    Copia pasta source_path para drive_c/<folderName>/
     com verificação SHA256 pré e pós.
 
     progress_callback(percent: int) — opcional, para UI
     """
     source_path = os.path.abspath(source_path)
     prefix_path = os.path.expanduser(prefix_path)
-    drive_c = os.path.join(prefix_path, "drive_c")
+    actual = _resolve_actual_prefix(prefix_path)
+    drive_c = os.path.join(actual, "drive_c")
     folder_name = os.path.basename(source_path)
     dest_path = os.path.join(drive_c, folder_name)
 
@@ -253,14 +261,15 @@ MAX_CANDIDATES = 5
 
 def scan_prefix_for_exes(prefix_path: str) -> dict:
     """
-    Escaneia prefixo/drive_c por .exe jogáveis.
+    Escaneia drive_c por .exe jogáveis.
 
     Returns:
         candidates: [{path, name, size}]
         suggested_dir: str | None
     """
     prefix_path = os.path.expanduser(prefix_path)
-    drive_c = os.path.join(prefix_path, "drive_c")
+    actual = _resolve_actual_prefix(prefix_path)
+    drive_c = os.path.join(actual, "drive_c")
 
     if not os.path.isdir(drive_c):
         return {"candidates": [], "suggested_dir": None}
@@ -331,7 +340,8 @@ def snapshot_prefix(prefix_path: str) -> list[dict]:
     Returns: [{path, size, mtimeMs, isDirectory}]
     """
     prefix_path = os.path.expanduser(prefix_path)
-    drive_c = os.path.join(prefix_path, "drive_c")
+    actual = _resolve_actual_prefix(prefix_path)
+    drive_c = os.path.join(actual, "drive_c")
     entries: list[dict] = []
 
     def walk(dir_path: str, rel_prefix: str = ""):
@@ -468,7 +478,8 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
     source_path = os.path.abspath(source_path)
     prefix_path = os.path.expanduser(prefix_path)
     proton_path = os.path.expanduser(proton_path)
-    drive_c = os.path.join(prefix_path, "drive_c")
+    actual = _resolve_actual_prefix(prefix_path)
+    drive_c = os.path.join(actual, "drive_c")
 
     def _progress(step: str, pct: int, msg: str):
         if progress_callback:

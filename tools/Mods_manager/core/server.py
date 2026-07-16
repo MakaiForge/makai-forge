@@ -26,14 +26,17 @@ import threading
 from datetime import datetime, timezone
 
 # Garante que os paths de importação estão corretos
-_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+_mods_manager_root = os.path.dirname(_this_dir)          # Mods_manager/
+_tools_root = os.path.dirname(_mods_manager_root)        # tools/
 for _p in [
-    _project_root,
-    os.path.join(os.path.dirname(os.path.dirname(_project_root)), "python-rpc", "protonforge-api"),
-    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(_project_root))), "data", "install-api", "proton_recommended", "python"),
+    _mods_manager_root,
+    os.path.join(_tools_root, "python-rpc", "protonforge-api"),
+    os.path.join(_tools_root, "..", "data", "install-api", "proton_recommended", "python"),
 ]:
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+    _normalized = os.path.normpath(os.path.abspath(_p))
+    if _normalized not in sys.path:
+        sys.path.insert(0, _normalized)
 
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.log")
 

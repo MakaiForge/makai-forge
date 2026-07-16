@@ -11,6 +11,7 @@ import {
   showExecutableSelect,
 } from "./handle-prefix";
 import { downloadFromCatalog, promptManualInstaller } from "./download-installer";
+import { resolveActualPrefix } from "@provision/ForgePipeline/orchestrator/prefix-setup";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -40,7 +41,7 @@ export async function openGame(
   const needsRepair =
     !(executablePath && fs.existsSync(executablePath)) ||
     !(game.protonPath && fs.existsSync(path.join(game.protonPath, "proton"))) ||
-    !(game.winePrefixPath && fs.existsSync(path.join(game.winePrefixPath, "drive_c")));
+    !(game.winePrefixPath && fs.existsSync(path.join(resolveActualPrefix(game.winePrefixPath), "drive_c")));
 
   if (!needsRepair) {
     sendProgress("complete", "Tudo ok. Iniciando...");
@@ -61,7 +62,7 @@ export async function openGame(
   }
 
   // 2. Lidar com prefixo
-  const prefixHasDriveC = fs.existsSync(path.join(game.winePrefixPath, "drive_c"));
+  const prefixHasDriveC = fs.existsSync(path.join(resolveActualPrefix(game.winePrefixPath), "drive_c"));
 
   if (prefixHasDriveC && game.executablePath && fs.existsSync(game.executablePath)) {
     sendProgress("complete", "Tudo ok. Iniciando...");
@@ -77,6 +78,18 @@ export async function openGame(
 
   const prefixCreated = await createPrefixWithDlls(objectId, protonPathFinal, game.winePrefixPath);
   if (!prefixCreated) return;
+
+  // Verificar se o jogo já está instalado (só faltava o prefixo)
+  if (game.executablePath && fs.existsSync(game.executablePath)) {
+    const gameData = await gamesStore.get(gameKey).catch(() => null);
+    if (gameData) {
+      await gamesStore.put(gameKey, { ...gameData, executablePath: game.executablePath });
+    }
+    sendProgress("complete", "Jogo restaurado com sucesso");
+    await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
+    WindowManager.closeGameLauncherWindow();
+    return;
+  }
 
   // 3. Resolver fonte do instalador
   const hasCatalog = game.downloadSource === "catalog" && game.downloadUrl;
@@ -125,7 +138,7 @@ export async function openGame(
     showExecutableSelect(
       installResult.candidates,
       installResult.suggested_dir,
-      path.join(game.winePrefixPath, "drive_c"),
+      path.join(resolveActualPrefix(game.winePrefixPath), "drive_c"),
       game.title,
       gameKey,
       shop,

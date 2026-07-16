@@ -36,12 +36,21 @@ export interface CreatePrefixResult {
   method?: "umu" | "proton_wineboot" | "proton_run" | "direct_wineboot";
 }
 
+function resolveActualPrefix(prefixPath: string): string {
+  const driveC = path.join(prefixPath, "drive_c");
+  if (fs.existsSync(path.join(driveC, "windows", "system32"))) return prefixPath;
+  const pfx = path.join(prefixPath, "pfx");
+  if (fs.existsSync(path.join(pfx, "drive_c", "windows", "system32"))) return pfx;
+  return prefixPath;
+}
+
 function prefixExists(prefixPath: string): boolean {
+  const actual = resolveActualPrefix(prefixPath);
   return (
-    fs.existsSync(path.join(prefixPath, "user.reg")) &&
-    fs.existsSync(path.join(prefixPath, "system.reg")) &&
-    fs.existsSync(path.join(prefixPath, "drive_c")) &&
-    fs.existsSync(path.join(prefixPath, "dosdevices"))
+    fs.existsSync(path.join(actual, "user.reg")) &&
+    fs.existsSync(path.join(actual, "system.reg")) &&
+    fs.existsSync(path.join(actual, "drive_c")) &&
+    fs.existsSync(path.join(actual, "dosdevices"))
   );
 }
 

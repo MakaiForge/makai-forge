@@ -1,7 +1,7 @@
 import type { GameShop } from "@types";
 import { WindowManager } from "@main/services";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
-import { setupPrefix } from "@provision/ForgePipeline/orchestrator/prefix-setup";
+import { setupPrefix, resolveActualPrefix } from "@provision/ForgePipeline/orchestrator/prefix-setup";
 import { ProtonRecommendationService } from "@provision/proton_recommended/services/proton-recommendation";
 import { sendProgress } from "./send-progress";
 import path from "node:path";
@@ -57,7 +57,7 @@ export async function handleExistingPrefix(
     showExecutableSelect(
       candidates,
       suggestedDir,
-      path.join(winePrefixPath, "drive_c"),
+      path.join(resolveActualPrefix(winePrefixPath), "drive_c"),
       gameTitle,
       gameKey,
       shop,
