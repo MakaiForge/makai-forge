@@ -47,3 +47,10 @@ Data/
 
 # Chrome runtime (arquivos binários enormes, 267MB+)
 resources/chrome/
+
+# Python egg-info (gerado por pip install -e)
+*.egg-info/
+
+# GPU driver overrides (copiados do host dinamicamente)
+tools/prefix/overrides/share/
+tools/prefix/overrides/x86_64-linux-gnu/lib/lib*.so*
