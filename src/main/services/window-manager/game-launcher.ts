@@ -3,9 +3,10 @@ import { BrowserWindow, app, screen } from "electron";
 import { isStaging } from "@main/constants";
 import type { WindowManager } from "../window-manager";
 import { loadWindowURL } from "./load-url";
+import path from "node:path";
 
-const WINDOW_WIDTH = 550;
-const WINDOW_HEIGHT = 320;
+const WINDOW_WIDTH = 488;
+const WINDOW_HEIGHT = 200;
 
 export async function createGameLauncherWindow(
   wm: typeof WindowManager,
@@ -44,7 +45,8 @@ export async function createGameLauncherWindow(
   });
 
   win.removeMenu();
-  await loadWindowURL(win, `game-launcher?shop=${shop}&objectId=${objectId}`);
+  const bgPath = path.join(app.getAppPath(), "data", "Bootstrap", "background.png");
+  await loadWindowURL(win, `game-launcher?shop=${shop}&objectId=${objectId}&bg=${encodeURIComponent(bgPath)}`);
 
   win.on("closed", () => {
     wm.gameLauncherWindow = null;
