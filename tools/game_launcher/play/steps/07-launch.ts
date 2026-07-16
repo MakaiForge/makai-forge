@@ -1,8 +1,8 @@
 import path from "node:path";
 import fs from "node:fs";
-import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { getGameInfo, getGameModule } from "@games/registry";
 import { logger } from "@main/services";
+import { launchGame } from "@game-launcher/launch/launch-game";
 import type { PlayResult, SendProgress } from "../types";
 
 export function killGameProcess(): boolean {
@@ -80,17 +80,20 @@ export async function launchGame(
   logger.info(`[Launch] WINEPREFIX: ${prefixPath}`);
 
   try {
-    await MakaiRPC.call("container_run", {
-      exe_path: launchExe,
-      proton_path: protonPath,
-      prefix_path: prefixPath,
-      game_path: path.dirname(launchExe),
-      steam_app_id: steamAppId || null,
-      env_overrides: env,
+    const result = await launchGame({
+      exePath: launchExe,
+      prefixPath,
+      protonPath,
+      gamePath: path.dirname(launchExe),
+      envOverrides: env,
     });
 
-    send("launch", `${info?.name || gameId} iniciado via Makai Time!`, "done");
-    return { success: true, method: "makai_time" };
+    if (result.success) {
+      send("launch", `${info?.name || gameId} iniciado via Makai Time!`, "done");
+    } else {
+      send("launch", result.error || "Falha ao iniciar", "error");
+    }
+    return { success: result.success, method: "makai_time" };
   } catch (err) {
     const msg = `Makai Time falhou: ${String(err).slice(0, 200)}`;
     logger.error(`[Launch] ${msg}`);

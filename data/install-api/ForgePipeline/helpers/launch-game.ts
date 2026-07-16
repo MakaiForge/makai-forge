@@ -10,8 +10,8 @@ import {
   Wine,
   NativeAddon,
   Umu,
-  MakaiTime,
 } from "@main/services";
+import { launchGameDetached } from "@game-launcher/launch/launch-game";
 import { GameLogManager } from "@main/services/game-log-manager";
 import { checkAndCreateWinePrefix } from "@prefix/core/init";
 
@@ -316,17 +316,13 @@ export const launchGame = async (options: LaunchGameOptions): Promise<void> => {
       }
 
       try {
-        const logShop = shop;
-        const logObjectId = objectId;
-        await MakaiTime.runExecutable(parsedPath, {
-          winePrefixPath,
-          protonPath,
-          gameId: options.objectId,
-          launchOptions,
-          useGamemode,
-          useMangohud,
-          customEnv: gameEnv,
-          onLog: (line) => GameLogManager.append(logShop, logObjectId, line),
+        launchGameDetached({
+          exePath: parsedPath,
+          prefixPath: winePrefixPath!,
+          protonPath: protonPath!,
+          gamePath: path.dirname(parsedPath),
+          envOverrides: gameEnv,
+          onLog: (line) => GameLogManager.append(shop, objectId, line),
         });
         PowerSaveBlockerManager.markCompatibilityLaunchStarted(gameKey);
         return;
