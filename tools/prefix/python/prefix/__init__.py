@@ -14,15 +14,21 @@ import warnings
 _this_dir = os.path.dirname(os.path.abspath(__file__))
 _project_root = os.path.normpath(os.path.join(_this_dir, *([".."] * 4)))
 _expected_venv_python = os.path.join(_project_root, "tools", "venv", "bin", "python3")
+# Check venv: the wrapper scripts (python3 → python3.bin → python3.10.bin) all
+# resolve to different realpaths.  Instead of comparing specific filenames, just
+# verify that sys.executable lives under the project's venv directory.
 if os.path.exists(_expected_venv_python):
+    _venv_dir = os.path.dirname(os.path.dirname(_expected_venv_python))  # …/tools/venv
     try:
-        if os.path.realpath(sys.executable) != os.path.realpath(_expected_venv_python):
-            warnings.warn(
-                f"Makai Forge prefix module: expected venv Python at {_expected_venv_python}, "
-                f"but running with {sys.executable}. Use tools/venv/bin/python3 for compatibility."
-            )
+        _real_exec = os.path.realpath(sys.executable)
     except (AttributeError, OSError):
-        pass  # sys.executable may be empty in some embedded environments
+        _real_exec = ""
+    if _real_exec and not _real_exec.startswith(os.path.realpath(_venv_dir) + os.sep):
+        warnings.warn(
+            f"Makai Forge prefix: expected venv at {_venv_dir}, "
+            f"but running {sys.executable} (resolved: {_real_exec}). "
+            f"Use tools/venv/bin/python3 for compatibility."
+        )
 # ──────────────────────────────────────────────────────────────────────────────
 
 

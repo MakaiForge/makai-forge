@@ -100,7 +100,7 @@ export function AddGameModal({
   const handleNameChange = async (newName: string) => {
     setName(newName);
 
-    const sanitized = newName.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
+    const sanitized = newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const homePath = await window.electron.getUserHomePath();
     const defaultPrefix = `${homePath}/Games/Makai-forger/${sanitized}`;
     setPrefix(defaultPrefix);

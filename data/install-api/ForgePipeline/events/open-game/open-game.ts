@@ -1,19 +1,15 @@
-import type { GameShop } from "@types";
+import type { GameShop, Game } from "@types";
 import { gamesStore, storeKeys } from "@main/store";
 import { launchGame } from "@main/helpers";
 import { WindowManager } from "@main/services";
 import { MakaiTime } from "@provision/ForgePipeline/services/makai-time";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { sendProgress } from "./send-progress";
 import { ensureProtonAvailable } from "./ensure-proton";
-import {
-  handleExistingPrefix,
-  createPrefixWithDlls,
-  showExecutableSelect,
-} from "./handle-prefix";
-import { downloadFromCatalog, promptManualInstaller } from "./download-installer";
+import { showExecutableSelect } from "./handle-prefix";
 import { resolveActualPrefix } from "@provision/ForgePipeline/orchestrator/prefix-setup";
-import fs from "node:fs";
 import path from "node:path";
+import fs from "node:fs";
 
 export async function openGame(
   _event: Electron.IpcMainInvokeEvent,
@@ -34,72 +30,62 @@ export async function openGame(
   const game = await gamesStore.get(gameKey).catch(() => null);
 
   if (!game) {
-    sendProgress("error", "Jogo não encontrado");
+    sendProgress("error", "Jogo não encontrado no banco de dados");
     return;
   }
 
-  const needsRepair =
-    !(executablePath && fs.existsSync(executablePath)) ||
-    !(game.protonPath && fs.existsSync(path.join(game.protonPath, "proton"))) ||
-    !(game.winePrefixPath && fs.existsSync(path.join(resolveActualPrefix(game.winePrefixPath), "drive_c")));
+  const actualPrefix = game.winePrefixPath
+    ? resolveActualPrefix(game.winePrefixPath)
+    : null;
+  const driveC = actualPrefix ? path.join(actualPrefix, "drive_c") : null;
+  const prefixReady = driveC && fs.existsSync(path.join(driveC, "windows", "system32"));
+  const exeInsidePrefix =
+    game.executablePath &&
+    driveC &&
+    game.executablePath.startsWith(driveC) &&
+    fs.existsSync(game.executablePath);
 
-  if (!needsRepair) {
-    sendProgress("complete", "Tudo ok. Iniciando...");
-    await launchGame({ shop, objectId, executablePath, launchOptions });
-    WindowManager.closeGameLauncherWindow();
-    return;
-  }
-
-  sendProgress("checking", "Jogo corrompido. Iniciando reparo...");
-
-  // 1. Garantir Proton
-  const protonPathFinal = await ensureProtonAvailable(game, gameKey);
-  if (!protonPathFinal) return;
-
-  if (!game.winePrefixPath) {
-    sendProgress("error", "Prefixo não configurado");
-    return;
-  }
-
-  // 2. Lidar com prefixo
-  const prefixHasDriveC = fs.existsSync(path.join(resolveActualPrefix(game.winePrefixPath), "drive_c"));
-
-  if (prefixHasDriveC && game.executablePath && fs.existsSync(game.executablePath)) {
+  if (exeInsidePrefix && prefixReady) {
     sendProgress("complete", "Tudo ok. Iniciando...");
     await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
     WindowManager.closeGameLauncherWindow();
     return;
   }
 
-  if (prefixHasDriveC) {
-    await handleExistingPrefix(game.winePrefixPath, shop, objectId, game.title, gameKey);
+  sendProgress("checking", "Verificando Proton...");
+  const protonPathFinal = await ensureProtonAvailable(game, gameKey);
+  if (!protonPathFinal) return;
+
+  if (!prefixReady && game.winePrefixPath) {
+    sendProgress("installing", "Criando prefixo Wine...");
+    const prefixOk = await MakaiRPC.call<{ success: boolean }>("create_prefix", {
+      game_id: objectId,
+      proton_path: protonPathFinal,
+      prefix_path: game.winePrefixPath,
+      auto_dlls: true,
+      game_path: "",
+    });
+    if (!prefixOk?.success) {
+      sendProgress("error", "Falha ao criar prefixo Wine");
+      return;
+    }
+  }
+
+  const sourcePath = game.executablePath
+    ? path.dirname(game.executablePath)
+    : null;
+
+  if (!sourcePath || !game.executablePath) {
+    if (game.downloadSource === "catalog" && game.downloadUrl) {
+      sendProgress("downloading", "Baixando jogo do catálogo...");
+      WindowManager.closeGameLauncherWindow();
+      return;
+    }
+    sendProgress("error", "Caminho do jogo não configurado");
     return;
   }
 
-  const prefixCreated = await createPrefixWithDlls(objectId, protonPathFinal, game.winePrefixPath);
-  if (!prefixCreated) return;
-
-  // 3. Resolver fonte do instalador
-  const hasCatalog = game.downloadSource === "catalog" && game.downloadUrl;
-
-  let sourcePath: string | null = null;
-
-  if (hasCatalog) {
-    const result = await downloadFromCatalog(game, gameKey, shop, objectId);
-    if (!result) return;
-    sourcePath = result.sourcePath;
-  } else {
-    sourcePath = await promptManualInstaller();
-    if (!sourcePath) return;
-  }
-
-  if (!fs.existsSync(sourcePath)) {
-    sendProgress("error", "Instalador não encontrado");
-    return;
-  }
-
-  // 4. Instalar via Python RPC (install_game)
-  sendProgress("installing", "Instalando jogo...");
+  sendProgress("installing", "Instalando/configurando jogo...");
   const installResult = await MakaiTime.installGame(sourcePath, {
     winePrefixPath: game.winePrefixPath,
     protonPath: protonPathFinal,
@@ -118,7 +104,7 @@ export async function openGame(
   WindowManager.closeGameLauncherWindow();
 
   if (!installResult.success) {
-    sendProgress("error", "Falha ao instalar jogo");
+    sendProgress("error", "Falha ao preparar jogo");
     return;
   }
 
@@ -132,12 +118,10 @@ export async function openGame(
       shop,
       objectId,
     );
-  } else if (game.executablePath && fs.existsSync(game.executablePath)) {
-    const gameData = await gamesStore.get(gameKey).catch(() => null);
-    if (gameData) {
-      await gamesStore.put(gameKey, { ...gameData, executablePath: game.executablePath });
-    }
-    sendProgress("complete", "Jogo restaurado com sucesso");
+  } else if (game.executablePath) {
+    await gamesStore.put(gameKey, { ...game, executablePath: game.executablePath });
+    sendProgress("complete", "Jogo pronto");
+    await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
   } else {
     sendProgress("error", "Nenhum executável encontrado");
   }
