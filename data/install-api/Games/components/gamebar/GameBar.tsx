@@ -1,4 +1,4 @@
-import { GameBar } from "./game-bar";
+import { GameBar } from "@game-launcher/game-bar";
 import type { GameConfig } from "../modals/add-game/games-service";
 import type { SteamInstalledGame } from "@types";
 

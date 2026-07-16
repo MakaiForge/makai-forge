@@ -1,8 +1,0 @@
-.wine-tools-menu {
-  &__header { color: rgba(255, 255, 255, 0.35); }
-  &__item {
-    color: rgba(255, 255, 255, 0.7);
-    &:hover:not(:disabled) { color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.06); }
-  }
-  &__warning { color: rgba(255, 200, 0, 0.7); background: rgba(255, 200, 0, 0.08); }
-}
