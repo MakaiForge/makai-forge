@@ -92,12 +92,7 @@ export async function openGame(
     gameId: objectId,
     existingExePath: game.executablePath,
     onProgress: (step, percent, message) => {
-      sendProgress(step, message);
-      WindowManager.gameLauncherWindow?.webContents.send("preflight-progress", {
-        status: step,
-        detail: message,
-        percent,
-      });
+      sendProgress(step, message, percent);
     },
   });
 

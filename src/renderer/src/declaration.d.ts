@@ -606,7 +606,7 @@ declare global {
       cb: (value: { log: string; complete: boolean }) => void
     ) => () => Electron.IpcRenderer;
     onPreflightProgress: (
-      cb: (value: { status: string; detail: string | null }) => void
+      cb: (value: { status: string; detail: string | null; percent?: number }) => void
     ) => () => Electron.IpcRenderer;
     resetCommonRedistPreflight: () => Promise<void>;
     getPendingExecutableSelection: () => Promise<{

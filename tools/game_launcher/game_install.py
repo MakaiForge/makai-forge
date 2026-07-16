@@ -137,8 +137,12 @@ def _file_sha256(file_path: str) -> str | None:
 
 
 def _compute_hashes(files: list[str], base_path: str,
-                    progress_callback=None) -> dict[str, str]:
-    """Calcula SHA256 de uma lista de arquivos, em lotes."""
+                    progress_callback=None,
+                    pbase: int = 0, prange: int = 100) -> dict[str, str]:
+    """Calcula SHA256 de uma lista de arquivos, em lotes.
+
+    pbase/prange — progress_base / progress_range para callback monotônico.
+    """
     hashes: dict[str, str] = {}
     batch_size = 20
     total = len(files)
@@ -151,8 +155,20 @@ def _compute_hashes(files: list[str], base_path: str,
             if h:
                 hashes[rel] = h
         if progress_callback and total > 0:
-            progress_callback(max(1, min(99, int((i + batch_size) / total * 100))))
+            pct = pbase + int((i + batch_size) / total * prange)
+            progress_callback(pct)
     return hashes
+
+
+def _total_bytes(files: list[str]) -> int:
+    """Soma o tamanho de todos os arquivos."""
+    total = 0
+    for f in files:
+        try:
+            total += os.path.getsize(f)
+        except OSError:
+            pass
+    return total
 
 
 def copy_to_prefix(source_path: str, prefix_path: str,
@@ -161,7 +177,9 @@ def copy_to_prefix(source_path: str, prefix_path: str,
     Copia pasta source_path para drive_c/<folderName>/
     com verificação SHA256 pré e pós.
 
-    progress_callback(percent: int) — opcional, para UI
+    progress_callback(percent: int) — opcional, monotônico (0-100).
+    Fases: pré-hash 0-5%, cópia 5-90%, pós-hash 90-100%.
+    Cópia usa bytes (não contagem de arquivos) para progresso realista.
     """
     source_path = os.path.abspath(source_path)
     prefix_path = os.path.expanduser(prefix_path)
@@ -190,14 +208,18 @@ def copy_to_prefix(source_path: str, prefix_path: str,
         return {"success": False, "error": f"Pasta com {total} arquivos parece não ser um jogo",
                 "dest_path": None, "files_count": total}
 
-    # SHA256 pré-cópia
-    if progress_callback:
-        progress_callback(5)
-    source_hashes = _compute_hashes(all_files, source_path)
+    # Bytes totais para progresso realista
+    total_bytes = _total_bytes(all_files)
+    if total_bytes == 0:
+        total_bytes = total  # fallback: cada arquivo = 1 byte
 
-    # Cópia em lotes
+    # Fase 1: SHA256 pré-cópia (0-5%)
+    source_hashes = _compute_hashes(all_files, source_path,
+                                    progress_callback, 0, 5)
+
+    # Fase 2: Cópia em lotes com progresso por bytes (5-90%)
     batch_size = 50
-    copied = 0
+    copied_bytes = 0
     for i in range(0, total, batch_size):
         batch = all_files[i:i + batch_size]
         for src_file in batch:
@@ -206,12 +228,15 @@ def copy_to_prefix(source_path: str, prefix_path: str,
             os.makedirs(os.path.dirname(dest_file), exist_ok=True)
             try:
                 shutil.copy2(src_file, dest_file)
+                try:
+                    copied_bytes += os.path.getsize(src_file)
+                except OSError:
+                    copied_bytes += 1
             except OSError:
                 pass
-        copied += len(batch)
-        if progress_callback:
-            pct = max(1, min(99, int(copied / total * 100)))
-            progress_callback(pct)
+        if progress_callback and total_bytes > 0:
+            pct = 5 + int(copied_bytes / total_bytes * 85)
+            progress_callback(min(90, pct))
 
     # Verificação pós-cópia: contagem
     dest_files = _walk_dir(dest_path)
@@ -220,10 +245,9 @@ def copy_to_prefix(source_path: str, prefix_path: str,
                 "error": f"Count mismatch: source {total}, dest {len(dest_files)}",
                 "dest_path": dest_path, "files_count": total}
 
-    # SHA256 pós-cópia + comparação
-    if progress_callback:
-        progress_callback(90)
-    dest_hashes = _compute_hashes(dest_files, dest_path)
+    # Fase 3: SHA256 pós-cópia + comparação (90-100%)
+    dest_hashes = _compute_hashes(dest_files, dest_path,
+                                  progress_callback, 90, 10)
 
     mismatches = []
     for rel, expected in source_hashes.items():
@@ -274,15 +298,60 @@ EXCLUDED_PATTERNS = [
     re.compile(r"redist", re.I),
 ]
 
-MAX_CANDIDATES = 5
+GAME_EXE_PATTERNS = [
+    re.compile(r"^game\.exe$", re.I),
+    re.compile(r".+-win64-shipping\.exe$", re.I),
+    re.compile(r".+-win32-shipping\.exe$", re.I),
+    re.compile(r".+_windows\.exe$", re.I),
+    re.compile(r"^nw\.exe$", re.I),
+]
+
+LAUNCHER_PATTERNS = [
+    re.compile(r"^launcher\.exe$", re.I),
+    re.compile(r"^start(?:er|_game|_app|\.exe)?$", re.I),
+    re.compile(r"^patcher\.exe$", re.I),
+    re.compile(r"^updater\.exe$", re.I),
+    re.compile(r"^makai_time\.exe$", re.I),
+]
+
+SETUP_PATTERNS = [
+    re.compile(r"^setup", re.I),
+    re.compile(r"^install", re.I),
+    re.compile(r"^autorun", re.I),
+]
+
+MAX_CANDIDATES = 10
 
 
-def scan_prefix_for_exes(prefix_path: str) -> dict:
+def _classify_exe(name: str) -> str:
+    """Classifica executável em: game, launcher, setup, redist, unknown."""
+    name_lower = name.lower()
+
+    if any(p.search(name) for p in SETUP_PATTERNS):
+        return "setup"
+    if name_lower in EXCLUDED_EXES:
+        return "redist"
+    if any(p.search(name) for p in EXCLUDED_PATTERNS):
+        return "redist"
+    if any(p.search(name) for p in LAUNCHER_PATTERNS):
+        return "launcher"
+    if any(p.search(name) for p in GAME_EXE_PATTERNS):
+        return "game"
+
+    return "unknown"
+
+
+def scan_prefix_for_exes(prefix_path: str,
+                          game_folder_name: str | None = None) -> dict:
     """
     Escaneia drive_c por .exe jogáveis.
 
+    Args:
+        prefix_path: caminho do prefixo Wine.
+        game_folder_name: nome da pasta do jogo (para matching exato).
+
     Returns:
-        candidates: [{path, name, size}]
+        candidates: [{path, name, size, type}]
         suggested_dir: str | None
     """
     prefix_path = os.path.expanduser(prefix_path)
@@ -305,7 +374,8 @@ def scan_prefix_for_exes(prefix_path: str) -> dict:
                 for entry in it:
                     if entry.is_dir(follow_symlinks=False):
                         scan(entry.path, depth + 1)
-                    elif entry.is_file(follow_symlinks=False) and entry.name.lower().endswith(".exe"):
+                    elif (entry.is_file(follow_symlinks=False)
+                          and entry.name.lower().endswith(".exe")):
                         name_lower = entry.name.lower()
                         if name_lower in EXCLUDED_EXES:
                             continue
@@ -314,10 +384,18 @@ def scan_prefix_for_exes(prefix_path: str) -> dict:
                         try:
                             st = entry.stat()
                             if st.st_size > 1024:
+                                exe_type = _classify_exe(entry.name)
+                                # Se tem game_folder_name, tenta match exato
+                                if (exe_type == "unknown"
+                                        and game_folder_name
+                                        and os.path.splitext(entry.name)[0].lower()
+                                        == os.path.splitext(game_folder_name)[0].lower()):
+                                    exe_type = "game"
                                 results.append({
                                     "path": entry.path,
                                     "name": entry.name,
                                     "size": st.st_size,
+                                    "type": exe_type,
                                 })
                         except OSError:
                             pass
@@ -498,6 +576,7 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
     proton_path = os.path.expanduser(proton_path)
     actual = _resolve_actual_prefix(prefix_path)
     drive_c = os.path.join(actual, "drive_c")
+    game_folder_name = os.path.basename(source_path.rstrip("/\\"))
 
     def _progress(step: str, pct: int, msg: str):
         if progress_callback:
@@ -508,9 +587,11 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
         _progress("copying", 50, "Copiando jogo para o prefixo...")
         folder = source_path if os.path.isdir(source_path) else os.path.dirname(source_path)
         if os.path.isdir(folder):
-            copy_to_prefix(folder, prefix_path)
-        _progress("scanning", 80, "Procurando executáveis...")
-        scan = scan_prefix_for_exes(prefix_path)
+            copy_to_prefix(folder, prefix_path, lambda pct: (
+                _progress("copying", 50 + int(pct * 0.3), f"Copiando... {pct}%")
+            ))
+        _progress("scanning", 85, "Procurando executáveis...")
+        scan = scan_prefix_for_exes(prefix_path, game_folder_name)
         _progress("complete", 100, f"{len(scan['candidates'])} executável(eis) encontrado(s)")
         return {
             "success": True,
@@ -561,7 +642,9 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
         # Fallback: copiar pasta do jogo para o prefixo
         _progress("copying", 80, "Nenhum executável encontrado. Copiando pasta...")
         folder_path = source_path if os.path.isdir(source_path) else os.path.dirname(source_path)
-        copy_result = copy_to_prefix(folder_path, prefix_path)
+        copy_result = copy_to_prefix(folder_path, prefix_path, lambda pct: (
+            _progress("copying", 80 + int(pct * 0.1), f"Copiando... {pct}%")
+        ))
 
         if not copy_result.get("success"):
             return {
@@ -572,8 +655,8 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
                 "error": copy_result.get("error", "Falha ao copiar pasta"),
             }
 
-        _progress("scanning", 90, "Procurando executáveis após cópia...")
-        scan = scan_prefix_for_exes(prefix_path)
+        _progress("scanning", 92, "Procurando executáveis após cópia...")
+        scan = scan_prefix_for_exes(prefix_path, game_folder_name)
 
         _progress("complete", 100, f"{len(scan['candidates'])} executável(eis) encontrado(s)")
         return {
@@ -584,13 +667,13 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
         }
 
     # Portátil: copiar pasta + scan
-    _progress("copying", 30, "Copiando jogo portátil para o prefixo...")
+    _progress("copying", 5, "Copiando jogo portátil para o prefixo...")
 
     # Validações de segurança
     if detection.get("exe_count", 0) == 0 and detection.get("total_files", 0) > 0:
-        _progress("copying", 30, "Aviso: nenhum .exe encontrado na pasta, copiando mesmo assim...")
+        _progress("copying", 5, "Aviso: nenhum .exe encontrado na pasta, copiando mesmo assim...")
     if detection.get("total_files", 0) > 5000:
-        _progress("copying", 30, "Aviso: pasta com muitos arquivos, pode demorar...")
+        _progress("copying", 5, "Aviso: pasta com muitos arquivos, pode demorar...")
     if detection.get("total_files", 0) > 50000:
         return {"success": False, "candidates": [], "suggested_dir": drive_c,
                 "method": "portable",
@@ -604,7 +687,7 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
                 "error": f"source_path não encontrado: {source_path}"}
 
     copy_result = copy_to_prefix(source_path, prefix_path, lambda pct: (
-        _progress("copying", 30 + int(pct * 0.4), f"Copiando... {pct}%")
+        _progress("copying", 5 + int(pct * 0.92), f"Copiando... {pct}%")
     ))
 
     if not copy_result.get("success"):
@@ -616,8 +699,8 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
             "error": copy_result.get("error", "Falha ao copiar pasta"),
         }
 
-    _progress("scanning", 80, "Procurando executáveis...")
-    scan = scan_prefix_for_exes(prefix_path)
+    _progress("scanning", 97, "Procurando executáveis...")
+    scan = scan_prefix_for_exes(prefix_path, game_folder_name)
 
     _progress("complete", 100, f"{len(scan['candidates'])} executável(eis) encontrado(s)")
     return {

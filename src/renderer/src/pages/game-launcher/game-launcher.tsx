@@ -21,6 +21,7 @@ export default function GameLauncher() {
   const [game, setGame] = useState<Game | null>(null);
   const [preflightStatus, setPreflightStatus] = useState<PreflightStatus>("idle");
   const [preflightDetail, setPreflightDetail] = useState<string | null>(null);
+  const [preflightPercent, setPreflightPercent] = useState<number | null>(null);
   const [preflightStarted, setPreflightStarted] = useState(false);
   const [selectingExecutable, setSelectingExecutable] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -38,10 +39,11 @@ export default function GameLauncher() {
 
   useEffect(() => {
     if (!window.electron.onPreflightProgress) return;
-    const unsub = window.electron.onPreflightProgress(({ status, detail }) => {
+    const unsub = window.electron.onPreflightProgress(({ status, detail, percent }) => {
       setPreflightStarted(true);
       setPreflightStatus(status as PreflightStatus);
       setPreflightDetail(detail);
+      if (percent != null) setPreflightPercent(percent);
     });
     return () => unsub();
   }, []);
@@ -87,14 +89,22 @@ export default function GameLauncher() {
   const isRunning = preflightStarted &&
     (preflightStatus === "checking" || preflightStatus === "downloading" || preflightStatus === "installing");
 
+  const hasPercent = preflightPercent != null && preflightPercent > 0;
+
   const getStatusMessage = () => {
+    const suffix = hasPercent ? ` ${preflightPercent}%` : "";
     switch (preflightStatus) {
-      case "checking": return preflightDetail || "Verificando...";
-      case "downloading": return preflightDetail || "Baixando...";
-      case "installing": return preflightDetail || "Instalando...";
-      case "complete": return "Pronto!";
+      case "checking": return `${preflightDetail || "Verificando..."}${suffix}`;
+      case "downloading": return `${preflightDetail || "Baixando..."}${suffix}`;
+      case "installing":
+      case "analyzing":
+      case "copying":
+      case "scanning":
+      case "preparing":
+      case "snapshot": return `${preflightDetail || "Processando..."}${suffix}`;
+      case "complete": return preflightPercent === 100 ? "Pronto! Divirta-se!" : preflightDetail || "Pronto!";
       case "error": return preflightDetail || "Erro";
-      default: return "";
+      default: return preflightDetail || "";
     }
   };
 
@@ -152,8 +162,8 @@ export default function GameLauncher() {
           {gameTitle && <p className="game-launcher__title">{gameTitle}</p>}
           <p className="game-launcher__status">{getStatusMessage()}</p>
           <div className="game-launcher__bar-track">
-            <div className={`game-launcher__bar-fill ${isRunning ? "game-launcher__bar-fill--indeterminate" : ""}`}
-              style={preflightStatus === "complete" ? { width: "100%" } : undefined} />
+            <div className={`game-launcher__bar-fill ${isRunning && !hasPercent ? "game-launcher__bar-fill--indeterminate" : ""}`}
+              style={(hasPercent || preflightStatus === "complete") ? { width: `${Math.max(2, preflightPercent ?? 100)}%` } : undefined} />
           </div>
         </div>
       )}

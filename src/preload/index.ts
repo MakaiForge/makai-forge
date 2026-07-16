@@ -719,11 +719,11 @@ contextBridge.exposeInMainWorld("electron", {
     return () => ipcRenderer.removeListener("common-redist-progress", listener);
   },
   onPreflightProgress: (
-    cb: (value: { status: string; detail: string | null }) => void
+    cb: (value: { status: string; detail: string | null; percent?: number }) => void
   ) => {
     const listener = (
       _event: Electron.IpcRendererEvent,
-      value: { status: string; detail: string | null }
+      value: { status: string; detail: string | null; percent?: number }
     ) => cb(value);
     ipcRenderer.on("preflight-progress", listener);
     return () => ipcRenderer.removeListener("preflight-progress", listener);

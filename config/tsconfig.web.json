@@ -33,7 +33,7 @@
       "@emulators/*": ["tools/emulators/*"],
       "@provision/*": ["data/install-api/*"],
       "@proton/*": ["tools/Mods_manager/proton-tools/*"],
-"@game-launcher/*": ["tools/game-launcher/*"]
+"@game-launcher/*": ["tools/game_launcher/*"]
     }
   }
 }

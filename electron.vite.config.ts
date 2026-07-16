@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => {
           "@bootstrap": resolve("data/Bootstrap"),
           "@proton": resolve("tools/Mods_manager/proton-tools"),
           "@prefix": resolve("tools/prefix"),
+          "@game-launcher": resolve("tools/game_launcher"),
         },
       },
       plugins: [externalizeDepsPlugin(), swcPlugin()],
