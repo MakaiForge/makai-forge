@@ -60,6 +60,7 @@ export default defineConfig(({ mode }) => {
           "@prefix": resolve("tools/prefix"),
           "@provision": resolve("data/install-api"),
           "@proton": resolve("tools/Mods_manager/proton-tools"),
+          "@game-launcher": resolve("tools/game_launcher"),
         },
       },
       plugins: [svgr(), react()],
