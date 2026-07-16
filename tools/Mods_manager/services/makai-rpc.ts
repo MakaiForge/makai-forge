@@ -68,10 +68,13 @@ export class MakaiRPC {
     const payload = { id, method, params: params ?? {} };
 
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(`MakaiRPC timeout: ${method} (${timeoutMs}ms)`));
-      }, timeoutMs);
+      let timer: NodeJS.Timeout | null = null;
+      if (timeoutMs > 0) {
+        timer = setTimeout(() => {
+          this.pending.delete(id);
+          reject(new Error(`MakaiRPC timeout: ${method} (${timeoutMs}ms)`));
+        }, timeoutMs);
+      }
 
       this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
       this.process?.stdin?.write(JSON.stringify(payload) + "\n");

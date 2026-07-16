@@ -79,18 +79,6 @@ export async function openGame(
   const prefixCreated = await createPrefixWithDlls(objectId, protonPathFinal, game.winePrefixPath);
   if (!prefixCreated) return;
 
-  // Verificar se o jogo já está instalado (só faltava o prefixo)
-  if (game.executablePath && fs.existsSync(game.executablePath)) {
-    const gameData = await gamesStore.get(gameKey).catch(() => null);
-    if (gameData) {
-      await gamesStore.put(gameKey, { ...gameData, executablePath: game.executablePath });
-    }
-    sendProgress("complete", "Jogo restaurado com sucesso");
-    await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
-    WindowManager.closeGameLauncherWindow();
-    return;
-  }
-
   // 3. Resolver fonte do instalador
   const hasCatalog = game.downloadSource === "catalog" && game.downloadUrl;
 
