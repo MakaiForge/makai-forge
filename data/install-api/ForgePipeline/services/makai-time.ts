@@ -37,6 +37,65 @@ export class MakaiTime {
     }
   }
 
+  public static async installGame(
+    sourcePath: string,
+    options?: {
+      winePrefixPath?: string | null;
+      protonPath?: string | null;
+      gameId?: string | null;
+      existingExePath?: string | null;
+      onProgress?: (step: string, percent: number, message: string) => void;
+    }
+  ): Promise<{
+    success: boolean;
+    candidates: { path: string; name: string; size: number }[];
+    suggested_dir: string | null;
+    method: string;
+  }> {
+    const params: Record<string, unknown> = {
+      source_path: sourcePath,
+      prefix_path: options?.winePrefixPath ?? "",
+      proton_path: options?.protonPath ?? "",
+      game_id: options?.gameId ?? "",
+    };
+    if (options?.existingExePath) {
+      params.existing_exe_path = options.existingExePath;
+    }
+
+    const progressCb = options?.onProgress;
+    let progressListener: ((event: string, data: Record<string, unknown>) => void) | null = null;
+
+    if (progressCb) {
+      progressListener = (event: string, data: Record<string, unknown>) => {
+        if (event === "install_progress") {
+          progressCb(
+            String(data.step ?? ""),
+            Number(data.percent ?? 0),
+            String(data.message ?? ""),
+          );
+        }
+      };
+      MakaiRPC.onEvent(progressListener);
+    }
+
+    try {
+      const result = await MakaiRPC.call<{
+        success: boolean;
+        candidates: { path: string; name: string; size: number }[];
+        suggested_dir: string | null;
+        method: string;
+      }>("install_game", params, 0);
+      return result;
+    } catch (err) {
+      logger.error("[MakaiTime] installGame failed", err);
+      throw err;
+    } finally {
+      if (progressListener) {
+        MakaiRPC.removeEvent(progressListener);
+      }
+    }
+  }
+
   public static async runInstaller(
     executablePath: string,
     _launchParameters: string[] = [],

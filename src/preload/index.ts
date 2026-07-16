@@ -514,8 +514,6 @@ contextBridge.exposeInMainWorld("electron", {
   },
   deleteArchive: (filePath: string) =>
     ipcRenderer.invoke("deleteArchive", filePath),
-  installAndScan: (filePath: string, options: any) =>
-    ipcRenderer.invoke("installAndScan", filePath, options),
   repairGame: (shop: GameShop, objectId: string) =>
     ipcRenderer.invoke("repairGame", shop, objectId),
 

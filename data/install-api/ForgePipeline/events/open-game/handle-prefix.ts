@@ -1,6 +1,6 @@
 import type { GameShop } from "@types";
 import { WindowManager } from "@main/services";
-import { scanPrefixForExes } from "@provision/ForgePipeline/orchestrator/prefix-scanner";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { setupPrefix } from "@provision/ForgePipeline/orchestrator/prefix-setup";
 import { ProtonRecommendationService } from "@provision/proton_recommended/services/proton-recommendation";
 import { sendProgress } from "./send-progress";
@@ -36,13 +36,27 @@ export async function handleExistingPrefix(
   gameKey: string
 ): Promise<boolean> {
   sendProgress("installing", "Prefixo encontrado. Procurando executáveis...");
-  const scanResult = scanPrefixForExes(winePrefixPath);
+  let candidates: { path: string; name: string; size: number }[] = [];
+  let suggestedDir: string | null = null;
+
+  try {
+    const result = await MakaiRPC.call<{
+      candidates: { path: string; name: string; size: number }[];
+      suggested_dir: string | null;
+    }>("scan_prefix_for_exes", { prefix_path: winePrefixPath });
+    candidates = result.candidates ?? [];
+    suggestedDir = result.suggested_dir;
+  } catch {
+    sendProgress("error", "Falha ao escanear prefixo");
+    return false;
+  }
+
   WindowManager.closeGameLauncherWindow();
 
-  if (scanResult.candidates.length > 0) {
+  if (candidates.length > 0) {
     showExecutableSelect(
-      scanResult.candidates,
-      scanResult.suggestedDir,
+      candidates,
+      suggestedDir,
       path.join(winePrefixPath, "drive_c"),
       gameTitle,
       gameKey,

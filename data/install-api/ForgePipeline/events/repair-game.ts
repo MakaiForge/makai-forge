@@ -1,6 +1,6 @@
 import { registerEvent } from "@main/events/register-event";
 import { gamesStore, storeKeys } from "@main/store";
-import { installAndScan } from "@provision/ForgePipeline/orchestrator/orchestrator";
+import { MakaiTime } from "@provision/ForgePipeline/services/makai-time";
 import { setupPrefix } from "@provision/ForgePipeline/orchestrator/prefix-setup";
 import type { GameShop } from "@types";
 import { app, dialog } from "electron";
@@ -231,15 +231,15 @@ export async function repairGame(
     return { success: false, error: "Instalador não encontrado" };
   }
 
-  sendLog("Por favor, instale o jogo e feche a janela do instalador quando terminar.");
-  const installResult = await installAndScan(installerPath, {
-    gameId: objectId,
+  sendLog("Instalando jogo...");
+  const installResult = await MakaiTime.installGame(installerPath, {
     winePrefixPath: game.winePrefixPath,
     protonPath: resolved.protonPath,
-    gameTitle: game.title,
-    gameKey,
-    shop,
-    objectId,
+    gameId: objectId,
+    existingExePath: game.executablePath,
+    onProgress: (step, _percent, message) => {
+      sendLog(`[${step}] ${message}`);
+    },
   });
 
   if (installResult.candidates.length > 0) {

@@ -76,7 +76,14 @@ def build_bwrap_cmd(
     if sync_info and sync_info["method"] == "ntsync":
         cmd.extend(["--dev-bind", "/dev/ntsync", "/dev/ntsync"])
 
-    # Runtime libs são providas via LD_LIBRARY_PATH (--ro-bind /lib quebra host executables)
+    # Runtime libs: monta /lib do runtime SOBRE o /lib do host
+    # Assim runtime prevalece, host drivers ficam acessiveis em /usr/lib64 etc.
+    if runtime_path:
+        rt_lib = os.path.join(runtime_path, "lib")
+        if not os.path.isdir(rt_lib):
+            rt_lib = os.path.join(runtime_path, "files", "lib")
+        if os.path.isdir(rt_lib):
+            cmd.extend(["--ro-bind", rt_lib, "/lib"])
 
     # Display + audio
     cmd.extend(display.all_display_args(uid))

@@ -464,7 +464,6 @@ declare global {
       cb: (archivePaths: string[]) => void
     ) => () => Electron.IpcRenderer;
     deleteArchive: (filePath: string) => Promise<boolean>;
-    installAndScan: (filePath: string, options: any) => Promise<unknown>;
     repairGame: (shop: GameShop, objectId: string) => Promise<void>;
     getDefaultWinePrefixSelectionPath: () => Promise<string | null>;
     createSteamShortcut: (

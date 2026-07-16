@@ -69,8 +69,6 @@ export const libraryAPI = {
   refreshLibraryAssets: () => ipcRenderer.invoke("refreshLibraryAssets"),
   openGameInstaller: (shop: GameShop, objectId: string, protonPath?: string | null, gameTitle?: string | null, folderName?: string | null) =>
     ipcRenderer.invoke("openGameInstaller", shop, objectId, protonPath, gameTitle, folderName),
-  installAndScan: (filePath: string, options: any) =>
-    ipcRenderer.invoke("installAndScan", filePath, options),
   getGameInstallerActionType: (shop: GameShop, objectId: string) =>
     ipcRenderer.invoke("getGameInstallerActionType", shop, objectId),
   openGameInstallerPath: (shop: GameShop, objectId: string) =>

@@ -6,16 +6,13 @@ import { getDownloadsPath } from "@main/events/helpers/get-downloads-path";
 import { registerEvent } from "@main/events/register-event";
 import { downloadsStore, gamesStore, storeKeys } from "@main/store";
 import { GameShop } from "@types";
-import { Wine, logger, WindowManager } from "@main/services";
-import { installAndScan } from "../orchestrator/orchestrator";
+import { Wine, WindowManager } from "@main/services";
+import { MakaiTime } from "@provision/ForgePipeline/services/makai-time";
 import { setupPrefix, resolveActualPrefix } from "../orchestrator/prefix-setup";
-import { copyFolderToPrefix } from "../orchestrator/prefix-copier";
-import { scanPrefixForExes } from "../orchestrator/prefix-scanner";
-import { findExesInFolder } from "@main/helpers/find-exe-in-folder";
 import { ProtonRecommendationService } from "@provision/proton_recommended/services/proton-recommendation";
 import { ensureWinetricks } from "@provision/ensure-Makaitricks";
 import { debugLog } from "@provision/debug-log";
-import type { InstallCandidate, InstallOptions, InstallResult } from "../orchestrator/types";
+import type { InstallResult } from "../orchestrator/types";
 
 async function findGameFolder(gameTitle: string | null): Promise<string | null> {
   const dlPath = await getDownloadsPath();
@@ -32,101 +29,33 @@ async function findGameFolder(gameTitle: string | null): Promise<string | null> 
   return null;
 }
 
-const INSTALLER_PATTERNS = [/setup/i, /install/i, /msi/i];
-
-function findInstallerInFolder(folderPath: string): string | null {
-  const scanDir = (dir: string, depth: number): string | null => {
-    if (depth > 2) return null;
-    try {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const e of entries) {
-        const full = path.join(dir, e.name);
-        if (e.isDirectory()) {
-          const found = scanDir(full, depth + 1);
-          if (found) return found;
-        } else if (e.isFile() && e.name.toLowerCase().endsWith(".exe")) {
-          if (INSTALLER_PATTERNS.some((p) => p.test(e.name))) return full;
-        }
-      }
-    } catch {
-      /* skip unreadable dirs */
-    }
-    return null;
-  };
-  return scanDir(folderPath, 0);
-}
-
-function findExactInstaller(folderPath: string, exeName: string): string | null {
-  const scanDir = (dir: string, depth: number): string | null => {
-    if (depth > 2) return null;
-    try {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const e of entries) {
-        const full = path.join(dir, e.name);
-        if (e.isDirectory()) {
-          const found = scanDir(full, depth + 1);
-          if (found) return found;
-        } else if (e.isFile()) {
-          const name = e.name.toLowerCase();
-          const target = exeName.toLowerCase();
-          if (name === target || name === `_download_${target}`) {
-            return full;
-          }
-        }
-      }
-    } catch { /* skip unreadable dirs */ }
-    return null;
-  };
-  return scanDir(folderPath, 0);
-}
-
-function matchExeByName(candidates: InstallCandidate[], exeName: string): string | null {
-  const targetName = path.basename(exeName).toLowerCase();
-  if (!targetName) return null;
-  for (const c of candidates) {
-    if (c.name.toLowerCase() === targetName) return c.path;
-  }
-  for (const c of candidates) {
-    if (c.name.toLowerCase().includes(targetName) || targetName.includes(c.name.toLowerCase())) {
-      return c.path;
-    }
-  }
-  return null;
-}
-
 function returnOrSelect(
   shop: GameShop,
   objectId: string,
-  result: InstallResult,
+  candidates: { path: string; name: string; size: number }[],
+  suggestedDir: string | null,
   gameTitle: string,
   gameKey: string,
   prefixDriveCPath: string,
   existingExePath?: string
 ): InstallResult {
-  if (existingExePath && result.candidates.length > 0) {
-    const matched = matchExeByName(result.candidates, existingExePath);
+  if (existingExePath && candidates.length > 0) {
+    const targetName = path.basename(existingExePath).toLowerCase();
+    const matched = candidates.find(c => c.name.toLowerCase() === targetName);
     if (matched) {
-      return { wasOpened: true, candidates: [], suggestedDir: null, autoSetExe: matched };
+      return { wasOpened: true, candidates: [], suggestedDir: null, autoSetExe: matched.path };
     }
   }
-  if (result.candidates.length > 0) {
+  if (candidates.length > 0) {
     WindowManager.createExecutableSelectWindow({
-      shop,
-      objectId,
-      candidates: result.candidates.map((c) => ({
-        path: c.path,
-        name: c.name,
-        size: c.size,
-      })),
-      suggestedDir: result.suggestedDir,
-      prefixDriveCPath,
-      gameTitle,
-      gameKey,
+      shop, objectId,
+      candidates,
+      suggestedDir, prefixDriveCPath, gameTitle, gameKey,
     });
     WindowManager.showExecutableSelectWindow();
     return { wasOpened: true, candidates: [], suggestedDir: null, executableSelectWindowOpened: true };
   }
-  return result;
+  return { wasOpened: true, candidates: [], suggestedDir };
 }
 
 export const openGameInstaller = async (
@@ -148,13 +77,9 @@ export const openGameInstaller = async (
   const effectiveWinePrefixPath = Wine.getEffectivePrefixPath(null, objectId, effectiveGameTitle);
 
   debugLog.log("open_game_installer_start", {
-    shop,
-    objectId,
-    gameTitle: effectiveGameTitle,
-    protonPath: effectiveProtonPath,
-    winePrefixPath: effectiveWinePrefixPath,
-    folderName: download?.folderName,
-    gameFromStore: !!game,
+    shop, objectId, gameTitle: effectiveGameTitle,
+    protonPath: effectiveProtonPath, winePrefixPath: effectiveWinePrefixPath,
+    folderName: download?.folderName, gameFromStore: !!game,
     installConfig: game?.installConfig,
   });
 
@@ -164,12 +89,6 @@ export const openGameInstaller = async (
 
   const resolvedPrefix = effectiveWinePrefixPath ? resolveActualPrefix(effectiveWinePrefixPath) : null;
 
-  debugLog.log("open_game_installer_prefix_resolved", {
-    original: effectiveWinePrefixPath,
-    resolved: resolvedPrefix,
-  });
-
-  /* salva o protonPath no jogo pra setGameExecutablePath usar depois */
   if (objectId && effectiveProtonPath && game && !game.protonPath) {
     game.protonPath = effectiveProtonPath;
     game.protonVersion = path.basename(effectiveProtonPath);
@@ -184,19 +103,10 @@ export const openGameInstaller = async (
     gamePath = await findGameFolder(effectiveGameTitle);
   }
 
-  const extractOnly = !!(game?.installerConfig as any)?.extract_only;
-  const installerExeName = (game?.installerConfig as any)?.exe_name || "";
-  const existingExePath = game?.executablePath || "";
-
-  debugLog.log("open_game_installer_extract_only", { extractOnly });
-  debugLog.log("open_game_installer_installer_exe_name", { installerExeName });
-  debugLog.log("open_game_installer_existing_exe", { existingExePath });
-
   debugLog.log("open_game_installer_game_path", { gamePath, exists: gamePath ? fs.existsSync(gamePath) : false });
 
   if (!gamePath || !fs.existsSync(gamePath)) {
     const suggestedDir = effectiveWinePrefixPath || (effectiveGameTitle ? Wine.getProtonForgerPrefixPath(effectiveGameTitle) : null);
-    debugLog.log("open_game_installer_no_path", { suggestedDir });
     return { wasOpened: true, candidates: [], suggestedDir };
   }
 
@@ -205,129 +115,61 @@ export const openGameInstaller = async (
     ...((game as any)?.gameDlls || []),
   ];
 
-  const baseOptions: InstallOptions = {
-    gameId: objectId,
-    winePrefixPath: effectiveWinePrefixPath,
-    protonPath: effectiveProtonPath,
-    gameTitle: effectiveGameTitle,
-    gameKey: downloadKey,
-    shop,
-    objectId,
-    winetricksVerbs: scriptVerbs.length > 0 ? scriptVerbs : undefined,
-    installConfig: game?.installConfig,
-  };
+  const prefixDriveCPath = resolvedPrefix ? path.join(resolvedPrefix, "drive_c") : "";
+  const existingExePath = game?.executablePath || "";
 
-  debugLog.log("open_game_installer_options", baseOptions as unknown as Record<string, unknown>);
-
-  const prefixDriveCPath = resolvedPrefix
-    ? path.join(resolvedPrefix, "drive_c")
-    : "";
-
-  /* ─── ARQUIVO ÚNICO (.exe / .msi) — Modo 1 ─── */
+  // Se arquivo único .exe/.msi → instalar via Makai Time
   if (fs.lstatSync(gamePath).isFile()) {
     const ext = path.extname(gamePath).toLowerCase();
     if (ext === ".exe" || ext === ".msi") {
-      const result = await installAndScan(gamePath, baseOptions);
-      return returnOrSelect(shop, objectId, result, effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
+      if (scriptVerbs.length > 0 && resolvedPrefix) {
+        try {
+          const wtPath = await ensureWinetricks();
+          await ProtonRecommendationService.installGameDlls(objectId, resolvedPrefix, effectiveProtonPath!, scriptVerbs, wtPath);
+        } catch { /* DLLs não críticas */ }
+      }
+      const result = await MakaiTime.installGame(gamePath, {
+        winePrefixPath: effectiveWinePrefixPath,
+        protonPath: effectiveProtonPath,
+        gameId: objectId,
+        existingExePath,
+      });
+      return returnOrSelect(shop, objectId, result.candidates, result.suggested_dir,
+        effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
     }
     shell.showItemInFolder(gamePath);
     return { wasOpened: true, candidates: [], suggestedDir: null };
   }
 
-  /* ─── PASTA — Modo 2 ─────────────────────────── */
+  // ─── PASTA ───────────────────────────────────────
 
-  /* Se extract_only, não procura instalador — copia direto pro prefixo */
-  if (extractOnly) {
-    debugLog.log("open_game_installer_extract_only_mode", { gamePath, resolvedPrefix });
-    if (resolvedPrefix) {
-      if (objectId && effectiveProtonPath && scriptVerbs.length > 0) {
-        try {
-          const wtPath = await ensureWinetricks();
-          await ProtonRecommendationService.installGameDlls(
-            objectId,
-            resolvedPrefix,
-            effectiveProtonPath,
-            scriptVerbs,
-            wtPath,
-          );
-        } catch { /* DLLs não críticas */ }
-      }
-      await copyFolderToPrefix(gamePath, resolvedPrefix, (pct) => {
-        WindowManager.mainWindow?.webContents.send("on-install-progress", {
-          status: `Copiando jogo para o prefixo... ${pct}%`,
-          percent: pct,
-        });
-      });
-      const scanResult = scanPrefixForExes(resolvedPrefix);
-      if (scanResult.candidates.length > 0) {
-        return returnOrSelect(shop, objectId, { wasOpened: true, ...scanResult }, effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
-      }
-    }
-    const folderExes = findExesInFolder(gamePath);
-    if (folderExes.candidates.length > 0) {
-      return returnOrSelect(shop, objectId, {
-        wasOpened: true,
-        candidates: folderExes.candidates,
-        suggestedDir: folderExes.suggestedDir,
-      }, effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
-    }
-    return { wasOpened: true, candidates: [], suggestedDir: gamePath };
+  // Instalar DLLs se necessário
+  if (scriptVerbs.length > 0 && resolvedPrefix) {
+    try {
+      const wtPath = await ensureWinetricks();
+      await ProtonRecommendationService.installGameDlls(objectId, resolvedPrefix, effectiveProtonPath!, scriptVerbs, wtPath);
+    } catch { /* DLLs não críticas */ }
   }
 
-  /* Procura instalador pelo nome exato (installer.exe_name) ou por padrões */
-  let targetInstaller: string | null = null;
+  // Única chamada ao Python: cobre installer, portable, extract_only
+  const result = await MakaiTime.installGame(gamePath, {
+    winePrefixPath: effectiveWinePrefixPath,
+    protonPath: effectiveProtonPath,
+    gameId: objectId,
+    existingExePath,
+  });
 
-  if (installerExeName) {
-    targetInstaller = findExactInstaller(gamePath, installerExeName);
-    debugLog.log("open_game_installer_exact_installer_search", { installerExeName, found: !!targetInstaller });
+  if (result.candidates.length > 0) {
+    return returnOrSelect(shop, objectId, result.candidates, result.suggested_dir,
+      effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
   }
 
-  if (!targetInstaller) {
-    targetInstaller = findInstallerInFolder(gamePath);
-    debugLog.log("open_game_installer_heuristic_installer_search", { found: !!targetInstaller });
-  }
-
-  if (targetInstaller) {
-    const result = await installAndScan(targetInstaller, baseOptions);
-    return returnOrSelect(shop, objectId, result, effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
-  }
-
-  /* sem installer → portável: instala DLLs, copia pasta pro prefixo e escaneia */
-  if (resolvedPrefix) {
-    if (objectId && effectiveProtonPath && scriptVerbs.length > 0) {
-      try {
-        const wtPath = await ensureWinetricks();
-        await ProtonRecommendationService.installGameDlls(
-          objectId,
-          resolvedPrefix,
-          effectiveProtonPath,
-          scriptVerbs,
-          wtPath,
-        );
-      } catch {
-        /* DLLs não são críticas pra jogos portáteis */
-      }
-    }
-    await copyFolderToPrefix(gamePath, resolvedPrefix, (pct) => {
-      WindowManager.mainWindow?.webContents.send("on-install-progress", {
-        status: `Copiando jogo para o prefixo... ${pct}%`,
-        percent: pct,
-      });
-    });
-    const scanResult = scanPrefixForExes(resolvedPrefix);
-    if (scanResult.candidates.length > 0) {
-      return returnOrSelect(shop, objectId, { wasOpened: true, ...scanResult }, effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
-    }
-  }
-
-  /* fallback: retorna candidatos da pasta original */
+  // Fallback: escaneia pasta original
+  const { findExesInFolder } = await import("@main/helpers/find-exe-in-folder");
   const folderExes = findExesInFolder(gamePath);
   if (folderExes.candidates.length > 0) {
-    return returnOrSelect(shop, objectId, {
-      wasOpened: true,
-      candidates: folderExes.candidates,
-      suggestedDir: folderExes.suggestedDir,
-    }, effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
+    return returnOrSelect(shop, objectId, folderExes.candidates, folderExes.suggestedDir,
+      effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
   }
 
   return { wasOpened: true, candidates: [], suggestedDir: gamePath };

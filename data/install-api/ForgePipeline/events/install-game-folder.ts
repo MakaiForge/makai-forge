@@ -5,8 +5,7 @@ import { GameShop } from "@types";
 import { downloadsStore, gamesStore, storeKeys } from "@main/store";
 import { getDownloadsPath } from "@main/events/helpers/get-downloads-path";
 import { Wine } from "@main/services";
-import { installAndScan } from "../orchestrator/orchestrator";
-import type { InstallOptions } from "../orchestrator/types";
+import { MakaiTime } from "@provision/ForgePipeline/services/makai-time";
 
 interface InstallGameExeResult {
   success: boolean;
@@ -57,7 +56,6 @@ const installGameExe = async (
 
   const driveCPath = path.join(winePrefixPath, "drive_c");
 
-  /* Find a suitable executable to launch */
   let filePath: string;
   if (fs.lstatSync(sourcePath).isFile()) {
     filePath = sourcePath;
@@ -73,17 +71,12 @@ const installGameExe = async (
 
   if (!fs.existsSync(filePath)) return emptyResult;
 
-  const options: InstallOptions = {
-    gameId: objectId,
+  const result = await MakaiTime.installGame(filePath, {
     winePrefixPath,
     protonPath: game?.protonPath,
-    gameTitle: game?.title,
-    gameKey,
-    shop,
-    objectId,
-  };
-
-  const result = await installAndScan(filePath, options);
+    gameId: objectId,
+    existingExePath: game?.executablePath,
+  });
 
   const suggestedExes = result.candidates.map((c) => ({
     path: c.path,
@@ -96,7 +89,7 @@ const installGameExe = async (
     wasInstaller: suggestedExes.length > 0,
     suggestedExes,
     prefixDriveCPath: driveCPath,
-    suggestedBasePath: result.suggestedDir ?? driveCPath,
+    suggestedBasePath: result.suggested_dir ?? driveCPath,
   };
 };
 
