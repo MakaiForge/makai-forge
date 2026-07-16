@@ -31,8 +31,10 @@ _MODS_DIR = os.path.abspath(os.path.join(_LOG_DIR, ".."))
 _TOOLS_DIR = os.path.abspath(os.path.join(_LOG_DIR, "..", ".."))
 _PREFIX_PYTHON_DIR = os.path.abspath(os.path.join(_TOOLS_DIR, "prefix", "python"))
 _PREFIX_DIR = os.path.abspath(os.path.join(_TOOLS_DIR, "prefix"))
+_ROOT_DIR = os.path.abspath(os.path.join(_TOOLS_DIR, ".."))
+_API_DIR = os.path.abspath(os.path.join(_ROOT_DIR, "data", "install-api", "proton_recommended", "python"))
 
-for d in (_MODS_DIR, _TOOLS_DIR, _PREFIX_PYTHON_DIR, _PREFIX_DIR):
+for d in (_MODS_DIR, _TOOLS_DIR, _PREFIX_PYTHON_DIR, _PREFIX_DIR, _API_DIR):
     if d not in sys.path:
         sys.path.insert(0, d)
 
