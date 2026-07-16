@@ -485,18 +485,18 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
         if progress_callback:
             progress_callback(step, pct, msg)
 
-    # Se já tem executável configurado, só copiar e restaurar
+    # Se já tem executável configurado, copiar pasta + escanear
     if existing_exe_path and os.path.isfile(existing_exe_path):
         _progress("copying", 50, "Copiando jogo para o prefixo...")
-        if os.path.isdir(source_path):
-            copy_to_prefix(source_path, prefix_path)
-        else:
-            folder = os.path.dirname(source_path)
-            if os.path.isdir(folder):
-                copy_to_prefix(folder, prefix_path)
+        folder = source_path if os.path.isdir(source_path) else os.path.dirname(source_path)
+        if os.path.isdir(folder):
+            copy_to_prefix(folder, prefix_path)
+        _progress("scanning", 80, "Procurando executáveis...")
+        scan = scan_prefix_for_exes(prefix_path)
+        _progress("complete", 100, f"{len(scan['candidates'])} executável(eis) encontrado(s)")
         return {
             "success": True,
-            "candidates": [],
+            "candidates": scan["candidates"],
             "suggested_dir": os.path.dirname(existing_exe_path),
             "method": "restore",
         }
