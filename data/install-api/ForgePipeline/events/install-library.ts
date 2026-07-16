@@ -5,7 +5,7 @@ import { app } from "electron";
 import { registerEvent } from "@main/events/register-event";
 import { gamesStore, storeKeys } from "@main/store";
 import { logger, Wine } from "@main/services";
-import { get7zPath } from "@mods/play/sevenz";
+import { get7zPath } from "@game-launcher/play/sevenz";
 import type { GameShop } from "@types";
 
 export const LIBRARIES = {

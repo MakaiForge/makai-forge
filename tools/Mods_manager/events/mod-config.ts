@@ -11,7 +11,7 @@ import { defaultStagingDir, defaultPrefixDir } from "@mods/services/steam-librar
 import { checkPrefixHealth, autoFixPrefix } from "@mods/services/health-check";
 import { setBridgeContext, getBridgeContext, clearBridgeContext } from "@mods/services/bridge-context";
 import { expandHome } from "@mods/services/path-utils";
-import { logPlay } from "@mods/play/logger";
+import { logPlay } from "@game-launcher/play/logger";
 import fs from "node:fs";
 import path from "node:path";
 

@@ -3,7 +3,7 @@ import path from "node:path";
 import { registerEvent } from "@main/events/register-event";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { ModStorageService } from "@main/services";
-import { logPlay } from "@mods/play/logger";
+import { logPlay } from "@game-launcher/play/logger";
 import { gameDllCatalog } from "../services/game-dlls-service";
 
 type ModGameConfig = {

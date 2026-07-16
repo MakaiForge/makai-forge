@@ -53,7 +53,7 @@ import "@mods/events/mod-run-wine-tool";
 import "@mods/events/mod-prefix-rpc";
 import "@mods/events/mod-switch-proton";
 import "@mods/events/framework-install";
-import "@mods/play";
+import "@game-launcher/play";
 import { registerChromeBrowserEvents } from "./chrome-browser";
 
 registerChromeBrowserEvents();

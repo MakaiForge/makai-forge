@@ -27,6 +27,10 @@ from datetime import datetime, timezone
 
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.log")
 
+_TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if _TOOLS_DIR not in sys.path:
+    sys.path.insert(0, _TOOLS_DIR)
+
 
 def log_msg(*args):
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -280,7 +284,7 @@ def handle_container_run_installer(params: dict):
 
 @register("detect_installer_type")
 def handle_detect_installer_type(params: dict):
-    from core.game_install import detect_installer_type
+    from game_launcher.game_install import detect_installer_type
     source_path = params.get("source_path") if isinstance(params, dict) else None
     if not source_path:
         raise RpcError("invalid_params", "source_path required")
@@ -289,7 +293,7 @@ def handle_detect_installer_type(params: dict):
 
 @register("copy_to_prefix")
 def handle_copy_to_prefix(params: dict):
-    from core.game_install import copy_to_prefix
+    from game_launcher.game_install import copy_to_prefix
     source_path = params.get("source_path") if isinstance(params, dict) else None
     prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
     if not source_path or not prefix_path:
@@ -299,7 +303,7 @@ def handle_copy_to_prefix(params: dict):
 
 @register("scan_prefix_for_exes")
 def handle_scan_prefix_for_exes(params: dict):
-    from core.game_install import scan_prefix_for_exes
+    from game_launcher.game_install import scan_prefix_for_exes
     prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
     if not prefix_path:
         raise RpcError("invalid_params", "prefix_path required")
@@ -308,7 +312,7 @@ def handle_scan_prefix_for_exes(params: dict):
 
 @register("snapshot_prefix")
 def handle_snapshot_prefix(params: dict):
-    from core.game_install import snapshot_prefix
+    from game_launcher.game_install import snapshot_prefix
     prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
     if not prefix_path:
         raise RpcError("invalid_params", "prefix_path required")
@@ -317,7 +321,7 @@ def handle_snapshot_prefix(params: dict):
 
 @register("find_new_executables")
 def handle_find_new_executables(params: dict):
-    from core.game_install import find_new_executables
+    from game_launcher.game_install import find_new_executables
     before = params.get("before") if isinstance(params, dict) else None
     after = params.get("after") if isinstance(params, dict) else None
     if before is None or after is None:
@@ -328,7 +332,7 @@ def handle_find_new_executables(params: dict):
 @register("install_game")
 def handle_install_game(params: dict):
     """Fluxo completo de instalação de jogo (portátil ou instalador)."""
-    from core.game_install import install_game
+    from game_launcher.game_install import install_game
     source_path = params.get("source_path") if isinstance(params, dict) else None
     prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
     proton_path = params.get("proton_path") if isinstance(params, dict) else None

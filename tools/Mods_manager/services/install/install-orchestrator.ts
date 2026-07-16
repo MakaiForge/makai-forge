@@ -26,12 +26,12 @@ import { checkOverwrite } from "./overwrite-check";
 import { deploy } from "../mod-deploy/core";
 import { mkInvKey, mkMlKey } from "../storage-keys";
 import { scanEnvironment } from "../environment-scanner";
-import { ensurePrefix } from "../../play/steps/03-prefix";
-import { applyGameConfigs } from "../../play/steps/04-configs";
-import { ensureGameFrameworks } from "../../play/steps/05-frameworks";
-import { ensureSkse } from "../../play/steps/06-skse";
+import { ensurePrefix } from "@game-launcher/play/steps/03-prefix";
+import { applyGameConfigs } from "@game-launcher/play/steps/04-configs";
+import { ensureGameFrameworks } from "@game-launcher/play/steps/05-frameworks";
+import { ensureSkse } from "@game-launcher/play/steps/06-skse";
 import { bridgePrefixToSteam } from "../steam-prefix-bridge";
-import type { SendProgress } from "../../play/types";
+import type { SendProgress } from "@game-launcher/play/types";
 import type {
   InstallStage,
   InstallProgress,

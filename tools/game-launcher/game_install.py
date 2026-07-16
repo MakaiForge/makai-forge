@@ -1,5 +1,5 @@
 """
-core/game_install.py — Instalação de jogos (portátil ou instalador).
+tools/game-launcher/game_install.py — Instalação de jogos (portátil ou instalador).
 
 Substitui a lógica que estava em TypeScript em:
   - data/install-api/ForgePipeline/events/open-game/download-installer.ts

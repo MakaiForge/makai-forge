@@ -32,7 +32,8 @@
       "@shared": ["src/shared/index.ts"],
       "@emulators/*": ["tools/emulators/*"],
       "@provision/*": ["data/install-api/*"],
-      "@proton/*": ["tools/Mods_manager/proton-tools/*"]
+      "@proton/*": ["tools/Mods_manager/proton-tools/*"],
+"@game-launcher/*": ["tools/game-launcher/*"]
     }
   }
 }

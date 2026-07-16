@@ -4,7 +4,7 @@ import os from "node:os";
 import { registerEvent } from "@main/events/register-event";
 import { ModStorageService } from "@main/services";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
-import { logPlay } from "@mods/play/logger";
+import { logPlay } from "@game-launcher/play/logger";
 import { gameDllCatalog } from "../services/game-dlls-service";
 
 type ModGameConfig = {
