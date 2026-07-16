@@ -49,6 +49,7 @@ export async function setupPrefix(
       proton_path: protonPath,
       prefix_path: winePrefixPath,
       auto_dlls: false,
+      game_path: "",
     })
     const actual = resolveActualPrefix(winePrefixPath)
     ensurePrefixMarkers(actual)

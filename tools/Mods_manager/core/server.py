@@ -414,6 +414,7 @@ def handle_create_prefix(params: dict):
     prefix_path = params.get("prefix_path")
     auto_dlls = params.get("auto_dlls", True)
     extra_verbs = params.get("extra_verbs")
+    game_path = params.get("game_path", "")
 
     import sys as _sys
     _prefix_lib = os.path.join(
@@ -422,6 +423,16 @@ def handle_create_prefix(params: dict):
     )
     if _prefix_lib not in _sys.path:
         _sys.path.insert(0, _prefix_lib)
+
+    if prefix_path:
+        if prefix_path.rstrip("/").endswith("/pfx"):
+            compat_data_path = os.path.dirname(prefix_path.rstrip("/"))
+        else:
+            compat_data_path = os.path.dirname(prefix_path)
+        os.environ.setdefault("STEAM_COMPAT_DATA_PATH", compat_data_path)
+        os.environ.setdefault("WINEPREFIX", prefix_path)
+    if game_path:
+        os.environ.setdefault("STEAM_COMPAT_INSTALL_PATH", game_path)
     from prefix.core import create_prefix as cp
     return cp(
         game_id=str(game_id),
