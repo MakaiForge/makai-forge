@@ -472,6 +472,13 @@ export function findToolByFolder(folderName: string): ProtonTool | undefined {
     if (prefix.length > 0 && folderLower.startsWith(prefix)) {
       return tool;
     }
+    if (prefix.length > 0) {
+      const prefixNoHyphen = prefix.replace(/-/g, "");
+      const folderNoHyphen = folderLower.replace(/-/g, "");
+      if (prefixNoHyphen.length > 0 && folderNoHyphen.startsWith(prefixNoHyphen)) {
+        return tool;
+      }
+    }
   }
 
   return undefined;
