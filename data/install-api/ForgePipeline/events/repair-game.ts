@@ -1,6 +1,6 @@
 import { registerEvent } from "@main/events/register-event";
 import { gamesStore, storeKeys } from "@main/store";
-import { MakaiTime } from "@provision/ForgePipeline/services/makai-time";
+import { installGame } from "@game-launcher/install/install-game";
 import { setupPrefix } from "@provision/ForgePipeline/orchestrator/prefix-setup";
 import type { GameShop } from "@types";
 import { app, dialog } from "electron";
@@ -232,8 +232,8 @@ export async function repairGame(
   }
 
   sendLog("Instalando jogo...");
-  const installResult = await MakaiTime.installGame(installerPath, {
-    winePrefixPath: game.winePrefixPath,
+  const installResult = await installGame(installerPath, {
+    prefixPath: game.winePrefixPath!,
     protonPath: resolved.protonPath,
     gameId: objectId,
     existingExePath: game.executablePath,

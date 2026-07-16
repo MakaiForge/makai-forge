@@ -2,8 +2,8 @@ import type { GameShop, Game } from "@types";
 import { gamesStore, storeKeys } from "@main/store";
 import { launchGame } from "@main/helpers";
 import { WindowManager } from "@main/services";
-import { MakaiTime } from "@provision/ForgePipeline/services/makai-time";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
+import { installGame } from "@game-launcher/install/install-game";
 import { sendProgress } from "./send-progress";
 import { ensureProtonAvailable } from "./ensure-proton";
 import { showExecutableSelect } from "./handle-prefix";
@@ -86,8 +86,8 @@ export async function openGame(
   }
 
   sendProgress("installing", "Instalando/configurando jogo...");
-  const installResult = await MakaiTime.installGame(sourcePath, {
-    winePrefixPath: game.winePrefixPath,
+  const installResult = await installGame(sourcePath, {
+    prefixPath: game.winePrefixPath!,
     protonPath: protonPathFinal,
     gameId: objectId,
     existingExePath: game.executablePath,

@@ -7,12 +7,12 @@ import { registerEvent } from "@main/events/register-event";
 import { downloadsStore, gamesStore, storeKeys } from "@main/store";
 import { GameShop } from "@types";
 import { Wine, WindowManager } from "@main/services";
-import { MakaiTime } from "@provision/ForgePipeline/services/makai-time";
 import { setupPrefix, resolveActualPrefix } from "../orchestrator/prefix-setup";
 import { ProtonRecommendationService } from "@provision/proton_recommended/services/proton-recommendation";
 import { ensureWinetricks } from "@provision/ensure-Makaitricks";
 import { debugLog } from "@provision/debug-log";
 import type { InstallResult } from "../orchestrator/types";
+import { installGame } from "@game-launcher/install/install-game";
 
 async function findGameFolder(gameTitle: string | null): Promise<string | null> {
   const dlPath = await getDownloadsPath();
@@ -128,9 +128,9 @@ export const openGameInstaller = async (
           await ProtonRecommendationService.installGameDlls(objectId, resolvedPrefix, effectiveProtonPath!, scriptVerbs, wtPath);
         } catch { /* DLLs não críticas */ }
       }
-      const result = await MakaiTime.installGame(gamePath, {
-        winePrefixPath: effectiveWinePrefixPath,
-        protonPath: effectiveProtonPath,
+      const result = await installGame(gamePath, {
+        prefixPath: effectiveWinePrefixPath!,
+        protonPath: effectiveProtonPath!,
         gameId: objectId,
         existingExePath,
       });
@@ -151,10 +151,10 @@ export const openGameInstaller = async (
     } catch { /* DLLs não críticas */ }
   }
 
-  // Única chamada ao Python: cobre installer, portable, extract_only
-  const result = await MakaiTime.installGame(gamePath, {
-    winePrefixPath: effectiveWinePrefixPath,
-    protonPath: effectiveProtonPath,
+  // Chamada direta ao TypeScript: cobre installer, portable, extract_only
+  const result = await installGame(gamePath, {
+    prefixPath: effectiveWinePrefixPath!,
+    protonPath: effectiveProtonPath!,
     gameId: objectId,
     existingExePath,
   });

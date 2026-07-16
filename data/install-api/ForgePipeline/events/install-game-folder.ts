@@ -5,7 +5,7 @@ import { GameShop } from "@types";
 import { downloadsStore, gamesStore, storeKeys } from "@main/store";
 import { getDownloadsPath } from "@main/events/helpers/get-downloads-path";
 import { Wine } from "@main/services";
-import { MakaiTime } from "@provision/ForgePipeline/services/makai-time";
+import { installGame } from "@game-launcher/install/install-game";
 
 interface InstallGameExeResult {
   success: boolean;
@@ -71,9 +71,9 @@ const installGameExe = async (
 
   if (!fs.existsSync(filePath)) return emptyResult;
 
-  const result = await MakaiTime.installGame(filePath, {
-    winePrefixPath,
-    protonPath: game?.protonPath,
+  const result = await installGame(filePath, {
+    prefixPath: winePrefixPath,
+    protonPath: game?.protonPath ?? "",
     gameId: objectId,
     existingExePath: game?.executablePath,
   });
