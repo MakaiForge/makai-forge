@@ -4,16 +4,12 @@ import { spawn } from "node:child_process"
 import type { LaunchOptions, LaunchResult } from "./types"
 
 function getMakaiTimePrefixDir(): string {
-  return path.resolve(__dirname, "..", "..", "..", "prefix")
+  return path.resolve(__dirname, "..", "..", "tools", "prefix")
 }
 
 function getPythonBin(): string {
   if (process.env.PYTHON_PATH) return process.env.PYTHON_PATH
-  const fromDev = path.resolve(__dirname, "..", "..", "venv", "bin", "python3")
-  if (fs.existsSync(fromDev)) return fromDev
-  const fromBuild = path.resolve(__dirname, "..", "..", "tools", "venv", "bin", "python3")
-  if (fs.existsSync(fromBuild)) return fromBuild
-  throw new Error("tools/venv/bin/python3 não encontrado")
+  return path.resolve(__dirname, "..", "..", "tools", "venv", "bin", "python3")
 }
 
 export async function launchGame(options: LaunchOptions): Promise<LaunchResult> {
