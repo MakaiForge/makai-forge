@@ -25,9 +25,7 @@ catalogo.db
 proton_data.db
 
 # Rust build artifacts
-tools/native/**/target/
 native/**/target/
-protonforge-native/**/target/
 
 # Python RPC frozen artifacts
 protonforge-python-rpc/lib/

@@ -118,9 +118,7 @@ export class NativeAddon {
 
     return path.join(
       app.getAppPath(),
-      "tools",
       "native",
-      "protonforge-native",
       "protonforge-native.node"
     );
   }

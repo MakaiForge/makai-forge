@@ -11,12 +11,6 @@ import sys
 import os
 import json
 
-# Ensure prefix module is importable
-_script_dir = os.path.dirname(os.path.abspath(__file__))
-if _script_dir not in sys.path:
-    sys.path.insert(0, _script_dir)
-
-
 def cmd_create_prefix(args: list[str]) -> None:
     from prefix.core import create_prefix
 

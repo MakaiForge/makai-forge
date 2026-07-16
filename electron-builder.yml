@@ -5,7 +5,8 @@ directories:
 extraResources:
   - ludusavi
   - protonforge-python-rpc
-  - protonforge-native
+  - from: native/protonforge-native.node
+    to: protonforge-native/protonforge-native.node
   - seeds
   - from: resources/achievement.wav
   - from: resources/pirate.json
@@ -16,7 +17,6 @@ files:
   - "!**/.vscode/*"
   - "!src/*"
   - "!native/protonforge-native/target"
-  - "!native/protonforge-native/target/**"
   - "!electron.vite.config.{js,ts,mjs,cjs}"
   - "!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}"
   - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"

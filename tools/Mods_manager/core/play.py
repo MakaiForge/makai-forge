@@ -84,10 +84,6 @@ def _step_proton(proton_version: str, game_path: str, steam_app_id: str) -> str:
 
 def _step_prefix(prefix_path: str, proton_path: str, game_id: str, steam_app_id: str):
     """Garante que o prefixo existe e é válido. Cria se necessário."""
-    import sys as _sys
-    _prefix_lib = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "prefix", "python")
-    if _prefix_lib not in _sys.path:
-        _sys.path.insert(0, _prefix_lib)
     from prefix.core import prefix_exists, create_prefix
 
     if prefix_exists(prefix_path):

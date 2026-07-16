@@ -1,6 +1,6 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
-  "include": ["../electron.vite.config.*", "../src/main/**/*", "../src/preload/**/*", "../src/locales/index.ts", "../src/shared/**/*", "../src/types/**/*", "../src/big-picture/vite-scope-big-picture-css.ts", "../tools/Mods_manager/games/**/*", "../tools/Mods_manager/events/**/*", "../tools/Mods_manager/services/**/*", "../tools/Mods_manager/play/**/*", "../tools/proton-tools/main/**/*", "../tools/prefix/**/*", "../tools/emulators/**/*"],
+  "include": ["../electron.vite.config.*", "../src/main/**/*", "../src/preload/**/*", "../src/locales/index.ts", "../src/shared/**/*", "../src/types/**/*", "../src/big-picture/vite-scope-big-picture-css.ts", "../tools/Mods_manager/games/**/*", "../tools/Mods_manager/events/**/*", "../tools/Mods_manager/services/**/*", "../tools/Mods_manager/play/**/*", "../tools/Mods_manager/proton-tools/main/**/*", "../tools/prefix/**/*", "../tools/emulators/**/*"],
   "compilerOptions": {
     "module": "ESNext",
     "composite": true,
@@ -22,7 +22,7 @@
       "@emulators/*": ["tools/emulators/*"],
       "@provision/*": ["data/install-api/*"],
       "@bootstrap/*": ["data/Bootstrap/*"],
-"@proton/*": ["tools/proton-tools/*"],
+"@proton/*": ["tools/Mods_manager/proton-tools/*"],
       "@prefix/*": ["tools/prefix/*"]
     }
   }

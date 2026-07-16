@@ -18,7 +18,7 @@ const cargoTargetDir = path.join(
   "protonforge-native",
   "target"
 );
-const outputDir = path.join(projectRoot, "protonforge-native");
+const outputDir = path.join(projectRoot, "native");
 const outputNodePath = path.join(outputDir, "protonforge-native.node");
 
 const sourceLibraryNameByPlatform = {

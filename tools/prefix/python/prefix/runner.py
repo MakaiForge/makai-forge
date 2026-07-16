@@ -11,10 +11,20 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from .container import build_bwrap_cmd
+from makai_time.makai_time import build_bwrap_cmd
 
 STEAM_RUNTIME_DIR = os.path.expanduser("~/.local/share/makaiforge/steamrt4")
 USE_CUSTOM_CONTAINER = True  # True = bwrap, False = _v2-entry-point
+
+
+def _find_runtime_root() -> Path | None:
+    rt = Path(STEAM_RUNTIME_DIR)
+    if not rt.is_dir():
+        return None
+    for p in sorted(rt.iterdir()):
+        if p.is_dir() and p.name.startswith("steamrt"):
+            return p / "files"
+    return None
 
 
 def _find_steam_runtime() -> str | None:
@@ -30,20 +40,12 @@ def run_proton_command_for_game(
     use_umu: bool = False,
     env_override: Optional[dict[str, str]] = None,
 ) -> Optional[int]:
-    """
-    Run a command inside a game's Proton context.
-
-    Builds environment from os.environ + env_override.
-    Sets defaults for STEAM_COMPAT_* vars only if not already provided.
-    Uses managed Steam Runtime if available and requested.
-    """
     run_env = os.environ.copy()
     if env_override:
         run_env.update(env_override)
 
     proton = Path(proton_path)
 
-    # Only set defaults if caller didn't provide them in env_override
     run_env.setdefault("STEAM_COMPAT_DATA_PATH", "")
     run_env.setdefault("STEAM_COMPAT_CLIENT_INSTALL_PATH", str(proton.parent))
 
@@ -59,13 +61,14 @@ def run_proton_command_for_game(
 
         if USE_CUSTOM_CONTAINER:
             try:
-                from .container import _find_runtime_root
                 rt = _find_runtime_root()
-                if rt:
+                prefix_path = run_env.get("WINEPREFIX") or run_env.get("STEAM_COMPAT_DATA_PATH") or ""
+                if rt and prefix_path:
                     cmd = build_bwrap_cmd(
                         [str(proton), "run"] + command,
                         proton_path=str(proton),
-                        env_extra=extra,
+                        prefix_path=prefix_path,
+                        env_vars=extra,
                     )
                 else:
                     umu = shutil.which("umu-run")

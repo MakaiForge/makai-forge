@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "makai-forge-backend"
+version = "0.1.0"
+description = "Makai Forge Python Backend — RPC server, game detection, install, and play"
+requires-python = ">=3.10"
+
+[project.scripts]
+makai-rpc = "core.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*"]

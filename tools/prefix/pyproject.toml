@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "makai-time"
+version = "0.1.0"
+description = "Makai Time Container Runtime — bwrap + steamrt4 + GPU/audio/display"
+requires-python = ">=3.10"
+
+[project.scripts]
+makai-time = "makai_time.makai_time:cli"
+
+[tool.setuptools.packages.find]
+where = [".", "python"]
+include = ["makai_time*", "prefix*"]

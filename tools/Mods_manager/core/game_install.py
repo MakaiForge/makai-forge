@@ -54,28 +54,39 @@ def detect_installer_type(source_path: str) -> dict:
 
     Returns:
         is_installer: bool
-        installer_path: str | None  — caminho do .exe instalador (se aplicável)
-        source_path: str             — caminho original
+        installer_path: str | None
+        source_path: str
+        error: str | None
+        exe_count: int          — quantos .exe na pasta (se portátil)
+        total_files: int        — arquivos totais (se portátil)
     """
     source_path = os.path.abspath(source_path)
 
     if not os.path.exists(source_path):
         return {"is_installer": False, "installer_path": None, "source_path": source_path,
-                "error": "source_path does not exist"}
+                "error": "source_path does not exist", "exe_count": 0, "total_files": 0}
 
     # Arquivo único (.exe/.msi) → sempre instalador
     if os.path.isfile(source_path):
         ext = os.path.splitext(source_path)[1].lower()
         if ext in (".exe", ".msi"):
-            return {"is_installer": True, "installer_path": source_path, "source_path": source_path}
-        return {"is_installer": False, "installer_path": None, "source_path": source_path}
+            return {"is_installer": True, "installer_path": source_path, "source_path": source_path,
+                    "exe_count": 0, "total_files": 0}
+        return {"is_installer": False, "installer_path": None, "source_path": source_path,
+                "exe_count": 0, "total_files": 0}
 
     # Pasta → procurar .exe com nome de instalador
     installer = _find_installer_in_folder(source_path)
     if installer:
-        return {"is_installer": True, "installer_path": installer, "source_path": source_path}
+        return {"is_installer": True, "installer_path": installer, "source_path": source_path,
+                "exe_count": 0, "total_files": 0}
 
-    return {"is_installer": False, "installer_path": None, "source_path": source_path}
+    # Portátil — coletar estatísticas para validação
+    all_files = _walk_dir(source_path)
+    exe_count = sum(1 for f in all_files if f.lower().endswith(".exe"))
+
+    return {"is_installer": False, "installer_path": None, "source_path": source_path,
+            "error": None, "exe_count": exe_count, "total_files": len(all_files)}
 
 
 # ─── copy_to_prefix ─────────────────────────────────────────────
@@ -125,7 +136,8 @@ def _file_sha256(file_path: str) -> str | None:
         return None
 
 
-def _compute_hashes(files: list[str], base_path: str) -> dict[str, str]:
+def _compute_hashes(files: list[str], base_path: str,
+                    progress_callback=None) -> dict[str, str]:
     """Calcula SHA256 de uma lista de arquivos, em lotes."""
     hashes: dict[str, str] = {}
     batch_size = 20
@@ -138,6 +150,8 @@ def _compute_hashes(files: list[str], base_path: str) -> dict[str, str]:
             h = _file_sha256(fp)
             if h:
                 hashes[rel] = h
+        if progress_callback and total > 0:
+            progress_callback(max(1, min(99, int((i + batch_size) / total * 100))))
     return hashes
 
 
@@ -172,6 +186,10 @@ def copy_to_prefix(source_path: str, prefix_path: str,
         return {"success": True, "dest_path": dest_path, "files_count": 0,
                 "hashes_ok": True}
 
+    if total > 50000:
+        return {"success": False, "error": f"Pasta com {total} arquivos parece não ser um jogo",
+                "dest_path": None, "files_count": total}
+
     # SHA256 pré-cópia
     if progress_callback:
         progress_callback(5)
@@ -192,7 +210,7 @@ def copy_to_prefix(source_path: str, prefix_path: str,
                 pass
         copied += len(batch)
         if progress_callback:
-            pct = min(99, int(copied / total * 100))
+            pct = max(1, min(99, int(copied / total * 100)))
             progress_callback(pct)
 
     # Verificação pós-cópia: contagem
@@ -568,8 +586,22 @@ def install_game(source_path: str, prefix_path: str, proton_path: str,
     # Portátil: copiar pasta + scan
     _progress("copying", 30, "Copiando jogo portátil para o prefixo...")
 
-    if not os.path.isdir(source_path):
+    # Validações de segurança
+    if detection.get("exe_count", 0) == 0 and detection.get("total_files", 0) > 0:
+        _progress("copying", 30, "Aviso: nenhum .exe encontrado na pasta, copiando mesmo assim...")
+    if detection.get("total_files", 0) > 5000:
+        _progress("copying", 30, "Aviso: pasta com muitos arquivos, pode demorar...")
+    if detection.get("total_files", 0) > 50000:
+        return {"success": False, "candidates": [], "suggested_dir": drive_c,
+                "method": "portable",
+                "error": f"Pasta muito grande ({detection['total_files']} arquivos). Selecione a pasta do jogo diretamente."}
+
+    if os.path.isfile(source_path):
         source_path = os.path.dirname(source_path)
+    if not os.path.isdir(source_path):
+        return {"success": False, "candidates": [], "suggested_dir": drive_c,
+                "method": "portable",
+                "error": f"source_path não encontrado: {source_path}"}
 
     copy_result = copy_to_prefix(source_path, prefix_path, lambda pct: (
         _progress("copying", 30 + int(pct * 0.4), f"Copiando... {pct}%")

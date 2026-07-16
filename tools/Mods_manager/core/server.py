@@ -25,19 +25,6 @@ import traceback
 import threading
 from datetime import datetime, timezone
 
-# Garante que os paths de importação estão corretos
-_this_dir = os.path.dirname(os.path.abspath(__file__))
-_mods_manager_root = os.path.dirname(_this_dir)          # Mods_manager/
-_tools_root = os.path.dirname(_mods_manager_root)        # tools/
-for _p in [
-    _mods_manager_root,
-    os.path.join(_tools_root, "python-rpc", "protonforge-api"),
-    os.path.join(_tools_root, "..", "data", "install-api", "proton_recommended", "python"),
-]:
-    _normalized = os.path.normpath(os.path.abspath(_p))
-    if _normalized not in sys.path:
-        sys.path.insert(0, _normalized)
-
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.log")
 
 
@@ -493,14 +480,6 @@ def handle_create_prefix(params: dict):
     extra_verbs = params.get("extra_verbs")
     game_path = params.get("game_path", "")
 
-    import sys as _sys
-    _prefix_lib = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "..", "prefix", "python",
-    )
-    if _prefix_lib not in _sys.path:
-        _sys.path.insert(0, _prefix_lib)
-
     if prefix_path:
         os.environ.setdefault("STEAM_COMPAT_DATA_PATH", prefix_path)
         os.environ.setdefault("WINEPREFIX", prefix_path)
@@ -544,13 +523,6 @@ def handle_delete_prefix(params: dict):
     prefix_path = params.get("prefix_path")
     if not prefix_path:
         raise RpcError("missing_param", "prefix_path is required")
-    import sys as _sys
-    _prefix_lib = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "..", "prefix", "python",
-    )
-    if _prefix_lib not in _sys.path:
-        _sys.path.insert(0, _prefix_lib)
     from prefix.core import delete_prefix
     return {"success": delete_prefix(str(prefix_path))}
 
@@ -560,13 +532,6 @@ def handle_clean_prefix(params: dict):
     prefix_path = params.get("prefix_path")
     if not prefix_path:
         raise RpcError("missing_param", "prefix_path is required")
-    import sys as _sys
-    _prefix_lib = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "..", "prefix", "python",
-    )
-    if _prefix_lib not in _sys.path:
-        _sys.path.insert(0, _prefix_lib)
     from prefix.core import clean_prefix
     return {"success": clean_prefix(str(prefix_path))}
 
@@ -991,12 +956,6 @@ def handle_bridge_command(params: dict):
     cmd = params.get("cmd")
     if not cmd:
         raise RpcError("missing_param", "cmd is required")
-    bridge_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "..", "..", "data", "install-api", "proton_recommended", "python", "bridge",
-    )
-    if bridge_dir not in sys.path:
-        sys.path.insert(0, bridge_dir)
     configs = {}
     config_dir = os.path.join(os.path.expanduser("~"), ".config", "ProtonForgeMods", "games")
     if os.path.isdir(config_dir):
@@ -1094,26 +1053,12 @@ def handle_launch_native_tool(params: dict):
 
 @register("gpu_info")
 def handle_gpu_info(params: dict):
-    _prefix_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "prefix",
-    )
-    import sys as _sys
-    if _prefix_dir not in _sys.path:
-        _sys.path.insert(0, _prefix_dir)
     from makai_time.core.gpu import info
     return info()
 
 
 @register("sync_info")
 def handle_sync_info(params: dict):
-    _prefix_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "prefix",
-    )
-    import sys as _sys
-    if _prefix_dir not in _sys.path:
-        _sys.path.insert(0, _prefix_dir)
     from makai_time.core.sync import info
     return info()
 
