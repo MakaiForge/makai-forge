@@ -80,7 +80,18 @@ export async function installGame(
   // If already has configured exe, copy folder + scan
   if (existingExePath && fs.existsSync(existingExePath)) {
     progress("copying", 50, "Copiando jogo para o prefixo...")
-    const folder = fs.statSync(absSource).isDirectory()
+    const sourceStat = fs.statSync(absSource, { throwIfNoEntry: false })
+    if (!sourceStat) {
+      progress("error", 45, "Diretório fonte não encontrado")
+      return {
+        success: false,
+        candidates: [],
+        suggested_dir: driveC,
+        method: "restore",
+        error: `Diretório não encontrado: ${absSource}`,
+      }
+    }
+    const folder = sourceStat.isDirectory()
       ? absSource
       : path.dirname(absSource)
     if (fs.statSync(folder, { throwIfNoEntry: false })?.isDirectory()) {
@@ -149,7 +160,8 @@ export async function installGame(
 
     // Fallback: copy game folder to prefix
     progress("copying", 80, "Nenhum executável encontrado. Copiando pasta...")
-    const folderPath = fs.statSync(absSource).isDirectory()
+    const fallbackStat = fs.statSync(absSource, { throwIfNoEntry: false })
+    const folderPath = fallbackStat?.isDirectory()
       ? absSource
       : path.dirname(absSource)
 
@@ -200,17 +212,18 @@ export async function installGame(
   }
 
   let folderToCopy = absSource
-  if (fs.statSync(absSource).isFile()) {
-    folderToCopy = path.dirname(absSource)
-  }
-  if (!fs.existsSync(folderToCopy)) {
+  const portableStat = fs.statSync(absSource, { throwIfNoEntry: false })
+  if (!portableStat) {
     return {
       success: false,
       candidates: [],
       suggested_dir: driveC,
       method: "portable",
-      error: `source_path não encontrado: ${folderToCopy}`,
+      error: `source_path não encontrado: ${absSource}`,
     }
+  }
+  if (portableStat.isFile()) {
+    folderToCopy = path.dirname(absSource)
   }
 
   const copyResult = await copyToPrefix(folderToCopy, absPrefix, (pct) => {

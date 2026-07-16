@@ -85,6 +85,16 @@ export async function openGame(
     return;
   }
 
+  // Se o diretório fonte não existe, o jogo já foi preparado pelo sistema antigo
+  // — pula instalação e tenta lançar direto
+  if (!fs.existsSync(sourcePath) && fs.existsSync(game.executablePath)) {
+    sendProgress("complete", "Jogo pronto (instalação anterior)");
+    await gamesStore.put(gameKey, { ...game, executablePath: game.executablePath });
+    await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
+    WindowManager.closeGameLauncherWindow();
+    return;
+  }
+
   sendProgress("installing", "Instalando/configurando jogo...");
   const installResult = await installGame(sourcePath, {
     prefixPath: game.winePrefixPath!,
