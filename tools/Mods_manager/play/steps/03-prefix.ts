@@ -1,10 +1,9 @@
 import path from "node:path";
 import fs from "node:fs";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { logger } from "@main/services";
 import { getGameModule } from "@games/registry";
 import { ensurePrefixDir } from "@prefix/core/validate";
-import { findSteamClientPath } from "@prefix/core/steam-paths";
-import { runPythonCommand } from "../python";
 import type { SendProgress } from "../types";
 
 export interface PrefixResult {
@@ -38,7 +37,6 @@ function _ensureTrackedFiles(compatDataPath: string) {
 }
 
 function ensureDosDevices(prefixPath: string) {
-  // Check both root and pfx/ — Proton expects dosdevices at the prefix it uses
   const candidates = [prefixPath, path.join(prefixPath, "pfx")];
   for (const dir of candidates) {
     if (!fs.existsSync(path.join(dir, "drive_c"))) continue;
@@ -84,89 +82,71 @@ export async function ensurePrefix(
   _libraryPath: string | undefined,
   send: SendProgress,
 ): Promise<PrefixResult> {
-  send("prefix", "🔧 Verificando prefixo Wine/Proton...", "working");
+  send("prefix", "Verificando prefixo Wine/Proton...", "working");
 
-  // Derive compatDataPath: for custom prefixes (not inside Steam compatdata),
-  // use the parent directory of the prefix path.
   const isSteamCompatPrefix = prefixPath.includes(path.sep + "compatdata" + path.sep);
   let compatDataPath: string;
   if (isSteamCompatPrefix) {
-    // Standard Steam compatdata layout
     if (path.basename(prefixPath) === "pfx") {
       compatDataPath = path.dirname(prefixPath);
     } else {
       compatDataPath = prefixPath;
     }
   } else {
-    // Custom prefix: parent directory
     compatDataPath = path.dirname(prefixPath);
   }
 
-  // Check if configured prefix already exists and is valid
   const configuredPfx = resolvePrefixDir(prefixPath);
   if (configuredPfx && isValidPrefix(configuredPfx)) {
-    // Check if Proton version matches — if not, the prefix is corrupted
     const storedVersion = getStoredProtonVersion(configuredPfx);
     const currentVersion = path.basename(protonPath);
     if (storedVersion && storedVersion !== currentVersion) {
       logger.warn(`[Prefix] Proton version mismatch: stored="${storedVersion}" current="${currentVersion}" — recreating prefix`);
-      send("prefix", `⚠️ Proton mudou (${storedVersion} → ${currentVersion}). Recriando prefixo...`, "working");
+      send("prefix", `Proton mudou (${storedVersion} → ${currentVersion}). Recriando prefixo...`, "working");
       try {
         fs.rmSync(configuredPfx, { recursive: true, force: true });
       } catch (err) {
         logger.error(`[Prefix] Failed to remove old prefix: ${err}`);
       }
-      // Fall through to creation below
     } else {
       _ensureTrackedFiles(compatDataPath);
-      send("prefix", `✅ Prefixo configurado válido: ${configuredPfx}`, "done");
+      send("prefix", `Prefixo configurado válido: ${configuredPfx}`, "done");
       return { prefixPath: configuredPfx, created: false };
     }
   }
 
-  // Configured prefix exists but is incomplete, or doesn't exist yet — create/complete it.
-  // NEVER fall back to Steam compatdata: the user configured this prefix and expects mods here.
-  send("prefix", "⚙️ Prefixo incompleto ou ausente. Criando via Python...", "working");
+  send("prefix", "Prefixo incompleto ou ausente. Criando...", "working");
 
   const gameModule = getGameModule(gameId, gamePath);
   const extraVerbs = gameModule.getWinetricksComponents?.() || [];
 
-  // Call Python create-prefix
-  const result = await runPythonCommand(
-    "create-prefix",
-    [gameId, prefixPath, protonPath, ...extraVerbs],
-    {
-      WINEPREFIX: prefixPath,
-      STEAM_COMPAT_DATA_PATH: compatDataPath,
-      STEAM_COMPAT_CLIENT_INSTALL_PATH: findSteamClientPath(),
-      STEAM_COMPAT_INSTALL_PATH: gamePath,
-      ...(steamAppId ? { SteamAppId: steamAppId, SteamGameId: steamAppId } : {}),
-    },
-  );
+  try {
+    await MakaiRPC.call("create_prefix", {
+      game_id: gameId,
+      proton_path: protonPath,
+      prefix_path: prefixPath,
+      extra_verbs: extraVerbs,
+    });
 
-  if (result.success) {
     _ensureTrackedFiles(compatDataPath);
     setProtonVersion(prefixPath, protonPath);
-    // Ensure dosdevices/ exists in the resolved prefix (Proton requires it)
     ensureDosDevices(prefixPath);
-    send("prefix", "✅ Prefixo criado/validado com sucesso via Python", "done");
+    send("prefix", "Prefixo criado/validado com sucesso", "done");
+    return { prefixPath, created: true };
+  } catch (err) {
+    logger.warn(`[Prefix] RPC create_prefix failed: ${err}. Using TS fallback.`);
+    send("prefix", "RPC falhou, usando fallback TypeScript...", "working");
+
+    const pfx = ensurePrefixDir(prefixPath);
+    if (!pfx) {
+      send("prefix", "Não foi possível criar o diretório do prefixo", "error");
+      throw new Error("Cannot create prefix dir");
+    }
+
+    ensureDosDevices(pfx);
+    _ensureTrackedFiles(compatDataPath);
+    setProtonVersion(pfx, protonPath);
+    send("prefix", "Prefixo criado (fallback)", "done");
     return { prefixPath, created: true };
   }
-
-  // Fallback: try ensurePrefixDir from TS
-  logger.warn(`Python prefix creation failed: ${result.stderr}. Using TS fallback.`);
-  send("prefix", "⚠️ Python falhou, usando fallback TypeScript...", "working");
-
-  const pfx = ensurePrefixDir(prefixPath);
-  if (!pfx) {
-    send("prefix", "❌ Não foi possível criar o diretório do prefixo", "error");
-    throw new Error("Cannot create prefix dir");
-  }
-
-  ensureDosDevices(pfx);
-
-  _ensureTrackedFiles(compatDataPath);
-  setProtonVersion(pfx, protonPath);
-  send("prefix", "✅ Prefixo criado (fallback)", "done");
-  return { prefixPath, created: true };
 }

@@ -1,14 +1,7 @@
-import { spawn } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
-import { app } from "electron"
+import { MakaiRPC } from "@mods-manager/services/makai-rpc"
 import { logger } from "@main/services"
-
-export function getUmuBinaryPath(): string {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, "umu-run")
-    : path.join(__dirname, "..", "..", "resources", "binaries", "umu-run")
-}
 
 export function resolveActualPrefix(prefixPath: string): string {
   const driveC = path.join(prefixPath, "drive_c")
@@ -48,52 +41,29 @@ export async function setupPrefix(
     fs.mkdirSync(winePrefixPath, { recursive: true })
   }
 
-  const umuBinary = getUmuBinaryPath()
-  if (!fs.existsSync(umuBinary)) {
-    logger.error(`[setupPrefix] umu-run not found at ${umuBinary}`)
-    if (onLog) onLog(`umu-run não encontrado.`)
-    return false
-  }
-
   if (onLog) onLog(`Criando prefixo Wine em: ${winePrefixPath}`)
 
-  const env = {
-    ...process.env,
-    GAMEID: `umu-${gameId}`,
-    WINEPREFIX: winePrefixPath,
-    PROTONPATH: protonPath,
+  try {
+    await MakaiRPC.call("create_prefix", {
+      game_id: gameId,
+      proton_path: protonPath,
+      prefix_path: winePrefixPath,
+      auto_dlls: false,
+    })
+    const actual = resolveActualPrefix(winePrefixPath)
+    ensurePrefixMarkers(actual)
+    const valid = prefixIsValid(actual)
+    if (valid) {
+      logger.info(`[setupPrefix] Prefix created at ${actual}`)
+      if (onLog) onLog(`Prefixo criado com sucesso.`)
+    } else {
+      logger.error(`[setupPrefix] Prefix invalid at ${actual}`)
+      if (onLog) onLog(`Falha: prefixo inválido em ${actual}`)
+    }
+    return valid
+  } catch (err) {
+    logger.error(`[setupPrefix] RPC error: ${err}`)
+    if (onLog) onLog(`Erro ao criar prefixo via RPC.`)
+    return false
   }
-
-  return new Promise<boolean>((resolve) => {
-    const child = spawn(umuBinary, ["wineboot", "-u"], { env, stdio: "ignore" })
-
-    const timeout = setTimeout(() => {
-      child.kill()
-      logger.error(`[setupPrefix] Timeout after 120s`)
-      if (onLog) onLog(`Tempo limite excedido.`)
-      resolve(false)
-    }, 120_000)
-
-    child.on("exit", (code) => {
-      clearTimeout(timeout)
-      const actual = resolveActualPrefix(winePrefixPath)
-      ensurePrefixMarkers(actual)
-      const valid = prefixIsValid(actual)
-      if (valid) {
-        logger.info(`[setupPrefix] Prefix created at ${actual}`)
-        if (onLog) onLog(`Prefixo criado com sucesso.`)
-      } else {
-        logger.error(`[setupPrefix] Exit code ${code}, prefix invalid at ${actual}`)
-        if (onLog) onLog(`Falha: prefixo inválido em ${actual}`)
-      }
-      resolve(valid)
-    })
-
-    child.on("error", (err) => {
-      clearTimeout(timeout)
-      logger.error(`[setupPrefix] Spawn error: ${err.message}`)
-      if (onLog) onLog(`Erro ao executar umu-run.`)
-      resolve(false)
-    })
-  })
 }

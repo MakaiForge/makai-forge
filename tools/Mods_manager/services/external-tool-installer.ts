@@ -1,38 +1,23 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { execSync } from "node:child_process";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { logger } from "@main/services";
-import { get7zPath } from "@mods/play/sevenz";
 import type { ExternalToolDef } from "@games/_shared/types";
 
-/**
- * Base directory for all external tools: ~/.config/makai-forger/tools/
- */
 function getToolsBaseDir(): string {
   return path.join(os.homedir(), ".config", "makai-forger", "tools");
 }
 
-/**
- * Get the install directory for a specific tool of a specific game.
- * e.g. ~/.config/makai-forger/tools/skyrim/LOOT/
- */
 export function getToolInstallDir(gameId: string, toolName: string): string {
   const safeName = toolName.replace(/[\/\\]/g, "_");
   return path.join(getToolsBaseDir(), gameId, safeName);
 }
 
-/**
- * Get the tools directory for a game (all tools).
- * e.g. ~/.config/makai-forger/tools/skyrim/
- */
 export function getGameToolsDir(gameId: string): string {
   return path.join(getToolsBaseDir(), gameId);
 }
 
-/**
- * Check if an external tool is already installed.
- */
 export function isToolInstalled(gameId: string, tool: ExternalToolDef): boolean {
   const toolDir = getToolInstallDir(gameId, tool.name);
   if (tool.detector?.folder) {
@@ -44,9 +29,6 @@ export function isToolInstalled(gameId: string, tool: ExternalToolDef): boolean 
   return fs.existsSync(path.join(toolDir, tool.exeName));
 }
 
-/**
- * Resolve the real executable path for a tool.
- */
 export function resolveToolPath(gameId: string, tool: ExternalToolDef): string | null {
   const toolDir = getToolInstallDir(gameId, tool.name);
   if (tool.detector?.file) {
@@ -62,9 +44,6 @@ export function resolveToolPath(gameId: string, tool: ExternalToolDef): string |
   return null;
 }
 
-/**
- * Download and install an external tool into its game-specific directory.
- */
 export async function installTool(
   gameId: string,
   tool: ExternalToolDef,
@@ -80,25 +59,18 @@ export async function installTool(
     const ext = urlLower.endsWith(".7z") ? "7z" : urlLower.endsWith(".zip") ? "zip" : "zip";
     const archivePath = path.join(tmpDir, `tool.${ext}`);
 
-    send?.("tools", `⬇️ Baixando ${tool.name}...`, "working");
-    execSync(`curl -sL --connect-timeout 30 --max-time 300 -L "${tool.downloadUrl}" -o "${archivePath}"`, {
-      stdio: "pipe",
-      timeout: 360000,
-    });
+    send?.("tools", `Baixando ${tool.name}...`, "working");
+    await MakaiRPC.call("download_file", { url: tool.downloadUrl, dest: archivePath });
 
     if (!fs.existsSync(archivePath) || fs.statSync(archivePath).size === 0) {
-      throw new Error(`Download falhou: arquivo vazio`);
+      throw new Error("Download falhou: arquivo vazio");
     }
 
-    send?.("tools", `📦 Extraindo ${tool.name}...`, "working");
+    send?.("tools", `Extraindo ${tool.name}...`, "working");
     const extractDir = path.join(tmpDir, "extracted");
     fs.mkdirSync(extractDir, { recursive: true });
 
-    const sevenz = get7zPath();
-    execSync(`${sevenz} x "${archivePath}" -o"${extractDir}" -y`, {
-      stdio: "pipe",
-      timeout: 60000,
-    });
+    await MakaiRPC.call("extract_archive", { archive: archivePath, dest: extractDir });
 
     let sourceDir = extractDir;
     if (tool.innerFolder) {
@@ -115,31 +87,28 @@ export async function installTool(
       }
     }
 
-    send?.("tools", `📋 Instalando ${tool.name}...`, "working");
+    send?.("tools", `Instalando ${tool.name}...`, "working");
     fs.mkdirSync(toolDir, { recursive: true });
     copyRecursive(sourceDir, toolDir);
 
     const installed = isToolInstalled(gameId, tool);
     if (installed) {
-      send?.("tools", `✅ ${tool.name} instalado em ${toolDir}`, "done");
+      send?.("tools", `${tool.name} instalado em ${toolDir}`, "done");
     } else {
-      send?.("tools", `⚠️ ${tool.name} instalado mas exe não encontrado`, "done");
+      send?.("tools", `${tool.name} instalado mas exe não encontrado`, "done");
     }
 
     return installed;
   } catch (err) {
     const msg = String(err).slice(0, 200);
     logger.error(`[Tool] ${tool.name} install failed: ${msg}`);
-    send?.("tools", `❌ Falha ao instalar ${tool.name}: ${msg}`, "error");
+    send?.("tools", `Falha ao instalar ${tool.name}: ${msg}`, "error");
     return false;
   } finally {
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* skip */ }
   }
 }
 
-/**
- * Ensure all external tools with downloadUrl are installed.
- */
 export async function ensureExternalTools(
   gameId: string,
   tools: ExternalToolDef[],
@@ -156,7 +125,7 @@ export async function ensureExternalTools(
 
   for (const tool of downloadable) {
     if (isToolInstalled(gameId, tool)) {
-      send?.("tools", `✅ ${tool.name} já instalado`, "done");
+      send?.("tools", `${tool.name} já instalado`, "done");
       skipped.push(tool.name);
       continue;
     }

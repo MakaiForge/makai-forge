@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { get7zPath } from "../../play/sevenz";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -278,39 +277,26 @@ function chooseMeta(candidates: Array<{ path: string; content: string }>, pakNam
   return anchored[0];
 }
 
-function extractMetaFromPak(pakPath: string): { metaXml: string | null; fileNames: string[] } {
-  const sevenz = get7zPath();
+async function extractMetaFromPak(pakPath: string): Promise<{ metaXml: string | null; fileNames: string[] }> {
   const fileNames: string[] = [];
 
   try {
-    // List all files in the pak
-    const output = execFileSync(sevenz, ["l", "-slt", pakPath], {
-      encoding: "utf-8",
-      timeout: 30000,
-      stdio: ["pipe", "pipe", "pipe"],
+    const archiveInfo = await MakaiRPC.call<{ entries: Array<{ path: string }> }>("read_archive", {
+      archive: pakPath,
     });
 
-    // Parse file list
-    const pathRe = /^Path\s*=\s*(.+)$/gm;
-    let m;
-    while ((m = pathRe.exec(output)) !== null) {
-      const p = m[1].trim().replace(/\\/g, "/");
-      fileNames.push(p);
-    }
+    fileNames.push(...archiveInfo.entries.map(e => e.path.replace(/\\/g, "/")));
 
-    // Find meta.lsx candidates
     const metaCandidates: Array<{ path: string; content: string }> = [];
-    for (const fp of fileNames) {
+    for (const entry of archiveInfo.entries) {
+      const fp = entry.path.replace(/\\/g, "/");
       if (fp.toLowerCase().endsWith("meta.lsx")) {
         try {
-          const content = execFileSync(sevenz, ["e", "-so", pakPath, fp], {
-            encoding: "utf-8",
-            timeout: 10000,
-            stdio: ["pipe", "pipe", "pipe"],
+          const result = await MakaiRPC.call<{ content: string }>("extract_file_to_string", {
+            archive: pakPath,
+            filepath: fp,
           });
-          // Handle UTF-16 BOM
-          const clean = content.charCodeAt(0) === 0xFEFF ? content.slice(1) : content;
-          metaCandidates.push({ path: fp, content: clean });
+          metaCandidates.push({ path: fp, content: result.content });
         } catch {
           // Skip unreadable meta files
         }
@@ -358,11 +344,11 @@ export interface ScanResult {
  * Scan .pak files for all enabled mods and return { uuid → BG3ModInfo }.
  * Uses 7z to extract meta.lsx from .pak archives.
  */
-export function scanModPaks(
+export async function scanModPaks(
   stagingDir: string,
   enabledModNames: string[],
   log?: (msg: string) => void,
-): ScanResult {
+): Promise<ScanResult> {
   const modInfos = new Map<string, BG3ModInfo>();
   const noMetadata: string[] = [];
 
@@ -374,7 +360,7 @@ export function scanModPaks(
     let gotMeta = false;
 
     for (const pakPath of paks) {
-      const { metaXml, fileNames } = extractMetaFromPak(pakPath);
+      const { metaXml, fileNames } = await extractMetaFromPak(pakPath);
       if (!metaXml) continue;
 
       const info = parseMetaLsx(metaXml);
@@ -560,16 +546,16 @@ function buildXmlP6(
  * End-to-end: scan paks, resolve order, write modsettings.lsx.
  * Returns the number of mod entries written.
  */
-export function writeModsettings(
+export async function writeModsettings(
   modsettingsPath: string,
   stagingDir: string,
   enabledModNames: string[],
   patchVersion: number = 8,
   log?: (msg: string) => void,
-): number {
+): Promise<number> {
   log?.(`Scanning .pak files for mod metadata (patch ${patchVersion}) ...`);
 
-  const { modInfos, noMetadata } = scanModPaks(stagingDir, enabledModNames, log);
+  const { modInfos, noMetadata } = await scanModPaks(stagingDir, enabledModNames, log);
 
   if (modInfos.size === 0) {
     log?.("No mod metadata found — writing vanilla modsettings.lsx.");

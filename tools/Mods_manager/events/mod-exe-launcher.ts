@@ -1,5 +1,5 @@
 import { registerEvent } from "@main/events/register-event";
-import { spawn } from "node:child_process";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { app } from "electron";
 import { ModStorageService, logger } from "@main/services";
 import path from "node:path";
@@ -89,24 +89,18 @@ registerEvent("launchExternalTool", async (_event, gameId: string, toolName: str
   const gameConfig = ModStorageService.get<{ gamePath?: string }>(`game:${gameId}:config`);
 
   if (tool.useProton && gameConfig?.gamePath) {
-    const protonBin = ModStorageService.get<string>("proton_binary")
-      || path.join(app.getAppPath(), "tools", "prefix", "umu-run");
-    spawn(protonBin, [
-      "-protonpath", ModStorageService.get<string>("proton_path") || "",
-      "-waitforprocess", "-wine",
-      exePath,
-      ...tool.args.split(/\s+/).filter(Boolean),
-    ], {
-      cwd: path.dirname(exePath),
-      stdio: "ignore",
-      detached: true,
-    }).unref();
+    await MakaiRPC.call("container_run", {
+      exe_path: exePath,
+      proton_path: ModStorageService.get<string>("proton_path") || "",
+      prefix_path: ModStorageService.get<string>("proton_prefix") || "",
+      game_path: gameConfig.gamePath,
+    });
   } else {
-    spawn(exePath, tool.args.split(/\s+/).filter(Boolean), {
+    await MakaiRPC.call("launch_native_tool", {
+      exe_path: exePath,
+      args: tool.args.split(/\s+/).filter(Boolean),
       cwd: path.dirname(exePath),
-      stdio: "ignore",
-      detached: true,
-    }).unref();
+    });
   }
 
   return { ok: true, data: { launched: toolName } };

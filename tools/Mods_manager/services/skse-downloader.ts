@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { execSync } from "node:child_process";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { logger } from "@main/services";
 import { isGogGame } from "@mods/services/gog-detection";
 
@@ -67,14 +67,16 @@ export async function downloadSkse(gameId: string, gamePath: string): Promise<bo
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "skse-"));
   const archivePath = path.join(tmpDir, "skse.7z");
   try {
-    execSync(`curl -sL "${url}" -o "${archivePath}"`, { stdio: "pipe", timeout: 60000 });
-    execSync(`7z x "${archivePath}" -o"${tmpDir}" -y`, { stdio: "pipe", timeout: 30000 });
+    await MakaiRPC.call("download_file", { url, dest: archivePath });
+
+    await MakaiRPC.call("extract_archive", { archive: archivePath, dest: tmpDir });
+
     const entries = fs.readdirSync(tmpDir);
     const extractedFolder = entries.find(e => {
       const lower = e.toLowerCase();
       return (lower.startsWith("skse") || lower.startsWith("fose") || lower.startsWith("nvse") ||
-              lower.startsWith("f4se") || lower.startsWith("obse") || lower.startsWith("mwse") ||
-              lower.startsWith("sfse")) && fs.statSync(path.join(tmpDir, e)).isDirectory();
+        lower.startsWith("f4se") || lower.startsWith("obse") || lower.startsWith("mwse") ||
+        lower.startsWith("sfse")) && fs.statSync(path.join(tmpDir, e)).isDirectory();
     });
     const srcDir = extractedFolder ? path.join(tmpDir, extractedFolder) : tmpDir;
     const files = fs.readdirSync(srcDir);
@@ -82,7 +84,6 @@ export async function downloadSkse(gameId: string, gamePath: string): Promise<bo
       const src = path.join(srcDir, file);
       const dst = path.join(gamePath, file);
       fs.cpSync(src, dst, { recursive: true, force: true });
-      // Garantir que usuario pode escrever (corrige permissao 444 vinda do archive)
       try { fs.chmodSync(dst, 0o755); } catch { /* skip */ }
     }
     fs.rmSync(tmpDir, { recursive: true, force: true });

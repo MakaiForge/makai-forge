@@ -1,9 +1,8 @@
 import path from "node:path";
 import fs from "node:fs";
-import { spawn } from "node:child_process";
 import JSZip from "jszip";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { ModStorageService } from "@mods/services/mod-storage-service";
-import { get7zPath } from "../../play/sevenz";
 import { getStagingDir } from "../_shared/filemap";
 import { SKYRIM_MOD_REQUIRED_FOLDERS } from "./skyrim.constants";
 
@@ -131,58 +130,12 @@ async function extract7z(
   archivePath: string,
   stagingDir: string,
   password: string | undefined,
-  onProgress?: (stage: string, percent: number, message: string) => void,
+  _onProgress?: (stage: string, percent: number, message: string) => void,
 ): Promise<void> {
-  const args = ["x", archivePath, `-o${stagingDir}`, "-y", "-bsp1"];
-  if (password) args.push(`-p${password}`);
-
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(get7zPath(), args, {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    let timedOut = false;
-    const timeout = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-      setTimeout(() => {
-        try { child.kill("SIGKILL"); } catch { /* dead already */ }
-      }, 2000);
-      reject(new Error("Extraction timed out after 2 minutes"));
-    }, 120_000);
-
-    let stderrBuf = "";
-
-    child.stdout?.on("data", (data: Buffer) => {
-      const m = data.toString().match(/(\d+)%/);
-      if (m) onProgress?.("extracting", parseInt(m[1]), `Extraindo... (${m[1]}%)`);
-    });
-
-    child.stderr?.on("data", (data: Buffer) => {
-      stderrBuf += data.toString();
-    });
-
-    child.on("close", (code) => {
-      clearTimeout(timeout);
-      if (timedOut) return;
-
-      if (code === 0) {
-        resolve();
-      } else {
-        const stderr = stderrBuf.trim();
-        const isPassword = /wrong password|encrypted|can not open/i.test(stderr);
-        reject(new Error(isPassword
-          ? "Archive is password-protected"
-          : `7z exited with code ${code}${stderr ? `: ${stderr}` : ""}`,
-        ));
-      }
-    });
-
-    child.on("error", (err) => {
-      clearTimeout(timeout);
-      if (timedOut) return;
-      reject(new Error(`Failed to start 7z: ${err.message}`));
-    });
+  await MakaiRPC.call("extract_archive", {
+    archive: archivePath,
+    dest: stagingDir,
+    ...(password ? { password } : {}),
   });
 }
 

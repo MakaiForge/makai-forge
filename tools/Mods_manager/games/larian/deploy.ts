@@ -330,7 +330,7 @@ export async function deployBg3(
       .filter(m => m.enabled && !m.isSeparator)
       .map(m => m.name);
 
-    const modCount = writeModsettings(
+    const modCount = await writeModsettings(
       modsettingsPath,
       stagingDir,
       enabledModNames,

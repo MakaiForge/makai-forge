@@ -3,12 +3,9 @@ import path from "node:path";
 import os from "node:os";
 import { registerEvent } from "@main/events/register-event";
 import { ModStorageService } from "@main/services";
-import { ProtonForgeRPC } from "@main/services/protonforge-rpc";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { logPlay } from "@mods/play/logger";
 import { gameDllCatalog } from "../services/game-dlls-service";
-
-// Eager spawn: server.py roda no startup e grava log.txt
-ProtonForgeRPC.init();
 
 type ModGameConfig = {
   gamePath: string;
@@ -130,7 +127,7 @@ registerEvent("modCreatePrefix", async (_event, gameId: string) => {
   logPlay(gameId, "modCreatePrefix", { protonPath, prefixPath, gamePath: config.gamePath, extraVerbs: extraVerbs.join(",") });
 
   try {
-    const result = await ProtonForgeRPC.call<{
+    const result = await MakaiRPC.call<{
       success: boolean;
       prefix_path: string;
       initialized: boolean;
@@ -185,7 +182,7 @@ registerEvent("modInstallGameDlls", async (_event, gameId: string, extraVerbs?: 
   logPlay(gameId, "modInstallGameDlls", { protonPath, prefixPath, extraVerbs: (extraVerbs || []).join(",") });
 
   try {
-    const result = await ProtonForgeRPC.call<{
+    const result = await MakaiRPC.call<{
       installed: string[];
       errors: string[];
     }>("install_game_dlls", {

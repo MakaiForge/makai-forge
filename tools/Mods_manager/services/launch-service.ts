@@ -1,11 +1,10 @@
 import path from "node:path";
-import { spawn } from "node:child_process";
 import fs from "node:fs";
-import { app } from "electron";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { ModStorageService, logger } from "@main/services";
 import { getGameModule, getGameInfo } from "@games/registry";
 import { scanEnvironment } from "./environment-scanner";
-import { launchViaSteam, launchViaProton, getSteamLaunchEnv, findSteamCompatData } from "@games/_shared/launch";
+import { launchViaSteam, launchViaProton, getSteamLaunchEnv } from "@games/_shared/launch";
 import { downloadSkse } from "./skse-downloader";
 
 export type LaunchStep = "detect" | "prefix" | "dll" | "registry" | "skse" | "launch";
@@ -122,31 +121,26 @@ export async function launchGame(
     const info = getGameInfo(gameId);
 
     if (hasSkse) {
-      send("launch", `Iniciando via ${skseLoaderName}...`, "working");
+      send("launch", `Iniciando via ${skseLoaderName} via Makai Time...`, "working");
       const sksePath = path.join(env.gamePath, skseLoaderName);
-      const gameDir = path.dirname(sksePath);
-      const compatDataPath = env.steamAppId ? findSteamCompatData(env.gamePath, env.steamAppId) : null;
-      const launchPrefix = compatDataPath ? compatDataPath + "/pfx" : env.prefixPath;
-      const protonDir = env.protonPath || "";
-      const bundledUmu = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
-      const umuBin = fs.existsSync(bundledUmu) ? bundledUmu : "umu-run";
-      const launchEnv: Record<string, string> = {
-        WINEPREFIX: launchPrefix,
-        SteamAppId: env.steamAppId || "",
-        STEAM_COMPAT_DATA_PATH: compatDataPath || launchPrefix,
-        STEAM_COMPAT_INSTALL_PATH: env.gamePath,
-        GAMEID: env.steamAppId ? `umu-${env.steamAppId}` : "",
-        STORE: "steam",
-        PROTONPATH: protonDir,
-      };
-      spawn(umuBin, [sksePath], {
-        cwd: gameDir,
-        env: { ...process.env, ...launchEnv },
-        stdio: "ignore",
-        detached: true,
-      }).unref();
-      send("launch", `${info?.name || gameId} iniciado!`, "done");
-      return { success: true, method: "skse" };
+      try {
+        await MakaiRPC.call("container_run", {
+          exe_path: sksePath,
+          proton_path: env.protonPath || "",
+          prefix_path: env.prefixPath || "",
+          game_path: env.gamePath,
+          steam_app_id: env.steamAppId || null,
+          env_overrides: {
+            SteamAppId: env.steamAppId || "",
+            GAMEID: env.steamAppId ? `umu-${env.steamAppId}` : "",
+            STORE: "steam",
+          },
+        });
+        send("launch", `${info?.name || gameId} iniciado via Makai Time!`, "done");
+        return { success: true, method: "makai_time" };
+      } catch (err) {
+        send("launch", `Erro: ${String(err).slice(0, 80)}. Jogo iniciará sem SKSE.`, "error");
+      }
     }
 
     if (env.steamAppId) {

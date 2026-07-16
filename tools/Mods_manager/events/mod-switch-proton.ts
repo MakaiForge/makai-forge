@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { registerEvent } from "@main/events/register-event";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { ModStorageService } from "@main/services";
-import { ProtonForgeRPC } from "@main/services/protonforge-rpc";
 import { logPlay } from "@mods/play/logger";
 import { gameDllCatalog } from "../services/game-dlls-service";
 
@@ -86,11 +86,13 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
   }
 
   // 2. Verificar se o jogo não está rodando (wineserver ativo)
-  const { execSync } = await import("node:child_process");
   let gameRunning = false;
   try {
-    const psOut = execSync("pgrep -a wineserver 2>/dev/null || true", { encoding: "utf-8" });
-    gameRunning = psOut.trim().length > 0;
+    const psResult = await MakaiRPC.call("exec_command", {
+      command: "pgrep -a wineserver 2>/dev/null || true",
+      timeout: 5,
+    });
+    gameRunning = (psResult.stdout || "").trim().length > 0;
   } catch { /* ignore */ }
 
   if (gameRunning) {
@@ -100,8 +102,9 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
   // 3. Limpar backups anteriores deste jogo
   try {
     const oldBackups = fs.readdirSync("/tmp").filter(f => f.startsWith(`makai-forge-backup-${gameId}-`));
-    for (const old of oldBackups) {
-      try { execSync(`rm -rf "/tmp/${old}"`, { stdio: "pipe" }); } catch { /* ignore */ }
+    const pathsToDelete = oldBackups.map(f => `/tmp/${f}`);
+    if (pathsToDelete.length > 0) {
+      await MakaiRPC.call("delete_paths", { paths: pathsToDelete });
     }
   } catch { /* ignore */ }
 
@@ -113,7 +116,7 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
     logPlay(gameId, "modSwitchProton_no_prefix", { prefixPath });
   } else {
     try {
-      const savesResult = await ProtonForgeRPC.call<{ saves: string[] }>(
+      const savesResult = await MakaiRPC.call<{ saves: string[] }>(
         "get_prefix_saves",
         { prefix_path: prefixPath, game_id: gameId },
       );
@@ -130,16 +133,17 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
 
   if (saves.length > 0) {
     try {
-      // Verificar espaço disponível em /tmp
-      const dfOut = execSync("df --output=avail /tmp | tail -1", { encoding: "utf-8" }).trim();
-      const availKB = parseInt(dfOut, 10);
-      if (isNaN(availKB) || availKB < 102400) {
-        logPlay(gameId, "modSwitchProton_backup_no_space", { availKB: String(availKB) });
+      const space = await MakaiRPC.call<{ free: number }>("disk_space", { path: "/tmp" });
+      if (space.free < 104_857_600) {
+        logPlay(gameId, "modSwitchProton_backup_no_space", { free: String(space.free) });
       } else {
         for (const save of saves) {
           const src = path.join(prefixPath, save);
           const dst = path.join(tmpBackup, save);
-          execSync(`mkdir -p "${path.dirname(dst)}" && cp -a "${src}" "${dst}"`, { stdio: "pipe" });
+          await MakaiRPC.call("exec_command", {
+            command: `mkdir -p "${path.dirname(dst)}" && cp -a "${src}" "${dst}"`,
+            timeout: 30,
+          });
         }
         backupSuccess = true;
         logPlay(gameId, "modSwitchProton_backup", { backupPath: tmpBackup, saves: saves.join(",") });
@@ -152,7 +156,7 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
   // 5. Deletar prefixo antigo
   if (prefixExists) {
     try {
-      const deleteResult = await ProtonForgeRPC.call<{ success: boolean }>(
+      const deleteResult = await MakaiRPC.call<{ success: boolean }>(
         "delete_prefix",
         { prefix_path: prefixPath },
       );
@@ -171,7 +175,7 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
   const extraVerbs = getVerbsForGame(gameId);
   let createResult;
   try {
-    createResult = await ProtonForgeRPC.call<{
+    createResult = await MakaiRPC.call<{
       success: boolean;
       prefix_path: string;
       initialized: boolean;
@@ -203,7 +207,7 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
   let restoredCount = 0;
   if (backupSuccess && saves.length > 0) {
     try {
-      const restoreResult = await ProtonForgeRPC.call<{ restored: string[]; errors: string[] }>(
+      const restoreResult = await MakaiRPC.call<{ restored: string[]; errors: string[] }>(
         "restore_saves",
         { prefix_path: prefixPath, saves_backup: saves, backup_source: tmpBackup },
       );
@@ -225,7 +229,7 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
 
   // 9. Limpar backup temporário
   if (backupSuccess) {
-    try { execSync(`rm -rf "${tmpBackup}"`, { stdio: "pipe" }); } catch { /* ignore */ }
+    try { await MakaiRPC.call("delete_paths", { paths: [tmpBackup] }); } catch { /* ignore */ }
   }
 
   logPlay(gameId, "modSwitchProton_completed", {

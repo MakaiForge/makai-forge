@@ -1,12 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { getGameModule, getGameInfo } from "@games/registry";
 import { findPrefixUsername } from "@games/_shared/filemap";
 import { applyWineDllOverrides, verifyDllOverrides } from "@prefix/core/dll-overrides";
 import { verifyBethesdaRegistry } from "@prefix/core/bethesda-registry";
 import { findAllSteamLibraries } from "@prefix/core/steam-paths";
-import { runPythonCommand } from "../python";
 import type { SendProgress } from "../types";
 
 export interface ConfigsResult {
@@ -57,38 +56,19 @@ export async function applyGameConfigs(
   const deps = mod.getAutoInstallDeps?.();
   const makaitricksVerbs = mod.getWinetricksComponents?.();
 
-  if (deps && deps.length > 0) {
-    send("dll", `Instalando dependencias: ${deps.join(", ")}...`, "working");
-    const resultCmd = await runPythonCommand(
-      "install-makaitricks",
-      [prefixPath, protonPath, ...deps],
-    );
-    if (resultCmd.success) {
-      send("dll", `Dependencias instaladas: ${deps.join(", ")}`, "done");
-    } else if (isPythonUnavailable(resultCmd.stderr)) {
-      // Fallback: try winetricks directly
-      const fallbackOk = runWinetricksDirect(prefixPath, protonPath, deps, send);
-      if (!fallbackOk) {
-        result.errors.push(`Dependencias nao instaladas (Python e winetricks indisponiveis): ${deps.join(", ")}`);
-      }
-    } else {
-      result.errors.push(`Dependencias: falha parcial — ${resultCmd.stderr.slice(0, 80)}`);
-      send("dll", `Falha ao instalar dependencias: ${resultCmd.stderr.slice(0, 100)}`, "done");
-    }
-  }
-
-  if (makaitricksVerbs && makaitricksVerbs.length > 0) {
-    send("dll", `Instalando componentes wine: ${makaitricksVerbs.join(", ")}...`, "working");
-    const resultCmd = await runPythonCommand(
-      "install-makaitricks",
-      [prefixPath, protonPath, ...makaitricksVerbs],
-    );
-    if (resultCmd.success) {
-      send("dll", `Componentes wine instalados: ${makaitricksVerbs.join(", ")}`, "done");
-    } else if (isPythonUnavailable(resultCmd.stderr)) {
-      runWinetricksDirect(prefixPath, protonPath, makaitricksVerbs, send);
-    } else {
-      send("dll", `Falha ao instalar componentes: ${resultCmd.stderr.slice(0, 100)}`, "done");
+  if ((deps && deps.length > 0) || (makaitricksVerbs && makaitricksVerbs.length > 0)) {
+    const allVerbs = [...(deps || []), ...(makaitricksVerbs || [])];
+    send("dll", `Instalando dependencias: ${allVerbs.join(", ")}...`, "working");
+    try {
+      await MakaiRPC.call("install_makaitricks", {
+        prefix_path: prefixPath,
+        proton_path: protonPath,
+        verbs: allVerbs,
+      });
+      send("dll", `Dependencias instaladas: ${allVerbs.join(", ")}`, "done");
+    } catch (err) {
+      result.errors.push(`Dependencias: falha — ${String(err).slice(0, 80)}`);
+      send("dll", `Falha ao instalar dependencias: ${String(err).slice(0, 100)}`, "done");
     }
   }
 
@@ -229,77 +209,4 @@ function findSteamMyGamesInis(
   return null;
 }
 
-/** Check if Python/venv is unavailable (missing binary or CLI) */
-function isPythonUnavailable(stderr: string): boolean {
-  return stderr.includes("Python bin not found") ||
-    stderr.includes("CLI not found") ||
-    stderr.includes("ENOENT");
-}
 
-/**
- * Fallback: install deps via bundled Makaitricks directly (without Python wrapper).
- * Maps dep names to winetricks verbs and runs Makaitricks with the correct env.
- */
-function getMakaitricksPath(): string {
-  // 1. Bundled Makaitricks — derive path from this file's location
-  //    04-configs.ts → play/steps/ → play/ → Mods_manager/ → tools/ → project root
-  const projectRoot = path.resolve(__dirname, "..", "..", "..", "..");
-  const bundled = path.join(projectRoot, "data", "install-api", "Makaitricks");
-  if (fs.existsSync(bundled)) return bundled;
-
-  // 2. Electron packaged path
-  try {
-    const appPath = require("electron").app.getAppPath();
-    const packaged = path.join(appPath, "data", "install-api", "Makaitricks");
-    if (fs.existsSync(packaged)) return packaged;
-  } catch {}
-
-  // 3. Fallback: system winetricks
-  for (const candidate of ["/usr/bin/winetricks", "/usr/local/bin/winetricks"]) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return "";
-}
-
-function runWinetricksDirect(
-  prefixPath: string,
-  protonPath: string,
-  deps: string[],
-  send: SendProgress,
-): boolean {
-  const DEP_TO_VERB: Record<string, string> = {
-    vcredist: "vcrun2022",
-    d3dcompiler_47: "d3dcompiler_47",
-    dxvk: "dxvk",
-  };
-
-  const verbs = deps.map(d => DEP_TO_VERB[d] || d).filter(Boolean);
-  if (verbs.length === 0) return false;
-
-  const winetricksPath = getMakaitricksPath();
-  if (!winetricksPath) {
-    send("dll", `⚠️ Makaitricks/winetricks nao encontrado — ${deps.join(", ")} nao instalados`, "done");
-    return false;
-  }
-
-  try {
-    const env = {
-      ...process.env,
-      WINEPREFIX: prefixPath,
-      WINETRICKS_SUPERVISOR_NOCHOICE: "1",
-      WINETRICKS_NO_INTERACTIVE: "1",
-    };
-    for (const verb of verbs) {
-      execSync(`"${winetricksPath}" -q ${verb}`, {
-        env,
-        stdio: "pipe",
-        timeout: 120000,
-      });
-    }
-    send("dll", `Dependencias instaladas via Makaitricks: ${deps.join(", ")}`, "done");
-    return true;
-  } catch (err) {
-    send("dll", `⚠️ Falha no Makaitricks fallback: ${String(err).slice(0, 80)}`, "done");
-    return false;
-  }
-}
