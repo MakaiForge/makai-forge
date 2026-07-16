@@ -346,16 +346,11 @@ def create_prefix(
     """
     Create and initialize a Wine prefix.
 
-    Strategy (aligned with TS createPrefix):
-      1. umu-run wineboot -u (if use_umu)
-      2. Direct wineboot from Proton dist/files
-      3. `proton wineboot -u`
-      4. `proton run wineboot -u`
+    Strategy:
+      1. `proton run wineboot -u` (primary, funciona com todos os forks)
+      2. `proton createprefix` (fallback)
     """
     emit = on_progress or (lambda m: None)
-
-    # Garante Steam Runtime instalado antes de criar o prefixo
-    ensure_steam_runtime(on_progress=emit)
 
     resolved = resolve_prefix_path(game_id, prefix_path)
     result = {
@@ -370,7 +365,8 @@ def create_prefix(
         result["errors"].append(f"Proton not found at {proton_path}")
         return result
 
-    if prefix_exists(resolved):
+    actual = resolve_actual_prefix(resolved)
+    if prefix_exists(actual):
         result["success"] = True
         result["initialized"] = True
         if auto_dlls:
@@ -381,87 +377,37 @@ def create_prefix(
 
     os.makedirs(resolved, exist_ok=True)
 
-    compat_data_path = os.environ.get("STEAM_COMPAT_DATA_PATH", "")
-    tracked_file = os.path.join(compat_data_path, "tracked_files") if compat_data_path else ""
+    env = build_env(resolved)
+    env.setdefault("STEAM_COMPAT_CLIENT_INSTALL_PATH", "")
+    if "STEAM_COMPAT_DATA_PATH" not in env:
+        env["STEAM_COMPAT_DATA_PATH"] = resolved
 
-    # Strategy 1: system wineboot (most reliable)
-    sys_wineboot = shutil.which("wineboot") or _find_proton_wine_binary("/usr", "wineboot")
-    if sys_wineboot:
-        emit("Using system wineboot...")
-        r = _run_command([sys_wineboot, "-u"], env=build_env(resolved))
-        if r["success"] or prefix_exists(resolved):
-            result["success"] = True
-            result["initialized"] = True
-            ensure_prefix_markers(resolve_actual_prefix(resolved))
-            if auto_dlls:
-                dll_result = install_recommended_dlls(game_id, resolved, proton_path, extra_verbs)
-                result["dlls_installed"] = dll_result["installed"]
-                result["errors"].extend(dll_result["errors"])
-            return result
-        emit("System wineboot failed, trying umu-run...")
-
-    # Strategy 2: umu-run
-    if use_umu:
-        umu = shutil.which("umu-run")
-        if umu:
-            emit("Using umu-run...")
-            r = _run_command(
-                [umu, "wineboot", "-u"],
-                env={**os.environ.copy(), "WINEPREFIX": resolved, "PROTONPATH": proton_path},
-            )
-            if r["success"] or prefix_exists(resolved):
-                result["success"] = True
-                result["initialized"] = is_prefix_initialized(resolve_actual_prefix(resolved))
-                ensure_prefix_markers(resolve_actual_prefix(resolved))
-                if auto_dlls:
-                    dll_result = install_recommended_dlls(game_id, resolved, proton_path, extra_verbs)
-                    result["dlls_installed"] = dll_result["installed"]
-                    result["errors"].extend(dll_result["errors"])
-                return result
-            emit("umu-run failed, trying direct wineboot...")
-
-    # Strategy 2: direct wineboot from Proton dist/files
-    wineboot = _find_proton_wine_binary(proton_path, "wineboot")
-    if wineboot:
-        emit("Using direct wineboot...")
-        r = _run_command([wineboot, "-u"], env=build_env(resolved))
-        if r["success"] or prefix_exists(resolved) or is_prefix_initialized(resolve_actual_prefix(resolved)):
-            result["success"] = True
-            result["initialized"] = True
-            ensure_prefix_markers(resolve_actual_prefix(resolved))
-            if auto_dlls:
-                dll_result = install_recommended_dlls(game_id, resolved, proton_path, extra_verbs)
-                result["dlls_installed"] = dll_result["installed"]
-                result["errors"].extend(dll_result["errors"])
-            return result
-        emit("Direct wineboot failed, trying proton wineboot...")
-
-    # Strategy 3: proton wineboot
     proton_bin = os.path.join(proton_path, "proton")
-    emit("Using proton wineboot...")
-    r = _run_command([proton_bin, "wineboot", "-u"], env=build_env(resolved))
-    if r["success"] or prefix_exists(resolved):
+
+    # Strategy 1: proton run wineboot -u (funciona com CachyOS, GE, UMU, etc.)
+    emit("Running proton run wineboot -u...")
+    r = _run_command([proton_bin, "run", "wineboot", "-u"], env=env)
+
+    actual = resolve_actual_prefix(resolved)
+    if r["success"] or prefix_exists(actual):
         result["success"] = True
         result["initialized"] = True
-        ensure_prefix_markers(resolve_actual_prefix(resolved))
+        ensure_prefix_markers(actual)
         if auto_dlls:
             dll_result = install_recommended_dlls(game_id, resolved, proton_path, extra_verbs)
             result["dlls_installed"] = dll_result["installed"]
             result["errors"].extend(dll_result["errors"])
         return result
 
-    if _has_default_pfx_error(r.get("stderr", "")):
-        result["errors"].append("default_pfx template corrupted")
-        return result
+    # Strategy 2: proton createprefix (fallback para forks sem suporte a wineboot)
+    emit("Trying proton createprefix...")
+    r = _run_command([proton_bin, "createprefix"], env=env)
 
-    emit("Proton wineboot failed, trying proton run wineboot...")
-
-    # Strategy 4: proton run wineboot
-    r = _run_command([proton_bin, "run", "wineboot", "-u"], env=build_env(resolved))
-    if r["success"] or prefix_exists(resolved):
+    actual = resolve_actual_prefix(resolved)
+    if r["success"] or prefix_exists(actual):
         result["success"] = True
         result["initialized"] = True
-        ensure_prefix_markers(resolve_actual_prefix(resolved))
+        ensure_prefix_markers(actual)
         if auto_dlls:
             dll_result = install_recommended_dlls(game_id, resolved, proton_path, extra_verbs)
             result["dlls_installed"] = dll_result["installed"]

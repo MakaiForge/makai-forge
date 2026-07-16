@@ -425,11 +425,7 @@ def handle_create_prefix(params: dict):
         _sys.path.insert(0, _prefix_lib)
 
     if prefix_path:
-        if prefix_path.rstrip("/").endswith("/pfx"):
-            compat_data_path = os.path.dirname(prefix_path.rstrip("/"))
-        else:
-            compat_data_path = os.path.dirname(prefix_path)
-        os.environ.setdefault("STEAM_COMPAT_DATA_PATH", compat_data_path)
+        os.environ.setdefault("STEAM_COMPAT_DATA_PATH", prefix_path)
         os.environ.setdefault("WINEPREFIX", prefix_path)
     if game_path:
         os.environ.setdefault("STEAM_COMPAT_INSTALL_PATH", game_path)
