@@ -21,16 +21,11 @@ function getMakaiTimePrefixDir(): string {
 
 function getPythonBin(): string {
   if (process.env.PYTHON_PATH) return process.env.PYTHON_PATH
-  // Built main process in out/main/, venv at tools/venv/
-  const buildRelative = path.resolve(__dirname, "..", "..", "tools", "venv", "bin", "python3")
-  if (fs.existsSync(buildRelative)) return buildRelative
-  // Dev fallback: tools/game_launcher/install/ -> tools/venv/
-  const devRelative = path.resolve(__dirname, "..", "..", "..", "venv", "bin", "python3")
-  if (fs.existsSync(devRelative)) return devRelative
-  // Absolute project root
-  const cwdRelative = path.resolve(process.cwd(), "tools", "venv", "bin", "python3")
-  if (fs.existsSync(cwdRelative)) return cwdRelative
-  return "python3"
+  const fromDev = path.resolve(__dirname, "..", "..", "venv", "bin", "python3")
+  if (fs.existsSync(fromDev)) return fromDev
+  const fromBuild = path.resolve(__dirname, "..", "..", "tools", "venv", "bin", "python3")
+  if (fs.existsSync(fromBuild)) return fromBuild
+  throw new Error("tools/venv/bin/python3 não encontrado")
 }
 
 function runInstallerInContainer(
