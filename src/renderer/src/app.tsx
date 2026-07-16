@@ -73,7 +73,7 @@ export function App() {
     ]).then(([preferences]) => {
       dispatch(setUserPreferences(preferences as UserPreferences | null));
     });
-  }, [location.pathname, dispatch, updateLibrary]);
+  }, [dispatch, updateLibrary]);
 
   useEffect(() => {
     const unsubscribe = window.electron.onDownloadProgress(
