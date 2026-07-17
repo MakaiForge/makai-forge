@@ -23,6 +23,8 @@ export async function launchGame(options: LaunchOptions): Promise<LaunchResult> 
   const spawnEnv: Record<string, string> = { ...process.env as Record<string, string> }
   spawnEnv.WINEPREFIX = resolvedPrefix
   spawnEnv.PROTONPATH = resolvedProton
+  delete spawnEnv.PYTHONHOME
+  delete spawnEnv.PYTHONPATH
   if (envOverrides) {
     Object.assign(spawnEnv, envOverrides)
   }
@@ -83,6 +85,8 @@ export function launchGameDetached(options: LaunchOptions): boolean {
   const spawnEnv: Record<string, string> = { ...process.env as Record<string, string> }
   spawnEnv.WINEPREFIX = resolvedPrefix
   spawnEnv.PROTONPATH = resolvedProton
+  delete spawnEnv.PYTHONHOME
+  delete spawnEnv.PYTHONPATH
   if (envOverrides) {
     Object.assign(spawnEnv, envOverrides)
   }

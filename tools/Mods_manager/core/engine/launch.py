@@ -69,11 +69,13 @@ def _launch_with_proton(
     _launch_env = env.copy()
     _launch_env["WINEPREFIX"] = os.path.expanduser(prefix_path)
     _launch_env["PROTONPATH"] = expanded_proton
+    _launch_env.pop("PYTHONHOME", None)
+    _launch_env.pop("PYTHONPATH", None)
     if game_id:
         _launch_env["GAMEID"] = game_id
 
     _cmd = [
-        _sys.executable, "-m", "makrun",
+        "python3", "-m", "makrun",
         "waitforexitandrun", full_exe,
     ]
 
