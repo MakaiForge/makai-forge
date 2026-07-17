@@ -120,6 +120,11 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
         game.executablePath || "",
         game.gameArgs || null
       );
+      setLaunchingGameIds((prev) => {
+        const next = new Set(prev)
+        next.delete(gameId)
+        return next
+      })
     } catch (error) {
       console.error("Failed to play game:", error);
       setLaunchingGameIds((prev) => {
