@@ -8,8 +8,8 @@ function getMakrunDir(): string {
 }
 
 function getPythonBin(): string {
-  if (process.env.PYTHON_PATH) return process.env.PYTHON_PATH
-  return path.resolve(__dirname, "..", "..", "tools", "venv", "bin", "python3")
+  if (process.env.MAKRUN_PYTHON) return process.env.MAKRUN_PYTHON
+  return "python3"
 }
 
 export async function launchGame(options: LaunchOptions): Promise<LaunchResult> {
