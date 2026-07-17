@@ -20,6 +20,7 @@ def launch_game(
     prefix_path: str,
     proton_path: str,
     steam_app_id: str | None = None,
+    game_id: str | None = None,
     env_overrides: dict | None = None,
     prefer_custom_prefix: bool = False,
 ) -> dict:
@@ -32,7 +33,7 @@ def launch_game(
     if steam_app_id:
         env.setdefault("SteamAppId", steam_app_id)
 
-    return _launch_with_proton(full_exe, prefix_path, proton_path, steam_app_id, env)
+    return _launch_with_proton(full_exe, prefix_path, proton_path, steam_app_id, env, game_id)
 
 
 def _launch_with_proton(
@@ -41,6 +42,7 @@ def _launch_with_proton(
     proton_path: str,
     steam_app_id: str | None,
     env: dict,
+    game_id: str | None = None,
 ) -> dict:
     env["WINEPREFIX"] = os.path.expanduser(prefix_path)
     env.setdefault("WINEDLLPATH", os.path.join(os.path.dirname(proton_path), "files", "lib", "wine"))
@@ -58,32 +60,32 @@ def _launch_with_proton(
         env.setdefault("GAMEID", f"umu-{steam_app_id}")
         env.setdefault("STORE", "steam")
 
-    # Makai Time — único método de execução
+    # Makai Runner — execução via makrun
     import sys as _sys
-    _prefix_dir = os.path.join(
+    _makrun_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
-        "prefix",
+        "prefix", "makai_time",
     )
+    _launch_env = env.copy()
+    _launch_env["WINEPREFIX"] = os.path.expanduser(prefix_path)
+    _launch_env["PROTONPATH"] = expanded_proton
+    if game_id:
+        _launch_env["GAMEID"] = game_id
+
     _cmd = [
-        _sys.executable, "-m", "makai_time.makai_time",
-        "--game-exe", full_exe,
-        "--proton-path", expanded_proton,
-        "--prefix-path", os.path.expanduser(prefix_path),
-        "--game-path", os.path.dirname(full_exe),
-        "--quiet",
+        _sys.executable, "-m", "makrun",
+        "waitforexitandrun", full_exe,
     ]
-    for _k in _ENV_PASSTHROUGH:
-        if _k in env:
-            _cmd.extend(["-e", f"{_k}={env[_k]}"])
 
     _proc = subprocess.Popen(
         _cmd,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
-        cwd=_prefix_dir,
+        cwd=_makrun_dir,
+        env=_launch_env,
     )
-    return {"success": True, "pid": _proc.pid, "method": "makai_time"}
+    return {"success": True, "pid": _proc.pid, "method": "makrun"}
 
 
 def kill_game(pid: int | None = None, game_id: str | None = None) -> bool:

@@ -3,8 +3,8 @@ import fs from "node:fs"
 import { spawn } from "node:child_process"
 import type { LaunchOptions, LaunchResult } from "./types"
 
-function getMakaiTimePrefixDir(): string {
-  return path.resolve(__dirname, "..", "..", "tools", "prefix")
+function getMakrunDir(): string {
+  return path.resolve(__dirname, "..", "..", "tools", "prefix", "makai_time")
 }
 
 function getPythonBin(): string {
@@ -18,32 +18,27 @@ export async function launchGame(options: LaunchOptions): Promise<LaunchResult> 
   const resolvedExe = path.resolve(exePath)
   const resolvedPrefix = path.resolve(prefixPath)
   const resolvedProton = path.resolve(protonPath)
-  const prefixDir = getMakaiTimePrefixDir()
+  const makrunDir = getMakrunDir()
 
-  const args = [
-    "-m", "makai_time.makai_time",
-    "--game-exe", resolvedExe,
-    "--proton-path", resolvedProton,
-    "--prefix-path", resolvedPrefix,
-    "--quiet",
-  ]
-
-  if (gamePath) {
-    args.push("--game-path", path.resolve(gamePath))
-  }
-
+  const spawnEnv: Record<string, string> = { ...process.env as Record<string, string> }
+  spawnEnv.WINEPREFIX = resolvedPrefix
+  spawnEnv.PROTONPATH = resolvedProton
   if (envOverrides) {
-    for (const [key, val] of Object.entries(envOverrides)) {
-      args.push("--env", `${key}=${val}`)
-    }
+    Object.assign(spawnEnv, envOverrides)
+  }
+  if (gamePath && !spawnEnv.STEAM_COMPAT_INSTALL_PATH) {
+    spawnEnv.STEAM_COMPAT_INSTALL_PATH = path.resolve(gamePath)
   }
 
-  onLog?.(`Iniciando Makai Time: python3 -m makai_time.makai_time`)
+  const args = ["-m", "makrun", "waitforexitandrun", resolvedExe]
+
+  onLog?.(`Iniciando Makai Runner: python3 -m makrun waitforexitandrun ${resolvedExe}`)
 
   return new Promise<LaunchResult>((resolve) => {
     const proc = spawn(getPythonBin(), args, {
-      cwd: prefixDir,
+      cwd: makrunDir,
       stdio: ["ignore", "pipe", "pipe"],
+      env: spawnEnv,
     })
 
     proc.stdout?.on("data", (data: Buffer) => {
@@ -68,8 +63,8 @@ export async function launchGame(options: LaunchOptions): Promise<LaunchResult> 
       resolve({
         success: code === 0,
         pid: proc.pid,
-        method: "makai_time",
-        error: code !== 0 ? `Makai Time exit code: ${code}` : undefined,
+        method: "makrun",
+        error: code !== 0 ? `Makai Runner exit code: ${code}` : undefined,
       })
     })
   })
@@ -81,31 +76,26 @@ export function launchGameDetached(options: LaunchOptions): boolean {
   const resolvedExe = path.resolve(exePath)
   const resolvedPrefix = path.resolve(prefixPath)
   const resolvedProton = path.resolve(protonPath)
-  const prefixDir = getMakaiTimePrefixDir()
+  const makrunDir = getMakrunDir()
 
-  const args = [
-    "-m", "makai_time.makai_time",
-    "--game-exe", resolvedExe,
-    "--proton-path", resolvedProton,
-    "--prefix-path", resolvedPrefix,
-    "--quiet",
-  ]
-
-  if (gamePath) {
-    args.push("--game-path", path.resolve(gamePath))
-  }
-
+  const spawnEnv: Record<string, string> = { ...process.env as Record<string, string> }
+  spawnEnv.WINEPREFIX = resolvedPrefix
+  spawnEnv.PROTONPATH = resolvedProton
   if (envOverrides) {
-    for (const [key, val] of Object.entries(envOverrides)) {
-      args.push("--env", `${key}=${val}`)
-    }
+    Object.assign(spawnEnv, envOverrides)
   }
+  if (gamePath && !spawnEnv.STEAM_COMPAT_INSTALL_PATH) {
+    spawnEnv.STEAM_COMPAT_INSTALL_PATH = path.resolve(gamePath)
+  }
+
+  const args = ["-m", "makrun", "waitforexitandrun", resolvedExe]
 
   try {
     const proc = spawn(getPythonBin(), args, {
-      cwd: prefixDir,
+      cwd: makrunDir,
       stdio: "ignore",
       detached: true,
+      env: spawnEnv,
     })
     proc.unref()
     return true

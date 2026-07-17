@@ -15,8 +15,8 @@ function resolveActualPrefix(prefixPath: string): string {
   return prefixPath
 }
 
-function getMakaiTimePrefixDir(): string {
-  return path.resolve(__dirname, "..", "..", "tools", "prefix")
+function getMakrunDir(): string {
+  return path.resolve(__dirname, "..", "..", "tools", "prefix", "makai_time")
 }
 
 function getPythonBin(): string {
@@ -33,18 +33,19 @@ function runInstallerInContainer(
   return new Promise((resolve) => {
     const expandedProton = path.resolve(protonPath)
     const expandedPrefix = path.resolve(prefixPath)
-    const prefixDir = getMakaiTimePrefixDir()
+    const makrunDir = getMakrunDir()
 
     const proc = spawn(getPythonBin(), [
-      "-m", "makai_time.makai_time",
-      "--game-exe", installerExe,
-      "--proton-path", expandedProton,
-      "--prefix-path", expandedPrefix,
-      "--game-path", gamePath,
-      "--quiet",
+      "-m", "makrun",
+      "waitforexitandrun", installerExe,
     ], {
-      cwd: prefixDir,
+      cwd: makrunDir,
       stdio: "ignore",
+      env: {
+        ...process.env as Record<string, string>,
+        WINEPREFIX: expandedPrefix,
+        PROTONPATH: expandedProton,
+      },
     })
 
     proc.on("exit", (code) => {

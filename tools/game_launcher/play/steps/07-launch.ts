@@ -74,8 +74,8 @@ export async function launchGame(
 
   const launchArgs = (hasSkse && sksePath) ? [] : (mod.getLaunchArgs?.() || []);
 
-  send("launch", `Iniciando ${path.basename(launchExe)} via Makai Time...`, "working");
-  logger.info(`[Launch] === Makai Time ===`);
+  send("launch", `Iniciando ${path.basename(launchExe)} via Makai Runner...`, "working");
+  logger.info(`[Launch] === Makai Runner ===`);
   logger.info(`[Launch] gameId: ${gameId}, exe: ${launchExe}`);
   logger.info(`[Launch] WINEPREFIX: ${prefixPath}`);
 
@@ -89,15 +89,15 @@ export async function launchGame(
     });
 
     if (result.success) {
-      send("launch", `${info?.name || gameId} iniciado via Makai Time!`, "done");
+      send("launch", `${info?.name || gameId} iniciado via Makai Runner!`, "done");
     } else {
       send("launch", result.error || "Falha ao iniciar", "error");
     }
-    return { success: result.success, method: "makai_time" };
+    return { success: result.success, method: "makrun" };
   } catch (err) {
-    const msg = `Makai Time falhou: ${String(err).slice(0, 200)}`;
+    const msg = `Makai Runner falhou: ${String(err).slice(0, 200)}`;
     logger.error(`[Launch] ${msg}`);
     send("launch", msg, "error");
-    return { success: false, error: msg, method: "makai_time" };
+    return { success: false, error: msg, method: "makrun" };
   }
 }

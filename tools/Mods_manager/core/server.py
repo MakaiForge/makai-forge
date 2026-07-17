@@ -232,9 +232,9 @@ def handle_container_run_installer(params: dict):
     steam_app_id = params.get("steam_app_id")
     env_overrides = params.get("env_overrides")
 
-    _prefix_dir = os.path.join(
+    _makrun_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "..", "..", "prefix",
+        "..", "..", "prefix", "makai_time",
     )
     expanded_proton = os.path.expanduser(proton_path)
     expanded_prefix = os.path.expanduser(prefix_path)
@@ -243,17 +243,14 @@ def handle_container_run_installer(params: dict):
     if env_overrides:
         env.update(env_overrides)
     env["WINEPREFIX"] = expanded_prefix
+    env["PROTONPATH"] = expanded_proton
     if steam_app_id:
         env.setdefault("SteamAppId", steam_app_id)
 
     import sys as _sys
     _cmd = [
-        _sys.executable, "-m", "makai_time.makai_time",
-        "--game-exe", exe_path,
-        "--proton-path", expanded_proton,
-        "--prefix-path", expanded_prefix,
-        "--game-path", game_path,
-        "--quiet",
+        _sys.executable, "-m", "makrun",
+        "waitforexitandrun", exe_path,
     ]
     try:
         _proc = subprocess.Popen(
@@ -261,7 +258,8 @@ def handle_container_run_installer(params: dict):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=False,
-            cwd=_prefix_dir,
+            cwd=_makrun_dir,
+            env=env,
         )
         _exit_code = _proc.wait()
         return {"exitCode": _exit_code, "signal": None, "exitTimestamp": time.time()}
