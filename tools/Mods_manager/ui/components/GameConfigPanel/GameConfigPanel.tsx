@@ -1,6 +1,7 @@
 import { Button } from "@renderer/components";
 import { useState, useEffect, useCallback } from "react";
 import { useGameDllCatalog } from "../../../presets/useGameDllCatalog";
+import type { InstalledProtonTool } from "../../types/proton.types";
 import "./GameConfigPanel.scss";
 
 interface ScanResult {
@@ -59,6 +60,8 @@ export function GameConfigPanel({
   const [installingDep, setInstallingDep] = useState<string | null>(null);
   const [preparingPrefix, setPreparingPrefix] = useState(false);
   const [prefixPrepResult, setPrefixPrepResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [installedProtons, setInstalledProtons] = useState<InstalledProtonTool[]>([]);
+  const [showCustomProton, setShowCustomProton] = useState(false);
 
   const runHealthCheck = useCallback(async () => {
     if (!selectedGame) return;
@@ -141,10 +144,26 @@ export function GameConfigPanel({
   };
 
   useEffect(() => {
+    if (open) {
+      window.electron.getInstalledProtonTools().then((result) => {
+        setInstalledProtons(result as InstalledProtonTool[]);
+      });
+    }
+  }, [open]);
+
+  const knownProtonPaths = installedProtons.map(p => p.path);
+  const selectedInKnown = configProtonPath && knownProtonPaths.includes(configProtonPath) ? configProtonPath : "";
+  const isCustomProton = configProtonPath !== "" && !selectedInKnown;
+
+  useEffect(() => {
     if (open && selectedGame && configGamePath) {
       runHealthCheck();
     }
   }, [open, selectedGame, configGamePath, runHealthCheck]);
+
+  useEffect(() => {
+    setShowCustomProton(isCustomProton);
+  }, [isCustomProton]);
 
   const healthColor = !health ? "" : health.ready ? "green" : health.errors.length > 0 ? "red" : "yellow";
 
@@ -175,8 +194,30 @@ export function GameConfigPanel({
             if (!res.canceled && res.filePaths[0]) onPrefixPathChange(res.filePaths[0]);
           }}>{t("browse")}</button>
         </div>
-        <label>Proton version (path)</label>
-        <input value={configProtonPath} onChange={e => onProtonPathChange(e.target.value)} placeholder="/path/to/proton (ou deixe vazio pra usar o Steam)" />
+        <label>Proton version</label>
+        <select
+          value={selectedInKnown || "__custom__"}
+          onChange={e => {
+            if (e.target.value === "__custom__") {
+              setShowCustomProton(true);
+              onProtonPathChange("");
+            } else {
+              setShowCustomProton(false);
+              onProtonPathChange(e.target.value);
+            }
+          }}
+          className="mod-manager__config-select"
+        >
+          <option value="">Auto (deixar vazio)</option>
+          {installedProtons.map(p => (
+            <option key={p.path} value={p.path}>{p.version} — {p.path}</option>
+          ))}
+          <option value="__custom__">Outro...</option>
+        </select>
+
+        {showCustomProton && (
+          <input value={configProtonPath} onChange={e => onProtonPathChange(e.target.value)} placeholder="/path/to/proton customizado" />
+        )}
 
         {protonChanged && onOpenProtonSwitch && (
           <div className="mod-manager__config-switch-proton">

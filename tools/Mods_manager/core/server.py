@@ -49,11 +49,9 @@ LOG_FILE = os.path.join(_LOG_DIR, "server.log")
 from rpc_base import register as _register
 import game_launcher.rpc as _game_launcher_rpc
 import prefix_rpc as _prefix_rpc
-import makai_time.rpc as _makai_time_rpc
 
 _game_launcher_rpc.register_handlers(_register)
 _prefix_rpc.register_handlers(_register)
-_makai_time_rpc.register_handlers(_register)
 
 
 def log_msg(*args):

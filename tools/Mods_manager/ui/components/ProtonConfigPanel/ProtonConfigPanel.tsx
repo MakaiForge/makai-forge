@@ -1,5 +1,6 @@
 import { Modal, Button } from "@renderer/components";
-import type { ProtonInfo } from "../../types/proton.types";
+import { useState, useEffect } from "react";
+import type { InstalledProtonTool, ProtonInfo } from "../../types/proton.types";
 import "./ProtonConfigPanel.scss";
 
 interface ProtonConfigPanelProps {
@@ -24,6 +25,25 @@ export function ProtonConfigPanel({
   isConfiguring, setupLog, setupSuccess, setupFailed,
   onClose, onProtonPathChange, onConfigure,
 }: ProtonConfigPanelProps) {
+  const [installedProtons, setInstalledProtons] = useState<InstalledProtonTool[]>([]);
+  const [showCustomProton, setShowCustomProton] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      window.electron.getInstalledProtonTools().then((result) => {
+        setInstalledProtons(result as InstalledProtonTool[]);
+      });
+    }
+  }, [open]);
+
+  const knownProtonPaths = installedProtons.map(p => p.path);
+  const selectedInKnown = selectedProtonPath && knownProtonPaths.includes(selectedProtonPath) ? selectedProtonPath : "";
+  const isCustomProton = selectedProtonPath !== "" && !selectedInKnown;
+
+  useEffect(() => {
+    setShowCustomProton(isCustomProton);
+  }, [isCustomProton]);
+
   const statusIcon = (() => {
     if (loading) return "⏳";
     if (setupSuccess) return "✅";
@@ -48,9 +68,30 @@ export function ProtonConfigPanel({
             {info.error && <p className="mod-manager__proton-error">{info.error}</p>}
 
             <div className="mod-manager__proton-config-actions">
-              <label>Caminho do Proton:
-                <input value={selectedProtonPath} onChange={e => onProtonPathChange(e.target.value)} placeholder="/path/to/proton" />
-              </label>
+              <label>Caminho do Proton:</label>
+              <select
+                value={selectedInKnown || "__custom__"}
+                onChange={e => {
+                  if (e.target.value === "__custom__") {
+                    setShowCustomProton(true);
+                    onProtonPathChange("");
+                  } else {
+                    setShowCustomProton(false);
+                    onProtonPathChange(e.target.value);
+                  }
+                }}
+                className="mod-manager__config-select"
+              >
+                <option value="">Auto (deixar vazio)</option>
+                {installedProtons.map(p => (
+                  <option key={p.path} value={p.path}>{p.version} — {p.path}</option>
+                ))}
+                <option value="__custom__">Outro...</option>
+              </select>
+
+              {showCustomProton && (
+                <input value={selectedProtonPath} onChange={e => onProtonPathChange(e.target.value)} placeholder="/path/to/proton customizado" />
+              )}
               <p className="mod-manager__proton-note">⚠ O prefixo será recriado do zero automaticamente</p>
               <Button disabled={isConfiguring || !selectedProtonPath} onClick={onConfigure}>
                 {isConfiguring ? "Configurando..." : "Configurar Proton"}
