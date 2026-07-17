@@ -60,7 +60,7 @@ export function PrefixSection({
                 ? "Undefined (Steam Default)"
                 : "Default (System)"}
             </option>
-            {protonVersions.map((proton) => (
+            {protonVersions.filter((v) => v.isInstalled).map((proton) => (
               <option
                 key={proton.path}
                 value={proton.path.split("/").pop() || proton.name}
