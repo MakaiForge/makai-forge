@@ -64,9 +64,22 @@ def build_bwrap_cmd(
     home = os.path.expanduser("~")
     bwrap_path = shutil.which("bwrap") or "bwrap"
 
+    # Resolve isolamento PID vs relaxamento AC
+    # bwrap < 0.12 nao suporta --no-unshare-pid, entao substituimos
+    # --unshare-all por flags individuais sem --unshare-pid
+    ac_args = list(ac_bwrap_args or [])
+    if "--no-unshare-pid" in ac_args:
+        unshare_flags = [
+            "--unshare-user", "--unshare-ipc", "--unshare-net",
+            "--unshare-uts", "--unshare-cgroup-try",
+        ]
+        ac_args = [a for a in ac_args if a != "--no-unshare-pid"]
+    else:
+        unshare_flags = ["--unshare-all"]
+
     cmd = [
         bwrap_path,
-        "--unshare-all",
+        *unshare_flags,
         "--share-net",
         "--die-with-parent",
         "--new-session",
@@ -74,9 +87,9 @@ def build_bwrap_cmd(
         "--bind", "/dev/shm", "/dev/shm",
     ]
 
-    # Anti-cheat relaxations (PID namespace, /dev, /proc)
-    if ac_bwrap_args:
-        cmd.extend(ac_bwrap_args)
+    # Anti-cheat relaxations (/dev, /proc)
+    if ac_args:
+        cmd.extend(ac_args)
 
     # Overrides + bindings para paths que ja existem no host
     # (ICD JSONs em /usr/share/vulkan/icd.d/ etc.)
@@ -126,6 +139,9 @@ def build_bwrap_cmd(
 
     # Proton (read-only — instalação fixa, não precisa escrever)
     cmd.extend(["--ro-bind", proton_path, proton_path])
+    proton_parent = os.path.dirname(proton_path)
+    if os.path.isfile(os.path.join(proton_parent, "proton")):
+        cmd.extend(["--ro-bind", proton_parent, proton_parent])
 
     # Game read-only
     if game_path:
@@ -388,7 +404,7 @@ def run(
         skip_str = " (pulando NVIDIA, bundled no Proton)" if prefix_skip_nvidia else ""
         method = " (capsule)" if use_capsule else ""
         print(f"\n[5/9] Criando GPU overrides{skip_str}{method}...")
-    overrides_base = os.path.join(base_path, "overrides")
+    overrides_base = os.path.join(prefix_path, "overrides")
     ov_capture.clean_overrides(overrides_base)
     if use_capsule:
         from makai_time.overrides.capsule_capture import capsule_capture
@@ -610,7 +626,11 @@ def run(
             print(f"  /etc/passwd + /etc/group gerados")
 
     # ── Step 8: Build bwrap command ─────────────────────────────────────
+    # Proton script pode estar na raiz ou dentro de files/
     proton_script = os.path.join(proton_path, "proton")
+    if not os.path.isfile(proton_script):
+        parent = os.path.dirname(proton_path)
+        proton_script = os.path.join(parent, "proton")
     wine_binary = os.path.join(proton_path, "dist", "bin", "wine")
     if os.path.isfile(proton_script):
         command = [proton_script, "waitforexitandrun", game_exe]
@@ -672,6 +692,14 @@ def run(
         removed = runtime.garbage_collect(base_path, verbose=verbose)
         if removed and verbose:
             print(f"  GC: {len(removed)} runtime(s) antigo(s) removido(s)")
+    except Exception:
+        pass
+
+    # Limpa overrides do prefixo (criado por execução)
+    try:
+        ov_capture.clean_overrides(overrides_base)
+        if verbose:
+            print("  Overrides limpos")
     except Exception:
         pass
 

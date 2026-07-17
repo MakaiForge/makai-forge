@@ -1,8 +1,10 @@
 GAME = {
     "id": "neverness-to-everness",
-    "exe": ["NevernessToEverness.exe", "NTE.exe"],
+    "exe": ["nevernesstoeverness.exe", "nte.exe", "nteglobalgame.exe"],
     "ac_types": ["ace"],
-    "steam_id": "",
+    "steam_id": "4508340",
     "compatible": True,
-    "notes": "ACE anti-cheat. RPG chin\u00eas com suporte Proton reportado pela comunidade.",
+    "container_relax": ["no_unshare_pid", "full_dev"],
+    "proton_recommendations": ["dw-proton"],
+    "notes": "ACE (Anti-Cheat Expert) — requer DW-Proton (11.0+). GOL: waiting on reports (Jul 2026).",
 }
