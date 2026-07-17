@@ -37,12 +37,15 @@ export async function openGame(
   const actualPrefix = game.winePrefixPath
     ? resolveActualPrefix(game.winePrefixPath)
     : null;
+  const prefixBase = game.winePrefixPath;
   const driveC = actualPrefix ? path.join(actualPrefix, "drive_c") : null;
-  const prefixReady = driveC && fs.existsSync(path.join(driveC, "windows", "system32"));
+  const pfxDriveC = prefixBase ? path.join(prefixBase, "pfx", "drive_c") : null;
+  const prefixReady = (driveC && fs.existsSync(path.join(driveC, "windows", "system32")))
+    || (pfxDriveC && fs.existsSync(path.join(pfxDriveC, "windows", "system32")));
   const exeInsidePrefix =
     game.executablePath &&
-    driveC &&
-    game.executablePath.startsWith(driveC) &&
+    (driveC && game.executablePath.startsWith(driveC) ||
+     pfxDriveC && game.executablePath.startsWith(pfxDriveC)) &&
     fs.existsSync(game.executablePath);
 
   if (exeInsidePrefix && prefixReady) {
@@ -87,7 +90,9 @@ export async function openGame(
 
   // Executável aponta pra dentro do prefixo mas pasta fonte não existe
   // (prefixo foi recriado ou pasta deletada) — pede reconfiguração
-  if (driveC && game.executablePath.startsWith(driveC) && !fs.existsSync(sourcePath)) {
+  const execInsidePrefix = (driveC && game.executablePath.startsWith(driveC))
+    || (pfxDriveC && game.executablePath.startsWith(pfxDriveC));
+  if (execInsidePrefix && !fs.existsSync(sourcePath)) {
     sendProgress("error", "Jogo não encontrado no prefixo. Reconfigure o jogo.");
     return;
   }
