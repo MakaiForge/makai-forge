@@ -73,6 +73,8 @@ export async function launchGame(options: LaunchOptions): Promise<LaunchResult> 
 export function launchGameDetached(options: LaunchOptions): boolean {
   const { exePath, prefixPath, protonPath, gamePath, envOverrides } = options
 
+  if (!exePath || !prefixPath || !protonPath) return false
+
   const resolvedExe = path.resolve(exePath)
   const resolvedPrefix = path.resolve(prefixPath)
   const resolvedProton = path.resolve(protonPath)

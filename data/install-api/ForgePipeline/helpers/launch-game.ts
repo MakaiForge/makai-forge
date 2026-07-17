@@ -310,11 +310,17 @@ export const launchGame = async (options: LaunchGameOptions): Promise<void> => {
         gameEnv["DOTNET_ROOT(x86)"] = "C:\\Program Files (x86)\\dotnet";
       }
 
+      if (!protonPath || !winePrefixPath) {
+        logger.warn("Makrun: missing protonPath or winePrefixPath, falling back to native launch");
+        launchNatively(parsedPath, launchOptions, useMangohud, useGamemode);
+        return;
+      }
+
       try {
         launchGameDetached({
           exePath: parsedPath,
-          prefixPath: winePrefixPath!,
-          protonPath: protonPath!,
+          prefixPath: winePrefixPath,
+          protonPath,
           gamePath: path.dirname(parsedPath),
           envOverrides: gameEnv,
           onLog: (line) => GameLogManager.append(shop, objectId, line),
