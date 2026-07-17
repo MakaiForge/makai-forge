@@ -269,6 +269,11 @@ def run(
     if verbose:
         print(f"  NVIDIA libs do host: {'ocultas (bundled no Proton)' if prefix_skip_nvidia else 'visíveis'}")
 
+    # Step 0.4: Unified fork ID (directory > prefix fallback)
+    fork_id = proton_id or prefix_fork_id
+    if fork_id and verbose and not proton_id:
+        print(f"  Fork ID (prefix fallback): {fork_id}")
+
     # ── Step 0.75: Setup prefix + compatdata symlink ──────────────────────
     if verbose:
         print("\n[0.75/9] Preparando prefixo (setup_pfx)...")
@@ -472,9 +477,9 @@ def run(
         env["STEAM_COMPAT_LIBRARY_PATHS"] = game_drive or ""
 
     # 7d. Proton-specific config + DLL overrides
-    if proton_id:
-        proton_intel.apply_proton_config(proton_id, env)
-        dll_ov = proton_intel.get_dll_overrides(proton_id)
+    if fork_id:
+        proton_intel.apply_proton_config(fork_id, env)
+        dll_ov = proton_intel.get_dll_overrides(fork_id)
         if dll_ov:
             current = env.get("WINEDLLOVERRIDES", "")
             extra = ";".join(f"{k}={v}" for k, v in dll_ov.items())
@@ -523,8 +528,8 @@ def run(
         env["STEAM_RUNTIME_LIBRARY_PATH"] = ld_lib_path
 
     # 7f2. LD_LIBRARY_PATH_EXTRA da definição do Proton (ex: libcuda paths custom)
-    if proton_id:
-        ld_extra = proton_intel.get_ld_extra(proton_id)
+    if fork_id:
+        ld_extra = proton_intel.get_ld_extra(fork_id)
         if ld_extra:
             current = env.get("STEAM_RUNTIME_LIBRARY_PATH", "")
             extra = ":".join(ld_extra)

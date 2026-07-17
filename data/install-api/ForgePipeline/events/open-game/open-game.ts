@@ -40,18 +40,19 @@ export async function openGame(
   const prefixBase = game.winePrefixPath;
   const driveC = actualPrefix ? path.join(actualPrefix, "drive_c") : null;
   const pfxDriveC = prefixBase ? path.join(prefixBase, "pfx", "drive_c") : null;
-  const prefixReady = (driveC && fs.existsSync(path.join(driveC, "windows", "system32")))
-    || (pfxDriveC && fs.existsSync(path.join(pfxDriveC, "windows", "system32")));
   const exeInsidePrefix =
     game.executablePath &&
     (driveC && game.executablePath.startsWith(driveC) ||
-     pfxDriveC && game.executablePath.startsWith(pfxDriveC)) &&
-    fs.existsSync(game.executablePath);
+     pfxDriveC && game.executablePath.startsWith(pfxDriveC));
 
-  if (exeInsidePrefix && prefixReady) {
-    sendProgress("complete", "Tudo ok. Iniciando...");
-    await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
-    WindowManager.closeGameLauncherWindow();
+  if (exeInsidePrefix) {
+    if (fs.existsSync(game.executablePath)) {
+      sendProgress("complete", "Tudo ok. Iniciando...");
+      await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
+      WindowManager.closeGameLauncherWindow();
+      return;
+    }
+    sendProgress("error", "Jogo não encontrado no prefixo. Reconfigure o jogo.");
     return;
   }
 
@@ -59,7 +60,7 @@ export async function openGame(
   const protonPathFinal = await ensureProtonAvailable(game, gameKey);
   if (!protonPathFinal) return;
 
-  if (!prefixReady && game.winePrefixPath) {
+  if (!fs.existsSync(game.winePrefixPath)) {
     sendProgress("installing", "Criando prefixo Wine...");
     const prefixOk = await MakaiRPC.call<{ success: boolean }>("create_prefix", {
       game_id: objectId,
@@ -88,26 +89,8 @@ export async function openGame(
     return;
   }
 
-  // Executável aponta pra dentro do prefixo mas pasta fonte não existe
-  // (prefixo foi recriado ou pasta deletada) — pede reconfiguração
-  const execInsidePrefix = (driveC && game.executablePath.startsWith(driveC))
-    || (pfxDriveC && game.executablePath.startsWith(pfxDriveC));
-  if (execInsidePrefix && !fs.existsSync(sourcePath)) {
-    sendProgress("error", "Jogo não encontrado no prefixo. Reconfigure o jogo.");
-    return;
-  }
-
-  // Diretório fonte não existe — jogo já foi preparado pelo sistema antigo
-  if (!fs.existsSync(sourcePath) && fs.existsSync(game.executablePath)) {
-    sendProgress("complete", "Jogo pronto (instalação anterior)");
-    await gamesStore.put(gameKey, { ...game, executablePath: game.executablePath });
-    await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
-    WindowManager.closeGameLauncherWindow();
-    return;
-  }
-
   if (!fs.existsSync(sourcePath)) {
-    sendProgress("error", "Pasta do jogo não encontrada");
+    sendProgress("error", "Pasta do jogo não encontrada. Verifique se o jogo foi copiado corretamente.");
     return;
   }
 

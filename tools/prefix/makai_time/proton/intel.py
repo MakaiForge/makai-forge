@@ -202,90 +202,63 @@ def has_feature(proton_id: str, feature_name: str) -> bool:
     return info.get("features", {}).get(feature_name, False)
 
 
+# ── Mapa feature → env vars ─────────────────────────────────────────────────
+
+FEATURE_ENV_MAP: dict[str, dict[str, str]] = {
+    "raytracing": {"VKD3D_CONFIG": "dxr", "DXVK_ENABLE_DXR": "1"},
+    "hdr": {"DXVK_HDR": "1", "ENABLE_HDR_WSI": "1", "WINE_HDR_ENABLE": "1"},
+    "dlss_upgrader": {"PROTON_ENABLE_DLSS_UPGRADER": "1"},
+    "xess_upgrader": {"PROTON_ENABLE_XESS_UPGRADER": "1"},
+    "async": {"DXVK_ASYNC": "1"},
+    "async_shaders": {"DXVK_ASYNC": "1"},
+    "fsr": {"WINE_FULLSCREEN_FSR": "1", "WINE_FULLSCREEN_FSR_STRENGTH": "2"},
+    "fsr4": {"WINE_FULLSCREEN_FSR": "1", "WINE_FULLSCREEN_FSR_STRENGTH": "5", "PROTON_FSR4": "1"},
+    "ntsync": {"PROTON_USE_NTSYNC": "1"},
+    "local_shader_cache": {"PROTON_LOCAL_SHADER_CACHE": "1"},
+    "per_game_shader_cache": {"PROTON_PER_GAME_SHADER_CACHE": "1"},
+    "gamemode": {"GAMEMODE_ENABLED": "1"},
+    "wayland": {"SDL_VIDEO_DRIVER": "wayland", "GDK_BACKEND": "wayland", "QT_QPA_PLATFORM": "wayland;xcb"},
+}
+
+FEATURE_PATCH_ENV: dict[str, dict[str, str]] = {
+    "wine_miniloader_name": {"WINE_MINILOADER_NAME": ""},
+    "ntsync": {"PROTON_USE_NTSYNC": "1"},
+}
+
+
 # ── Aplicação de configuração ────────────────────────────────────────────────
 
 def apply_proton_config(proton_id: str, env: dict[str, str]) -> dict[str, str]:
     """Aplica configurações específicas do Proton nas env vars.
-    
-    Consome TODOS os campos da definição:
-    - env_defaults
-    - features (mapeia para env vars)
-    - dxvk_nvapi
-    - patches (alguns mapeiam para env vars)
-    - dll_overrides (retorna separadamente via get_dll_overrides)
+
+    Data-driven: lê features + patches + env_defaults + dxvk_nvapi da definição
+    e aplica via FEATURE_ENV_MAP. Features desconhecidas são ignoradas.
+    Ordem de precedência: env_defaults < features < user overrides (--env)
     """
     info = PROTON_KNOWLEDGE.get(proton_id)
     if not info:
         return env
 
-    # 1. env_defaults (maior prioridade: vem antes de outros defaults)
-    if info.get("env_defaults"):
-        env.update(info["env_defaults"])
-
     features = info.get("features", {})
     patches = info.get("patches", [])
 
-    # 2. GPU / Rendering features
-    if features.get("raytracing"):
-        env.setdefault("VKD3D_CONFIG", "dxr")
-        env.setdefault("DXVK_ENABLE_DXR", "1")
+    # 1. env_defaults — base defaults do fork (sobrescrevem nada ainda)
+    if info.get("env_defaults"):
+        env.update(info["env_defaults"])
 
-    if features.get("hdr"):
-        env.setdefault("DXVK_HDR", "1")
-        env.setdefault("ENABLE_HDR_WSI", "1")
-        env.setdefault("WINE_HDR_ENABLE", "1")
-
-    if features.get("dlss_upgrader"):
-        env.setdefault("PROTON_ENABLE_DLSS_UPGRADER", "1")
-
-    if features.get("xess_upgrader"):
-        env.setdefault("PROTON_ENABLE_XESS_UPGRADER", "1")
-
+    # 2. dxvk_nvapi
     if info.get("dxvk_nvapi"):
-        env.setdefault("DXVK_ENABLE_NVAPI", "1")
+        env["DXVK_ENABLE_NVAPI"] = "1"
 
-    # 3. Async shaders (só se explicitamente async, não se tem dxvk_sarek como fallback)
-    if features.get("async") or features.get("async_shaders"):
-        env.setdefault("DXVK_ASYNC", "1")
+    # 3. Features — cada feature ativa suas env vars (sobrescreve env_defaults)
+    for feat_name, feat_env in FEATURE_ENV_MAP.items():
+        if features.get(feat_name):
+            env.update(feat_env)
 
-    # 4. FSR
-    if features.get("fsr"):
-        env.setdefault("WINE_FULLSCREEN_FSR", "1")
-        env.setdefault("WINE_FULLSCREEN_FSR_STRENGTH", "2")
-
-    if features.get("fsr4"):
-        env.setdefault("WINE_FULLSCREEN_FSR", "1")
-        env.setdefault("WINE_FULLSCREEN_FSR_STRENGTH", "5")
-        env.setdefault("PROTON_FSR4", "1")
-
-    # 5. Sync
-    if features.get("ntsync"):
-        env["PROTON_USE_NTSYNC"] = "1"
-
-    # 6. Shader cache
-    if features.get("local_shader_cache"):
-        env.setdefault("PROTON_LOCAL_SHADER_CACHE", "1")
-
-    if features.get("per_game_shader_cache"):
-        env.setdefault("PROTON_PER_GAME_SHADER_CACHE", "1")
-
-    # 7. GameMode
-    if features.get("gamemode"):
-        env.setdefault("GAMEMODE_ENABLED", "1")
-
-    # 8. Wayland
-    if features.get("wayland"):
-        env.setdefault("SDL_VIDEO_DRIVER", "wayland")
-        env.setdefault("GDK_BACKEND", "wayland")
-        env.setdefault("QT_QPA_PLATFORM", "wayland;xcb")
-
-    # 9. Patches → env vars
-    if "wine_miniloader_name" in patches:
-        env.setdefault("WINE_MINILOADER_NAME", "")
-
-    # 10. NTSYNC override from patches
-    if "ntsync" in patches:
-        env["PROTON_USE_NTSYNC"] = "1"
+    # 4. Patches → env vars
+    for patch_name, patch_env in FEATURE_PATCH_ENV.items():
+        if patch_name in patches:
+            env.update(patch_env)
 
     return env
 
