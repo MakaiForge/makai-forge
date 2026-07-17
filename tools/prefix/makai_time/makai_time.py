@@ -28,6 +28,7 @@ from makai_time.core import gamescope
 from makai_time.core.setup_pfx import setup_pfx
 from makai_time.container.discord import discord_ipc_args
 from makai_time.overrides import detect as ov_detect, capture as ov_capture, mount as ov_mount
+from makai_time.proton import anticheat as proton_anticheat
 from makai_time.proton import config as proton_config, recommender, intel as proton_intel
 from makai_time.proton.prefix_reader import detect_proton_from_prefix
 from makai_time.profiles import manager as profile_manager
@@ -55,6 +56,7 @@ def build_bwrap_cmd(
     group_path: str = None,
     skip_nvidia_layers: bool = False,
     use_capsule: bool = False,
+    ac_bwrap_args: list[str] | None = None,
 ) -> list[str]:
     """Monta comando bwrap completo."""
     if uid is None:
@@ -71,6 +73,10 @@ def build_bwrap_cmd(
         "--hostname", "makaiforge",
         "--bind", "/dev/shm", "/dev/shm",
     ]
+
+    # Anti-cheat relaxations (PID namespace, /dev, /proc)
+    if ac_bwrap_args:
+        cmd.extend(ac_bwrap_args)
 
     # Overrides + bindings para paths que ja existem no host
     # (ICD JSONs em /usr/share/vulkan/icd.d/ etc.)
@@ -302,6 +308,27 @@ def run(
     if game_drive and verbose:
         print(f"  Game drive: {game_drive}")
 
+    # ── Step 0.9: Anti-cheat detection ────────────────────────────────────
+    if verbose:
+        print("\n[0.9/9] Detectando anti-cheat...")
+    game_exe_name_ac = os.path.basename(game_exe)
+    ac_data = proton_anticheat.detect_anticheat(game_exe_name_ac)
+    ac_env = {}
+    ac_bwrap_flags = []
+    ac_relaxations = []
+    if ac_data and ac_data.get("ac_types"):
+        ac_types_str = ", ".join(ac_data["ac_types"])
+        compat = ac_data.get("compatible", False)
+        compat_str = "compatível" if compat else "NÃO compatível"
+        print(f"  Anti-cheat detectado: {ac_types_str} ({compat_str})")
+        ac_env = proton_anticheat.get_ac_env_vars(game_exe_name_ac)
+        ac_relaxations = proton_anticheat.get_ac_container_relaxations(game_exe_name_ac)
+        ac_bwrap_flags = proton_anticheat.get_ac_container_bwrap_flags(game_exe_name_ac)
+        if ac_relaxations and verbose:
+            print(f"  Relaxamentos de container: {', '.join(ac_relaxations)}")
+    elif verbose:
+        print(f"  Nenhum anti-cheat detectado")
+
     # ── Step 1: Runtime (opcional — só baixa se perfil exigir) ────────────
     if verbose:
         print(f"\n[1/9] Verificando runtime: {runtime_name}")
@@ -487,6 +514,12 @@ def run(
             if verbose:
                 print(f"  DLL overrides da definição: {extra}")
 
+    # 7d2. Anti-cheat env vars (se detectado)
+    if ac_env:
+        env.update(ac_env)
+        if verbose:
+            print(f"  Anti-cheat env vars: {len(ac_env)}")
+
     # 7e. Container-aware env vars (MAKAI_*)
     overrides_active = os.path.isdir(overrides_base) and any(
         os.listdir(os.path.join(overrides_base, d, "lib"))
@@ -602,6 +635,7 @@ def run(
         group_path=group_path,
         skip_nvidia_layers=prefix_skip_nvidia,
         use_capsule=use_capsule,
+        ac_bwrap_args=ac_bwrap_flags or None,
     )
 
     if dry_run:

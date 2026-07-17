@@ -7,3 +7,4 @@ from makai_time.proton.intel import (
     get_patches, has_patch, has_feature, get_definition,
     skip_nvidia_overrides,
 )
+from makai_time.proton import anticheat
