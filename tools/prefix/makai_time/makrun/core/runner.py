@@ -12,7 +12,12 @@ from makrun.util.lock import unix_flock
 from makrun.util.process import run_command
 
 
-def run(proton_name: str | None, exe_path: str | None, game_id: str | None) -> int:
+def run(
+    proton_name: str | None,
+    exe_path: str | None,
+    game_id: str | None,
+    dry_run: bool = False,
+) -> int:
     env: dict[str, str] = {
         "WINEPREFIX": "",
         "GAMEID": "",
@@ -56,11 +61,70 @@ def run(proton_name: str | None, exe_path: str | None, game_id: str | None) -> i
     setup_pfx(env["WINEPREFIX"])
     set_env(env, exe_path)
 
+    # NOVO: Proton Intelligence + Feature Injection
+    features = None
+    if proton_path:
+        try:
+            from makrun.intel.injector import inject_features
+            from makrun.container.manifest import save_game_session
+
+            _exe = exe_path or env.get("EXE", "")
+            features = inject_features(
+                proton_path=str(proton_path),
+                game_id=game_id,
+                game_exe=_exe,
+            )
+            log.info("Proton: %s", features.get("fork_id"))
+            log.info("Launch method: %s", features.get("launch", {}).get("method"))
+            if features.get("env"):
+                log.debug("Injected %d env vars", len(features["env"]))
+
+            # Salva container manifest
+            try:
+                save_game_session(
+                    prefix_path=env.get("WINEPREFIX", ""),
+                    game_id=game_id,
+                    fork_id=features.get("fork_id"),
+                    proton_path=str(proton_path),
+                    runtime_name=runtime_ver[0],
+                    runtime_version=runtime_ver[1],
+                    features=features,
+                )
+            except Exception as e:
+                log.warning("Failed to save manifest: %s", e)
+        except Exception as e:
+            log.warning("Feature injection failed: %s", e)
+
+    # Merge injected env vars (já que bwrap --clearenv apaga tudo,
+    # precisamos passar as env vars do injector via --setenv no builder)
+    # As env vars do injector são injetadas no container pelo builder
+
     for key, val in env.items():
         log.debug("%s=%s", key, val)
         os.environ[key] = val
 
-    command = build_command(env, runtime_path)
+    # Se é UMU_NO_RUNTIME, passar direto para o Proton
+    if env.get("UMU_NO_RUNTIME") == "1":
+        log.warning("Runtime disabled, launching Proton directly")
+        proton_script = proton_path / "proton"
+        verb = env.get("PROTON_VERB", "waitforexitandrun")
+        exe = exe_path or ""
+        command = [str(proton_script), verb, exe]
+    else:
+        command = build_command(
+            env=env,
+            runtime_path=runtime_path,
+            proton_path=proton_path,
+            exe_path=exe_path or "",
+            features=features,
+            dry_run=dry_run,
+        )
+
     log.debug("Command: %s", command)
 
-    return run_command(command)
+    if dry_run:
+        log.info("=== DRY-RUN: would execute ===")
+        log.info(" ".join(str(c) for c in command))
+        return 0
+
+    return run_command(tuple(command))

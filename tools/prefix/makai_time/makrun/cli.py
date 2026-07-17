@@ -27,19 +27,42 @@ def parse_args():
         help="Proton name or path (e.g. UMU-Proton-10.0-4)",
         default=None,
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Build container command but do not execute",
+    )
+    parser.add_argument(
+        "--display-backend",
+        choices=["auto", "x11", "wayland"],
+        default="auto",
+        help="Display backend for the container",
+    )
 
     if not sys.argv[1:]:
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    args = sys.argv[1:]
+    argv = list(sys.argv[1:])
 
-    if args[0] in PROTON_VERBS:
-        if "PROTON_VERB" not in os.environ:
-            os.environ["PROTON_VERB"] = args[0]
-        args = args[1:]
+    # Extrai verb (waitforexitandrun, run, etc.) de qualquer posição
+    verb = None
+    remaining = []
+    for a in argv:
+        if a in PROTON_VERBS:
+            verb = a
+        else:
+            remaining.append(a)
+    if verb:
+        os.environ.setdefault("PROTON_VERB", verb)
 
-    exe = args[0] if args else None
-    opts = args[1:] if len(args) > 1 else []
+    parsed, unknown = parser.parse_known_args(remaining)
 
-    return parser.parse_known_args(sys.argv[1:])[0], exe, opts
+    exe = unknown[0] if unknown else None
+
+    if parsed.dry_run:
+        os.environ["MAKAI_DRY_RUN"] = "1"
+    if parsed.display_backend:
+        os.environ["DISPLAY_BACKEND"] = parsed.display_backend
+
+    return parsed, exe

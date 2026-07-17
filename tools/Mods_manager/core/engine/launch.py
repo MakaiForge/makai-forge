@@ -23,6 +23,8 @@ def launch_game(
     game_id: str | None = None,
     env_overrides: dict | None = None,
     prefer_custom_prefix: bool = False,
+    fork_id: str | None = None,
+    features_count: int = 0,
 ) -> dict:
     full_exe = os.path.join(game_path, exe_path)
 
@@ -33,7 +35,7 @@ def launch_game(
     if steam_app_id:
         env.setdefault("SteamAppId", steam_app_id)
 
-    return _launch_with_proton(full_exe, prefix_path, proton_path, steam_app_id, env, game_id)
+    return _launch_with_proton(full_exe, prefix_path, proton_path, steam_app_id, env, game_id, fork_id=fork_id, features_count=features_count)
 
 
 def _launch_with_proton(
@@ -43,6 +45,8 @@ def _launch_with_proton(
     steam_app_id: str | None,
     env: dict,
     game_id: str | None = None,
+    fork_id: str | None = None,
+    features_count: int = 0,
 ) -> dict:
     env["WINEPREFIX"] = os.path.expanduser(prefix_path)
     env.setdefault("WINEDLLPATH", os.path.join(os.path.dirname(proton_path), "files", "lib", "wine"))
@@ -60,7 +64,7 @@ def _launch_with_proton(
         env.setdefault("GAMEID", f"umu-{steam_app_id}")
         env.setdefault("STORE", "steam")
 
-    # Makai Runner — execução via makrun
+    # Makai Runner — execução via makrun (bwrap + features + manifest)
     import sys as _sys
     _makrun_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
@@ -68,14 +72,19 @@ def _launch_with_proton(
     )
     _launch_env = env.copy()
     _launch_env["WINEPREFIX"] = os.path.expanduser(prefix_path)
-    _launch_env["PROTONPATH"] = expanded_proton
+    # PROTONPATH precisa ser o DIRETÓRIO do Proton, não o script
+    _launch_env["PROTONPATH"] = proton_dir if expanded_proton.endswith("proton") else expanded_proton
     _launch_env.pop("PYTHONHOME", None)
     _launch_env.pop("PYTHONPATH", None)
     if game_id:
         _launch_env["GAMEID"] = game_id
 
+    # Display backend das configs do usuário (auto/x11/wayland)
+    _display_backend = _launch_env.pop("DISPLAY_BACKEND", "auto")
+
     _cmd = [
         "python3", "-m", "makrun",
+        "--display-backend", _display_backend,
         "waitforexitandrun", full_exe,
     ]
 
@@ -90,7 +99,11 @@ def _launch_with_proton(
     _stderr_fd.write(f"  WINEPREFIX: {_launch_env.get('WINEPREFIX','')}\n")
     _stderr_fd.write(f"  PROTONPATH: {_launch_env.get('PROTONPATH','')}\n")
     _stderr_fd.write(f"  GAMEID: {_launch_env.get('GAMEID','')}\n")
-    _stderr_fd.write(f"  PYTHONHOME: {_launch_env.get('PYTHONHOME','(removed)' if 'PYTHONHOME' not in _launch_env else 'PRESENT')}\n")
+    _stderr_fd.write(f"  DISPLAY_BACKEND: {_display_backend}\n")
+    _stderr_fd.write(f"  PYTHONHOME: {'(removed)' if 'PYTHONHOME' not in _launch_env else 'PRESENT'}\n")
+    _stderr_fd.write(f"  DISPLAY_BACKEND: {_display_backend}\n")
+    _stderr_fd.write(f"  fork_id: {fork_id or 'unknown'}\n")
+    _stderr_fd.write(f"  features_count: {features_count}\n")
     _stderr_fd.write(f"  exe exists: {os.path.isfile(full_exe)}\n")
     _stderr_fd.flush()
 

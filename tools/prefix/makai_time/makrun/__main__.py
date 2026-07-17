@@ -15,7 +15,7 @@ def main() -> int:
     if os.environ.get("UMU_LOG") in {"1", "debug"}:
         log.setLevel(logging.DEBUG)
 
-    ns, exe, opts = parse_args()
+    ns, exe = parse_args()
 
     if not exe:
         log.error("No executable specified")
@@ -25,6 +25,7 @@ def main() -> int:
         proton_name=ns.proton or os.environ.get("PROTONPATH"),
         exe_path=exe,
         game_id=ns.game_id or os.environ.get("GAMEID"),
+        dry_run=ns.dry_run or os.environ.get("MAKAI_DRY_RUN") == "1",
     )
 
 
