@@ -563,9 +563,13 @@ export function ProtonRecommendationModal({
             )}
 
             <div className="prm__forks">
-              <h4>Todos os forks</h4>
+              <h4>Forks instalados</h4>
               <div className="prm__forks-list">
-                {allForks.map((fork) => {
+                {allForks.filter((fork) => {
+                  const info = forkInfoMap[FORK_ALIAS[fork.fork] || fork.fork];
+                  const versions = info?.versions || [];
+                  return versions.some((ver: string) => findInstalled(ver));
+                }).map((fork) => {
                   const isExpanded = expandedForks.has(fork.fork);
                   const info = forkInfoMap[FORK_ALIAS[fork.fork] || fork.fork];
                   const versions = info?.versions || [];
