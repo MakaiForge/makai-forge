@@ -79,14 +79,31 @@ def _launch_with_proton(
         "waitforexitandrun", full_exe,
     ]
 
+    _log_path = os.path.expanduser("~/.cache/makrun-launch.log")
+    _log_dir = os.path.dirname(_log_path)
+    os.makedirs(_log_dir, exist_ok=True)
+    _stderr_fd = open(_log_path, "a")
+    _stderr_fd.write(f"\n{'='*60}\n")
+    _stderr_fd.write(f"[{time.time():.0f}] makrun launch\n")
+    _stderr_fd.write(f"  cwd: {_makrun_dir}\n")
+    _stderr_fd.write(f"  cmd: {' '.join(_cmd)}\n")
+    _stderr_fd.write(f"  WINEPREFIX: {_launch_env.get('WINEPREFIX','')}\n")
+    _stderr_fd.write(f"  PROTONPATH: {_launch_env.get('PROTONPATH','')}\n")
+    _stderr_fd.write(f"  GAMEID: {_launch_env.get('GAMEID','')}\n")
+    _stderr_fd.write(f"  PYTHONHOME: {_launch_env.get('PYTHONHOME','(removed)' if 'PYTHONHOME' not in _launch_env else 'PRESENT')}\n")
+    _stderr_fd.write(f"  exe exists: {os.path.isfile(full_exe)}\n")
+    _stderr_fd.flush()
+
     _proc = subprocess.Popen(
         _cmd,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stderr=_stderr_fd,
         start_new_session=True,
         cwd=_makrun_dir,
         env=_launch_env,
     )
+    _stderr_fd.write(f"  spawned PID: {_proc.pid}\n")
+    _stderr_fd.flush()
     return {"success": True, "pid": _proc.pid, "method": "makrun"}
 
 
