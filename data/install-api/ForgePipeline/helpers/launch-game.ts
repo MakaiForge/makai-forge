@@ -4,7 +4,6 @@ import { spawn } from "node:child_process";
 import { GameShop, type UserPreferences, type Game } from "@types";
 import { db, gamesStore, storeKeys } from "@main/store";
 import {
-  WindowManager,
   logger,
   PowerSaveBlockerManager,
   Wine,
@@ -247,10 +246,6 @@ export const launchGame = async (options: LaunchGameOptions): Promise<void> => {
       launchOptions,
     });
   }
-
-  await WindowManager.createGameLauncherWindow(shop, objectId);
-
-  await new Promise((resolve) => setTimeout(resolve, 2000));
 
   if (process.platform === "linux") {
     const isWindowsBinary = isWindowsExecutable(parsedPath);
