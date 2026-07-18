@@ -1,0 +1,68 @@
+FIX: Rede no container Makai Time
+==================================
+Data: 17/07/2026
+
+Problema
+--------
+Jogos dentro do container bwrap do Makai Time não conseguiam acessar
+a internet. Launcher mostrava "erro 0" / "erro ao baixar versão" /
+"sem internet". Python conseguia internet normalmente dentro do mesmo
+container, mas Wine/Proton não.
+
+Root cause
+----------
+O runtime SteamRT (sniper/soldier/steamrt4) não contém libnss_dns.so.2
+em /usr/lib/x86_64-linux-gnu/. O pressure-vessel da Valve coloca essas
+libs em /usr/lib/pressure-vessel/overrides/lib/<arch>/, e regenera o
+ld.so.cache para incluí-las. Também captura libs NSS/GPU do sistema
+hospedeiro via capsule-capture-libs e regenera o cache.
+
+Nosso builder.py tentava replicar isso manualmente com LD_LIBRARY_PATH,
+mas o carregamento de módulos NSS no glibc (__libc_dlopen) ignora
+LD_LIBRARY_PATH — só busca em ld.so.cache ou caminhos padrão. Sem o
+cache correto, getaddrinfo() falhava silenciosamente no Wine.
+
+Solução aplicada
+----------------
+Em container/builder.py:
+
+1. Novas funções _find_v2_entry() e _build_pv_cmd() que detectam
+   se _v2-entry-point (pressure-vessel) existe no runtime baixado.
+
+2. build_bwrap_cmd() agora prioriza _v2-entry-point quando disponível:
+   usa o pressure-vessel como backend do container (exatamente como
+   o UMU-Launcher faz), mantendo a inteligência de Proton (injector,
+   perfis, anti-cheat) do Makai Time.
+
+3. O comando gerado é:
+   _v2-entry-point --verb waitforexitandrun -- umu-shim proton waitforexitandrun <exe>
+
+4. Fallback: se _v2-entry-point não existir, constrói bwrap manualmente
+   com a lógica anterior (função _build_bwrap_manual).
+
+Por que não tentamos consertar o bwrap manual
+----------------------------------------------
+Tentativas feitas sem sucesso:
+- --no-secure (removeu unshare-user, clearenv, cap-drop) → sem rede
+- --dev-bind /dev /dev (completo, igual pressure-vessel) → sem rede
+- LD_LIBRARY_PATH sem /run/host/usr/lib → sem rede
+- ld.so.cache do runtime montado → crash (formato incompatível
+  entre glibc 2.31 do Debian 10 e glibc 2.35+ do Arch)
+- NSS modules bind-mountados manualmente → sem rede
+
+O pressure-vessel faz operações complexas (capsule-capture-libs,
+ldconfig dentro do container, regeneração de cache) que seriam
+extremamente custosas de replicar em Python. A abordagem pragmática
+foi usar o pressure-vessel como backend já que ele está disponível
+no runtime baixado.
+
+Arquivos modificados
+--------------------
+- tools/prefix/makai_time/makrun/container/builder.py
+  (build_bwrap_cmd refatorado para usar pressure-vessel)
+
+Testes
+------
+- Grand Fantasia Violet (gf) com UMU-Proton-10.0-4: REDE OK
+- Python urllib dentro do container: OK
+- _v2-entry-point direto (sem Makai Time): OK
