@@ -1,11 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { spawn } from "node:child_process";
 import { logger, Umu } from "@main/services";
 import { findProtonPath, findSteamClientPath, parseLibraryFolders } from "./steam-paths";
 import { clearCompatData, ensureCompatData } from "./clear";
 import { normalizePrefixPath } from "./validate";
 import { logOperation, logCall, logError as auditLogError } from "../activity-logger";
+
+const MAKAI_CLIENT_DIR = path.join(os.homedir(), ".config", "makai-forger", "makai-client");
 
 export interface CreatePrefixOptions {
   /** Path to Proton directory (containing `proton` binary) */
@@ -120,8 +123,17 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
     delete baseEnv.PYTHONPATH;
     delete baseEnv.PYTHONSTARTUP;
     delete baseEnv.PYTHONOPTIMIZE;
+
+    // MAKAI_* → STEAM_COMPAT_* translation layer
+    // Proton internals still read STEAM_COMPAT_*, but we use MAKAI_* everywhere else.
+    const makaiClientPath = process.env.MAKAI_CLIENT_INSTALL_PATH || MAKAI_CLIENT_DIR;
+    if (!fs.existsSync(makaiClientPath)) {
+      fs.mkdirSync(path.join(makaiClientPath, "legacycompat"), { recursive: true });
+    }
     if (compatDataPath) baseEnv.STEAM_COMPAT_DATA_PATH = compatDataPath;
-    baseEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH = steamClientPath || protonPath;
+    baseEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH = makaiClientPath;
+    baseEnv.MAKAI_CLIENT_INSTALL_PATH = makaiClientPath;
+    if (compatDataPath) baseEnv.MAKAI_COMPAT_DATA_PATH = compatDataPath;
     baseEnv.WINEDLLOVERRIDES = "winemenubuilder.exe=d";
 
     const trySpawn = (
