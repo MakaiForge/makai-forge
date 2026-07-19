@@ -1,5 +1,0 @@
-_build/
-build/
-builddir/
-debian/version.txt
-obj-*/

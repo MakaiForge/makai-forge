@@ -1,9 +1,0 @@
-{
-  "name": "VA-11 Hall-A: Cyberpunk Bartender Action",
-  "exe": "VA11.exe",
-  "engine": "nwjs",
-  "env": {
-    "PROTON_NO_SANDBOX": "1"
-  },
-  "notes": "NW.js. Funciona bem."
-}

@@ -256,6 +256,7 @@ def inject_features(
     game_id: str | None = None,
     game_exe: str | None = None,
     steam_app_id: str | None = None,
+    game_dir: str | None = None,
 ) -> dict[str, Any]:
     """Identifica o fork do Proton e retorna env vars + launch config.
 
@@ -266,6 +267,7 @@ def inject_features(
             "launch": { "method": "wine_preloader", "wineloadernoexec": True },
             "container_flags": [ "--no-unshare-pid", ... ],
             "container_relaxations": ["no_unshare_pid"],
+            "audio": { ... },  # AudioResult do Audio Intelligence
         }
     """
     result: dict[str, Any] = {
@@ -273,6 +275,7 @@ def inject_features(
         "env": {},
         "launch": {},
         "container_flags": [],
+        "audio": {},
     }
 
     if not proton_path or not os.path.isdir(proton_path):
@@ -316,6 +319,26 @@ def inject_features(
     # 6. Per-game profile (do profiles.py)
     if game_id:
         _apply_profile(result, game_id, game_exe)
+
+    # 7. Audio Intelligence (analisa pipeline de áudio do jogo)
+    if game_dir and game_exe:
+        _apply_audio_intelligence(result, game_dir, game_exe)
+
+    # 8. DLL overrides da definição do fork → WINEDLLOVERRIDES
+    dll_overrides = definition.get("dll_overrides", {})
+    if dll_overrides:
+        existing = result["env"].get("WINEDLLOVERRIDES", "")
+        parts = [f"{dll}={mode}" for dll, mode in dll_overrides.items() if mode]
+        if parts:
+            suffix = ";".join(parts)
+            if existing and not existing.endswith(";"):
+                existing += ";"
+            result["env"]["WINEDLLOVERRIDES"] = existing + suffix
+
+    # 9. Container flags da definição
+    container_flags = definition.get("container_flags", [])
+    if container_flags:
+        result["container_flags"].extend(container_flags)
 
     return result
 
@@ -372,3 +395,56 @@ def _apply_profile(result: dict[str, Any], game_id: str | None, game_exe: str | 
 
     except Exception as e:
         log.debug("Profile load error: %s", e)
+
+
+def _apply_audio_intelligence(
+    result: dict[str, Any],
+    game_dir: str,
+    game_exe: str | None = None,
+) -> None:
+    """Analisa sistema de áudio do jogo e aplica configurações sugeridas.
+
+    Chama Audio Intelligence, salva resultado em result["audio"],
+    e aplica env vars + recomendações no result["env"].
+    """
+    try:
+        from makrun.intel.audio import analyze_audio
+        from makrun.intel.audio.knowledge.recommendations import recommend
+
+        audio = analyze_audio(game_dir, exe_path=game_exe, use_cache=True)
+        result["audio"] = audio.to_dict()
+
+        if audio.confidence < 0.3:
+            log.info("Áudio: confiança baixa (%.0f%%), ignorando recomendações", audio.confidence * 100)
+            return
+
+        log.info(
+            "Áudio: %s | middleware=%s backend=%s confiança=%.0f%%",
+            audio.api or "?",
+            audio.middleware or "?",
+            audio.backend or "?",
+            audio.confidence * 100,
+        )
+
+        # Aplica env vars recomendadas
+        recs = recommend(audio)
+        env = recs.get("env_vars", {})
+        if env:
+            result["env"].update(env)
+            log.debug("Áudio: %d env vars injetadas", len(env))
+
+        # DSOAL
+        if audio.needs_dsoal:
+            log.info("Áudio: DSOAL recomendado — configurando override dsound=native,builtin")
+            result["env"]["WINEDLLOVERRIDES"] = result["env"].get("WINEDLLOVERRIDES", "") + ";dsound=native,builtin"
+
+        # Se o middleware usa WASAPI mas precisa de 3D, loga aviso
+        if audio.backend == "mmdevapi" and "3D" in str(audio.recommendations):
+            log.warning(
+                "Áudio: %s via WASAPI — posicionamento 3D pode não funcionar. "
+                "Considere testar Proton com winepulse.drv",
+                audio.middleware,
+            )
+
+    except Exception as e:
+        log.debug("Audio intelligence error: %s", e)

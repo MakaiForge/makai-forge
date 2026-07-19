@@ -1,3 +1,21 @@
+"""
+# =============================================================================
+# !!! ATENÇÃO: NÃO MODIFICAR SEM AUTORIZAÇÃO EXPLÍCITA !!!
+# =============================================================================
+# Ponte entre runner.py e builder.py.
+# 
+# Só faz:
+#   1. Verifica se o script proton existe
+#   2. Decide se usa container (bwrap) ou direto (UMU_NO_RUNTIME)
+#   3. Chama build_bwrap_cmd() com os parâmetros certos
+#
+# NÃO ADICIONAR:
+#   - Config de container (builder.py + steps/ cuidam disso)
+#   - Env vars (environment.py + steps/env.py cuidam)
+#   - Lógica de jogo específico (profiles.py)
+# =============================================================================
+"""
+
 from pathlib import Path
 
 from makrun.log import log

@@ -1,7 +1,0 @@
-{
-  "emulator_v0": {
-    "argv": "./nonexistent/mock-emulator.sh",
-    "server_argv": "./nonexistent/mock-emulator-server.sh",
-    "emulated_architectures": ["mock-emulated"]
-  }
-}

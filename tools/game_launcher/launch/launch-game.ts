@@ -1,5 +1,6 @@
 import path from "node:path"
 import fs from "node:fs"
+import os from "node:os"
 import { spawn } from "node:child_process"
 import type { LaunchOptions, LaunchResult } from "./types"
 
@@ -96,16 +97,29 @@ export function launchGameDetached(options: LaunchOptions): boolean {
 
   const args = ["-m", "makrun", "waitforexitandrun", resolvedExe]
 
+  const logDir = path.join(os.homedir(), ".cache", "makrun")
+  const logFile = path.join(logDir, `launch-${Date.now()}.log`)
   try {
+    fs.mkdirSync(logDir, { recursive: true })
+    const stderrFd = fs.openSync(logFile, "a")
+    fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${getPythonBin()} ${args.join(" ")}\n`)
+    fs.appendFileSync(logFile, `  cwd: ${makrunDir}\n`)
+    fs.appendFileSync(logFile, `  WINEPREFIX: ${resolvedPrefix}\n`)
+    fs.appendFileSync(logFile, `  PROTONPATH: ${resolvedProton}\n`)
+
     const proc = spawn(getPythonBin(), args, {
       cwd: makrunDir,
-      stdio: "ignore",
+      stdio: ["ignore", "ignore", stderrFd],
       detached: true,
       env: spawnEnv,
     })
     proc.unref()
+    fs.closeSync(stderrFd)
     return true
-  } catch {
+  } catch (err) {
+    try {
+      fs.appendFileSync(logFile, `SPAWN ERROR: ${err}\n`)
+    } catch {}
     return false
   }
 }

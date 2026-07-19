@@ -1,6 +1,0 @@
-LIBVERSIONED1 {
-  global:
-    symbol*;
-};
-LIBVERSIONED2 {
-} LIBVERSIONED1;

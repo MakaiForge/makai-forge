@@ -1,7 +1,0 @@
-{
-  "name": "Stardew Valley",
-  "exe": "Stardew Valley.exe",
-  "engine": "unity",
-  "env": {},
-  "notes": "XNA/MonoGame via Wine. Funciona perfeitamente."
-}

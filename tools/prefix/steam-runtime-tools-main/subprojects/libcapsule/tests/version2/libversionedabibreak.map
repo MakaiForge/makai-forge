@@ -1,4 +1,0 @@
-LIBVERSIONED2 {
-  global:
-    *;
-};

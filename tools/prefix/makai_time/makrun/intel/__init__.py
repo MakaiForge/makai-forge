@@ -277,6 +277,44 @@ def apply_proton_config(proton_id: str, env: dict[str, str]) -> dict[str, str]:
 
 # ── Getters especializados ──────────────────────────────────────────────────
 
+_DEFAULT_CONTAINER_CONFIG: dict = {
+    "audio": {
+        "setup_alsa_config": True,
+        "bind_pulse": True,
+        "bind_pipewire": True,
+        "pulse_cookie": True,
+    },
+    "container": {
+        "ld_library_path_extra": [],
+        "skip_nvidia_overrides": False,
+        "needs_ntsync_dev": False,
+    },
+    "prefix_setup": {
+        "env": {},
+    },
+}
+
+
+def get_container_config(fork_id: str) -> dict:
+    """Retorna configuração de container específica do Proton fork.
+
+    Cada definição em definitions/ pode exportar get_container_config().
+    Se não existir, retorna config padrão (comportamento atual do builder).
+    """
+    if not fork_id:
+        return dict(_DEFAULT_CONTAINER_CONFIG)
+    try:
+        module_name = fork_id.replace("-", "_")
+        _mod = importlib.import_module(f"{_defs_pkg}.{module_name}")
+        if hasattr(_mod, "get_container_config"):
+            cfg = _mod.get_container_config()
+            if cfg:
+                return cfg
+    except (ImportError, AttributeError):
+        pass
+    return dict(_DEFAULT_CONTAINER_CONFIG)
+
+
 def get_dll_overrides(proton_id: str) -> dict[str, str]:
     """Retorna DLL overrides específicos do Proton fork.
     

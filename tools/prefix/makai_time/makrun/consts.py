@@ -36,6 +36,15 @@ XDG_DATA_HOME = (
     else Path.home() / ".local" / "share"
 )
 
-RUNTIME_DIR = XDG_DATA_HOME / "umu"
+RUNTIME_DIR = Path.home() / ".config" / "makai-forger" / "runtime"
 STEAM_COMPAT_DIR = XDG_DATA_HOME / "Steam" / "compatibilitytools.d"
+MAKAI_COMPAT_DIR = (
+    Path.home() / ".config" / "makai-forger" / "compat-tools" / "compatibilitytools.d"
+)
 CACHE_DIR = XDG_CACHE_HOME / "makrun"
+
+# URLs de download do runtime (fallback: GitHub → GitLab)
+RUNTIME_DOWNLOAD_URLS = [
+    "https://github.com/MakaiForge/MakaiTime/releases/download/v1.0.0/makai-time-platform-1.0.tar.gz",
+    "https://gitlab.com/makaiforger/MakaiTime/-/archive/v1.0.0/MakaiTime-v1.0.0.zip",
+]

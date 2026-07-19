@@ -1,8 +1,199 @@
-import os
+"""
+# =============================================================================
+# !!! ATENÇÃO: NÃO MODIFICAR SEM AUTORIZAÇÃO EXPLÍCITA !!!
+# =============================================================================
+# Orquestrador de construção do container bwrap.
+#
+# A ORDEM DOS STEPS IMPORTA. O bwrap processa os argumentos em ordem
+# sequencial. Mudar a ordem aqui pode:
+#   - Quebrar montagens (runtime antes de isolation)
+#   - Fazer o linker não encontrar libs (LD_LIBRARY_PATH antes de /usr)
+#   - Impedir o X11 de funcionar (display antes de mounts)
+#
+# CADA STEP TEM UMA FUNÇÃO ESPECÍFICA e NÃO deve ser pulado ou
+# reordenado sem entender o impacto em TODOS os forks de Proton.
+#
+# Steps atuais e por que existem:
+#   1. isolation → security: unshare, seccomp, capabilities
+#   2. runtime   → mount do makai-runtime como /usr
+#   3. tmp/proc/sys → filesystems essenciais
+#   4. etc       → /etc/hosts, resolv.conf, machine-id
+#   5. ssl      → certificados CA (HTTPS em jogos)
+#   6. fonts    → renderização de texto
+#   7. mounts   → proton=/proton, prefixo, jogo
+#   8. display  → X11/Wayland/D-Bus/Discord
+#   9. audio    → PipeWire/PulseAudio
+#   10. devices  → /dev/dri, /dev/nvidia*, /dev/ntsync
+#   11. gpu      → overrides de libs GPU
+#   12. env      → --setenv para cada variável
+#   13. relaxations → anti-cheat precisa de flags especiais
+#   14. exec     → comando final (proton + exe)
+#
+# NÃO ADICIONAR STEPS NOVOS sem discutir com o usuário.
+# NÃO REMOVER STEPS EXISTENTES — cada um é necessário.
+#
+# Se PRECISAR modificar algo, crie um STEP CONDICIONAL que só ative
+# quando a config do fork pedir (ex: anti-cheat relaxations).
+# =============================================================================
+"""
+
 import shutil
 from pathlib import Path
+from typing import Any
 
+import shutil
+from pathlib import Path
+from typing import Any
+
+from makrun.container.steps import StepResult
+from makrun.container.steps import (
+    isolation, runtime, gpu, audio, display, etc as etc_step,
+    ssl, fonts, devices, mounts, env as env_step, exec as exec_step,
+)
+from makrun.intel import get_container_config, identify_proton
 from makrun.log import log
+
+
+def _find_bwrap() -> str:
+    bwrap = shutil.which("bwrap")
+    if not bwrap:
+        raise FileNotFoundError("bwrap not found in PATH. Install bubblewrap.")
+    return bwrap
+
+
+def _log_results(results: list[tuple[str, StepResult]]) -> None:
+    for name, result in results:
+        status = "OK" if result.applied else "SKIP"
+        log.info("  [%s] %s → %s", status, name, result.summary)
+
+
+class Builder:
+    """Constrói o comando bwrap via API fluente.
+
+    Uso:
+        cmd = (Builder(config, ctx)
+               .apply_isolation()
+               .apply_runtime(runtime_path)
+               .apply_display()
+               .apply_audio()
+               .apply_devices()
+               .apply_env()
+               .apply_exec()
+               .build())
+    """
+
+    def __init__(self, config: dict, ctx: dict):
+        self.config = config
+        self.ctx = ctx
+        self.cmd: list[str] = [_find_bwrap()]
+        self.results: list[tuple[str, StepResult]] = []
+
+    # ── Steps base ──────────────────────────────────────────────────────
+
+    def apply_isolation(self):
+        r = isolation.configure(self.config)
+        self.cmd.extend(r.args)
+        self.results.append(("isolation", r))
+        return self
+
+    def apply_runtime(self, runtime_path: Path):
+        r, runtime_files = runtime.configure(runtime_path, self.config)
+        self.cmd.extend(r.args)
+        self.results.append(("runtime", r))
+        self.ctx["runtime_files"] = runtime_files
+        return self
+
+    def apply_tmp_proc_sys(self):
+        self.cmd.extend(["--tmpfs", "/tmp"])
+        self.cmd.extend(["--proc", "/proc"])
+        self.cmd.extend(["--ro-bind", "/sys", "/sys"])
+        return self
+
+    def apply_etc(self):
+        r = etc_step.configure(self.config)
+        self.cmd.extend(r.args)
+        self.results.append(("etc", r))
+        return self
+
+    def apply_ssl(self):
+        r = ssl.configure(self.config)
+        self.cmd.extend(r.args)
+        self.results.append(("ssl", r))
+        return self
+
+    def apply_fonts(self):
+        r = fonts.configure(self.config)
+        self.cmd.extend(r.args)
+        self.results.append(("fonts", r))
+        return self
+
+    def apply_mounts(self, proton_path: Path, prefix_path: str, exe_path: str):
+        r = mounts.configure(proton_path, prefix_path, exe_path, self.config)
+        self.cmd.extend(r.args)
+        self.results.append(("mounts", r))
+        self.ctx["mounts_extra"] = r.extra
+        return self
+
+    def apply_display(self):
+        r = display.configure(self.config)
+        self.cmd.extend(r.args)
+        self.results.append(("display", r))
+        return self
+
+    def apply_audio(self, runtime_path: Path):
+        r = audio.configure(self.config, runtime_path)
+        self.cmd.extend(r.args)
+        self.results.append(("audio", r))
+        return self
+
+    def apply_devices(self):
+        r = devices.configure(self.config)
+        self.cmd.extend(r.args)
+        self.results.append(("devices", r))
+        return self
+
+    def apply_gpu(self):
+        r = gpu.configure(self.config)
+        self.cmd.extend(r.args)
+        self.results.append(("gpu", r))
+        self.ctx["gpu_info"] = r.extra.get("gpu_info")
+        return self
+
+    def apply_env(self, env: dict, features: dict | None = None):
+        r = env_step.configure(
+            env, features, self.config,
+            mounts_extra=self.ctx.get("mounts_extra"),
+            gpu_info=self.ctx.get("gpu_info"),
+        )
+        self.cmd.extend(r.args)
+        self.results.append(("env", r))
+        return self
+
+    def apply_exec(self, env: dict, features: dict | None = None):
+        r = exec_step.configure(env, features, mounts_extra=self.ctx.get("mounts_extra"))
+        self.cmd.extend(r.args)
+        self.results.append(("exec", r))
+        return self
+
+    # ── Util ────────────────────────────────────────────────────────────
+
+    def apply_relaxations(self, features: dict):
+        if features.get("container_flags"):
+            for flag in features["container_flags"]:
+                self.cmd.extend(flag.split() if isinstance(flag, str) else flag)
+        if features.get("container_relaxations"):
+            try:
+                from makrun.intel.anticheat.container import CONTAINER_RELAX_FLAGS
+                for relax in features["container_relaxations"]:
+                    flags = CONTAINER_RELAX_FLAGS.get(relax, {}).get("bwrap_flags", [])
+                    self.cmd.extend(flags)
+            except ImportError:
+                log.debug("anticheat.container not available")
+        return self
+
+    def build(self) -> list[str]:
+        _log_results(self.results)
+        return self.cmd
 
 
 def build_bwrap_cmd(
@@ -16,370 +207,48 @@ def build_bwrap_cmd(
     interactive: bool = False,
     dry_run: bool = False,
 ) -> list[str]:
-    """Monta o comando para rodar o Proton + exe dentro do container.
+    """Constrói comando bwrap (wrapper da classe Builder)."""
+    fork_id = (features or {}).get("fork_id") or identify_proton(str(proton_path))
+    container_config = get_container_config(fork_id)
 
-    Usa pressure-vessel (_v2-entry-point) quando disponível (recomendado),
-    ou constrói comando bwrap manual como fallback.
+    log.info("=== Construindo container para fork=%s ===", fork_id)
 
-    Args:
-        runtime_path: Path do runtime
-        proton_path: Path do Proton
-        prefix_path: Path do Wine prefix
-        exe_path: Path do executável do jogo
-        env: Dict de env vars
-        features: Dict do injector (opcional)
-        display_backend: "auto", "x11", ou "wayland"
-        interactive: Se True, modo debug
-        dry_run: Se True, só loga
+    ctx: dict[str, Any] = {
+        "config": container_config,
+        "env": env,
+        "features": features or {},
+        "runtime_path": runtime_path,
+        "proton_path": proton_path,
+        "prefix_path": prefix_path,
+        "exe_path": exe_path,
+        "display_backend": display_backend,
+        "interactive": interactive,
+    }
 
-    Returns:
-        Lista de argumentos para subprocess.Popen
-    """
-    v2_entry = _find_v2_entry(runtime_path)
-    if v2_entry is not None:
-        return _build_pv_cmd(v2_entry, runtime_path, proton_path, prefix_path, exe_path, env)
+    builder = Builder(container_config, ctx)
 
-    log.warning("pressure-vessel não encontrado, usando bwrap manual")
-    return _build_bwrap_manual(
-        runtime_path, proton_path, prefix_path, exe_path,
-        env, features, display_backend, interactive, dry_run,
+    cmd = (
+        builder
+        .apply_isolation()
+        .apply_runtime(runtime_path)
+        .apply_tmp_proc_sys()
+        .apply_etc()
+        .apply_ssl()
+        .apply_fonts()
+        .apply_mounts(proton_path, prefix_path, exe_path)
+        .apply_display()
+        .apply_audio(runtime_path)
+        .apply_devices()
+        .apply_gpu()
+        .apply_env(env, features)
+        .apply_relaxations(features or {})
+        .apply_exec(env, features)
+        .build()
     )
 
+    log.info("=== Container: %d argumentos bwrap ===", len(cmd))
 
-def _find_v2_entry(runtime_path: Path) -> Path | None:
-    """Procura _v2-entry-point no runtime."""
-    candidates = [
-        runtime_path / "_v2-entry-point",
-        runtime_path.parent / "_v2-entry-point",
-    ]
-    for c in candidates:
-        if c.is_file():
-            return c
-    return None
-
-
-def _build_pv_cmd(
-    v2_entry: Path,
-    runtime_path: Path,
-    proton_path: Path,
-    prefix_path: str,
-    exe_path: str,
-    env: dict[str, str],
-) -> list[str]:
-    """Constrói comando usando pressure-vessel (_v2-entry-point + umu-shim).
-
-    Igual ao UMU: _v2-entry-point --verb waitforexitandrun -- umu-shim proton waitforexitandrun exe
-    """
-    runtime_dir = v2_entry.parent
-    umu_shim = runtime_dir / "umu-shim"
-
-    if not umu_shim.is_file():
-        log.warning("umu-shim não encontrado, pulando")
-        # fallback: chama proton direto
-        return [str(v2_entry), "--verb", env.get("PROTON_VERB", "waitforexitandrun"), "--",
-                str(proton_path / "proton"), env.get("PROTON_VERB", "waitforexitandrun"), exe_path]
-
-    log.info("Usando pressure-vessel: %s", v2_entry)
-    return [
-        str(v2_entry),
-        "--verb", env.get("PROTON_VERB", "waitforexitandrun"),
-        "--",
-        str(umu_shim),
-        str(proton_path / "proton"),
-        env.get("PROTON_VERB", "waitforexitandrun"),
-        exe_path,
-    ]
-
-
-def _build_bwrap_manual(
-    runtime_path: Path,
-    proton_path: Path,
-    prefix_path: str,
-    exe_path: str,
-    env: dict[str, str],
-    features: dict | None = None,
-    display_backend: str = "auto",
-    interactive: bool = False,
-    dry_run: bool = False,
-) -> list[str]:
-    """Fallback: constrói comando bwrap manual (sem pressure-vessel)."""
-    bwrap = _find_bwrap()
-    cmd: list[str] = [bwrap]
-
-    cmd.extend(["--unshare-user"])
-    if not interactive:
-        cmd.extend(["--unshare-ipc", "--unshare-pid", "--unshare-uts", "--unshare-cgroup"])
-    cmd.extend(["--disable-userns", "--clearenv", "--cap-drop", "ALL"])
-
-    # Runtime como /usr + /lib + /bin etc.
-    runtime_usr = _resolve_runtime_usr(runtime_path)
-    if runtime_usr is None:
-        raise RuntimeError(f"Runtime has no /usr structure at {runtime_path}")
-    cmd.extend(["--ro-bind", str(runtime_usr), "/usr"])
-    for link in ["bin", "sbin", "lib", "lib32", "lib64"]:
-        cmd.extend(["--symlink", f"usr/{link}", f"/{link}"])
-
-    # Provider mount: host acessível em /run/host
-    cmd.extend(["--ro-bind", "/", "/run/host"])
-
-    # Proc
-    cmd.extend(["--proc", "/proc"])
-
-    # Sys (GPU probe via sysfs)
-    cmd.extend(["--ro-bind", "/sys", "/sys"])
-
-    # nsswitch.conf simplificado (sem systemd-resolved)
-    _nss_path = Path("/tmp/.makrun-nsswitch.conf")
-    if not _nss_path.exists():
-        _nss_path.write_text(
-            "passwd: files\n"
-            "group: files\n"
-            "shadow: files\n"
-            "hosts: files dns\n"
-            "networks: files\n"
-            "protocols: files\n"
-            "services: files\n"
-            "netgroup: files\n"
-        )
-    cmd.extend(["--ro-bind", str(_nss_path), "/etc/nsswitch.conf"])
-
-    # Host etc (minimal)
-    for etc_file in ["hosts", "host.conf", "resolv.conf", "services"]:
-        host_etc = Path("/etc") / etc_file
-        if host_etc.is_file():
-            cmd.extend(["--ro-bind", str(host_etc), f"/etc/{etc_file}"])
-
-    # Machine-id (D-Bus, PulseAudio)
-    machine_id = Path("/etc/machine-id")
-    if machine_id.is_file():
-        cmd.extend(["--ro-bind", str(machine_id), "/etc/machine-id"])
-
-    # Local time
-    localtime = Path("/etc/localtime")
-    if localtime.is_file() or localtime.is_symlink():
-        cmd.extend(["--ro-bind", str(localtime), "/etc/localtime"])
-
-    # Runtime /etc (fonts, fontconfig para Chromium/NW.js/Java)
-    if runtime_usr:
-        runtime_etc = runtime_usr.parent / "etc"
-        if runtime_etc.is_dir():
-            for etc_sub in ["fonts", "fonts/conf.d", "fonts/fonts.conf"]:
-                _src = runtime_etc / etc_sub
-                _dst = Path("/etc") / etc_sub
-                if _src.is_dir():
-                    cmd.extend(["--ro-bind", str(_src), str(_dst)])
-                elif _src.is_file():
-                    cmd.extend(["--ro-bind", str(_src), str(_dst)])
-
-    # SSL certificates (HTTPS para jogos online)
-    ssl_certs = Path("/etc/ssl")
-    if ssl_certs.is_dir():
-        cmd.extend(["--ro-bind", "/etc/ssl", "/etc/ssl"])
-    ca_certs = Path("/etc/ca-certificates")
-    if ca_certs.is_dir():
-        cmd.extend(["--ro-bind", "/etc/ca-certificates", "/etc/ca-certificates"])
-    # Alternativa RHEL/Fedora
-    pki_tls = Path("/etc/pki/tls/certs")
-    if pki_tls.is_dir():
-        cmd.extend(["--ro-bind", str(pki_tls), "/etc/pki/tls/certs"])
-    pki_ca = Path("/etc/pki/ca-trust/extracted")
-    if pki_ca.is_dir():
-        cmd.extend(["--ro-bind", str(pki_ca), "/etc/pki/ca-trust/extracted"])
-
-    # Mount Proton (bind dentro do container)
-    proton_container = "/proton"
-    cmd.extend(["--bind", str(proton_path.resolve()), proton_container])
-
-    # Mount prefix
-    prefix_resolved = Path(prefix_path).expanduser().resolve()
-    prefix_container = "/prefix"
-    cmd.extend(["--bind", str(prefix_resolved), prefix_container])
-
-    # Mount game executable dir
-    exe_resolved = Path(exe_path).expanduser().resolve()
-    game_container = "/game"
-    cmd.extend(["--ro-bind", str(exe_resolved.parent), game_container])
-
-    # X11 display
-    x11_socket = Path("/tmp/.X11-unix")
-    if x11_socket.is_dir():
-        cmd.extend(["--ro-bind", "/tmp/.X11-unix", "/tmp/.X11-unix"])
-
-    # Wayland display
-    wayland_display = os.environ.get("WAYLAND_DISPLAY", "wayland-0")
-    wayland_socket = Path(f"/run/user/{os.getuid()}/{wayland_display}")
-    if wayland_socket.is_socket():
-        cmd.extend([
-            "--ro-bind", str(wayland_socket), str(wayland_socket),
-        ])
-
-    # D-Bus socket
-    dbus_socket = Path(f"/run/user/{os.getuid()}/bus")
-    if dbus_socket.is_socket():
-        cmd.extend(["--ro-bind", str(dbus_socket), str(dbus_socket)])
-
-    # Audio (PipeWire/PulseAudio)
-    pulse_socket = Path(f"/run/user/{os.getuid()}/pulse")
-    if pulse_socket.is_dir():
-        cmd.extend(["--ro-bind", str(pulse_socket), str(pulse_socket)])
-    pipewire_socket = Path(f"/run/user/{os.getuid()}/pipewire-0")
-    if pipewire_socket.is_socket():
-        cmd.extend(["--ro-bind", str(pipewire_socket), str(pipewire_socket)])
-
-    # Xauthority (tenta env var $XAUTHORITY, depois ~/.Xauthority)
-    _xauth_env = os.environ.get("XAUTHORITY", "")
-    xauth = Path(_xauth_env) if _xauth_env else Path.home() / ".Xauthority"
-    if xauth.is_file():
-        cmd.extend(["--ro-bind", str(xauth), str(xauth)])
-        os.environ["XAUTHORITY"] = str(xauth)
-    elif not _xauth_env:
-        # Tenta achar qualquer xauth_* em /run/user/$UID/
-        xauth_dir = Path(f"/run/user/{os.getuid()}")
-        if xauth_dir.is_dir():
-            candidates = sorted(xauth_dir.glob("xauth_*"), key=lambda p: p.stat().st_mtime, reverse=True)
-            if candidates:
-                xauth = candidates[0]
-                cmd.extend(["--ro-bind", str(xauth), str(xauth)])
-                os.environ["XAUTHORITY"] = str(xauth)
-
-    # /dev (seletivo — GPU + devices essenciais)
-    dri = Path("/dev/dri")
-    if dri.is_dir():
-        cmd.extend(["--dev-bind", "/dev/dri", "/dev/dri"])
-
-    for dev in ["nvidia0", "nvidiactl", "nvidia-modeset", "nvidia-uvm"]:
-        d = Path(f"/dev/{dev}")
-        if d.exists():
-            cmd.extend(["--dev-bind", str(d), str(d)])
-
-    cmd.extend(["--bind", "/dev/shm", "/dev/shm"])
-
-    for dev in ["urandom", "random", "null", "zero", "full"]:
-        d = Path(f"/dev/{dev}")
-        if d.exists():
-            cmd.extend(["--dev-bind", str(d), str(d)])
-
-    # /run/udev (joystick, input)
-    cmd.extend(["--ro-bind", "/run/udev", "/run/udev"])
-
-    # Home directory isolado + bind real
-    home = str(Path.home())
-    cmd.extend(["--tmpfs", "/home"])
-    cmd.extend(["--bind", home, home])
-
-    # ENV vars do container
-    _add_env(cmd, "PATH", "/usr/bin:/usr/sbin:/bin:/sbin")
-    _add_env(cmd, "container", "makai")
-    _add_env(cmd, "WINEPREFIX", prefix_container)
-    _add_env(cmd, "PROTONPATH", f"{proton_container}")
-    _add_env(cmd, "GAMEID", env.get("GAMEID", ""))
-    _add_env(cmd, "STEAM_COMPAT_APP_ID", env.get("STEAM_COMPAT_APP_ID", "0"))
-    _add_env(cmd, "SteamAppId", env.get("SteamAppId", "0"))
-    _add_env(cmd, "SteamGameId", env.get("SteamGameId", "0"))
-    _steam_root = str(Path.home() / ".steam" / "steam")
-    _add_env(cmd, "STEAM_COMPAT_DATA_PATH", prefix_container)
-    _add_env(cmd, "STEAM_COMPAT_INSTALL_PATH", game_container)
-    _add_env(cmd, "STEAM_COMPAT_CLIENT_INSTALL_PATH", _steam_root)
-    _add_env(cmd, "STEAM_COMPAT_TOOL_PATHS", f"{proton_container}:{str(runtime_path)}")
-    _add_env(cmd, "STEAM_COMPAT_MOUNTS", f"{proton_container}:{str(runtime_path)}")
-    _add_env(cmd, "STEAM_COMPAT_LIBRARY_PATHS", _steam_root)
-    _rl = str(runtime_usr / 'lib')
-    _overrides_dir = f"{_rl}/pressure-vessel/overrides"
-    _runtime_lib_path = (
-        f"{_overrides_dir}/lib/x86_64-linux-gnu:"
-        f"{_overrides_dir}/lib/i386-linux-gnu:"
-        f"{prefix_container}/overrides/lib:"
-        f"{prefix_container}/overrides/lib32:"
-        f"{_rl}:"
-        f"{_rl}/x86_64-linux-gnu:"
-        f"{_rl}/i386-linux-gnu:"
-        f"{str(runtime_usr / 'lib64')}:"
-        f"{str(runtime_usr / 'lib32')}:"
-        f"/run/host/usr/lib:"
-        f"/run/host/usr/lib32"
-    )
-    _add_env(cmd, "STEAM_RUNTIME_LIBRARY_PATH", _runtime_lib_path)
-    _add_env(cmd, "LD_LIBRARY_PATH", _runtime_lib_path)
-
-    # GPU ICD paths (via /run/host pois /usr é read-only do runtime)
-    _vk_icd = "/run/host/usr/share/vulkan/icd.d/nvidia_icd.json"
-    if Path(_vk_icd.replace("/run/host", "")).is_file():
-        _add_env(cmd, "VK_ICD_FILENAMES", _vk_icd)
-    _egl_vendor = "/run/host/usr/share/glvnd/egl_vendor.d"
-    if Path(_egl_vendor.replace("/run/host", "")).is_dir():
-        _add_env(cmd, "__EGL_VENDOR_LIBRARY_DIRS", _egl_vendor)
-
-    _add_env(cmd, "DISPLAY", os.environ.get("DISPLAY", ":0"))
-    _add_env(cmd, "WAYLAND_DISPLAY", os.environ.get("WAYLAND_DISPLAY", "wayland-0"))
-    _add_env(cmd, "XDG_SESSION_TYPE", os.environ.get("XDG_SESSION_TYPE", ""))
-    if xauth.is_file():
-        _add_env(cmd, "XAUTHORITY", str(xauth))
-    _add_env(cmd, "XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
-    _add_env(cmd, "DBUS_SESSION_BUS_ADDRESS", f"unix:path=/run/user/{os.getuid()}/bus")
-    _add_env(cmd, "PULSE_SERVER", f"unix:/run/user/{os.getuid()}/pulse/native")
-    _add_env(cmd, "HOME", home)
-
-    # Features do injector como env vars
-    if features and features.get("env"):
-        for k, v in features["env"].items():
-            if v is not None:
-                _add_env(cmd, k, str(v))
-
-    # Anti-cheat relaxations
-    if features and features.get("container_flags"):
-        for flag in features["container_flags"]:
-            cmd.extend(flag.split() if isinstance(flag, str) else flag)
-
-    # Container relaxations from anti-cheat API
-    if features and features.get("container_relaxations"):
-        from makrun.intel.anticheat.container import CONTAINER_RELAX_FLAGS
-        for relax in features["container_relaxations"]:
-            flags = CONTAINER_RELAX_FLAGS.get(relax, {}).get("bwrap_flags", [])
-            cmd.extend(flags)
-
-    # Exec
-    proton_exe = f"{proton_container}/proton"
-    verb = env.get("PROTON_VERB", "waitforexitandrun")
-    game_exe = f"{game_container}/{exe_resolved.name}"
-    cmd.extend([proton_exe, verb, game_exe])
+    if dry_run:
+        log.info(" ".join(str(c) for c in cmd))
 
     return cmd
-
-
-def _find_bwrap() -> str:
-    bwrap = shutil.which("bwrap")
-    if not bwrap:
-        raise FileNotFoundError("bwrap not found in PATH. Install bubblewrap.")
-    return bwrap
-
-
-def _resolve_runtime_usr(runtime_path: Path) -> Path | None:
-    """Resolve o caminho para /usr dentro do runtime.
-
-    Suporta:
-    1. Layout tradicional: runtime/files/usr/
-    2. Layout content-addressable (steamrt4):
-       a. runtime_path/var/tmp-*/usr/
-       b. runtime_path.parent/var/tmp-*/usr/
-    """
-    runtime_files = runtime_path / "files"
-    usr_dir = runtime_files / "usr"
-    if usr_dir.is_dir():
-        return usr_dir
-
-    for base in (runtime_path, runtime_path.parent):
-        var_dir = base / "var"
-        if var_dir.is_dir():
-            candidates = sorted(
-                (d for d in var_dir.glob("tmp-*") if (d / "usr").is_dir()),
-                key=lambda p: p.stat().st_mtime,
-                reverse=True,
-            )
-            if candidates:
-                return candidates[0] / "usr"
-
-    return None
-
-
-def _add_env(cmd: list[str], key: str, val: str) -> None:
-    cmd.extend(["--setenv", key, val])

@@ -1,7 +1,0 @@
-{
-  "name": "Kerbal Space Program",
-  "exe": "KSP.exe",
-  "engine": "unity",
-  "env": {},
-  "notes": "Funciona bem. Problemas com mods que usam D3D11 hooks."
-}

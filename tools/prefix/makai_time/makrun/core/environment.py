@@ -107,6 +107,6 @@ def enable_game_drive(env: dict[str, str]) -> dict[str, str]:
         paths.add(install_path)
 
     paths |= get_library_paths()
-    env["STEAM_RUNTIME_LIBRARY_PATH"] = ":".join(paths)
+    env["MAKAI_RUNTIME_LIBRARY_PATH"] = ":".join(paths)
 
     return env

@@ -1,7 +1,0 @@
-{
-  "name": "Fallout: New Vegas",
-  "exe": "FalloutNV.exe",
-  "engine": "bethesda",
-  "env": {},
-  "notes": "Funciona bem com Proton. NVSE e 4GB patch recomendados."
-}
