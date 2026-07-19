@@ -10,6 +10,33 @@ import { logOperation, logCall, logError as auditLogError } from "../activity-lo
 
 const MAKAI_CLIENT_DIR = path.join(os.homedir(), ".config", "makai-forger", "makai-client");
 
+type ProtonStructure = "ready" | "not_compiled" | "invalid";
+
+function detectProtonStructure(protonPath: string): {
+  status: ProtonStructure;
+  detail: string;
+} {
+  const hasProtonBin = fs.existsSync(path.join(protonPath, "proton"));
+  const hasFilesBin = fs.existsSync(path.join(protonPath, "files", "bin", "wine"));
+  const hasDistBin = fs.existsSync(path.join(protonPath, "dist", "bin", "wine"));
+  const hasWineBin = fs.existsSync(path.join(protonPath, "wine", "bin", "wine"));
+  const hasMakefile = fs.existsSync(path.join(protonPath, "Makefile"));
+
+  if (!hasProtonBin) {
+    return { status: "invalid", detail: "Proton binary (proton) não encontrado" };
+  }
+  if (hasFilesBin || hasDistBin) {
+    return { status: "ready", detail: "Pré-compilado (GE/Valve-style)" };
+  }
+  if (hasWineBin) {
+    return { status: "ready", detail: "Pré-compilado (TKG-style)" };
+  }
+  if (hasMakefile) {
+    return { status: "not_compiled", detail: "Proton TKG source — execute 'make' para compilar primeiro" };
+  }
+  return { status: "invalid", detail: "Estrutura de Proton não reconhecida — sem wine binário encontrado" };
+}
+
 export interface CreatePrefixOptions {
   /** Path to Proton directory (containing `proton` binary) */
   protonPath: string;
@@ -35,7 +62,7 @@ export interface CreatePrefixResult {
   success: boolean;
   pfxDir: string;
   error?: string;
-  errorType?: "default_pfx" | "timeout" | "spawn" | "not_found" | "generic";
+  errorType?: "default_pfx" | "timeout" | "spawn" | "not_found" | "not_compiled" | "generic";
   method?: "umu" | "proton_wineboot" | "proton_run" | "direct_wineboot";
 }
 
@@ -89,6 +116,24 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
 
   const pfxDir = normalizePrefixPath(prefixPath);
   const protonBin = path.join(protonPath, "proton");
+
+  // Pre-flight: validar estrutura do Proton antes de tentar qualquer estratégia
+  const structure = detectProtonStructure(protonPath);
+  if (structure.status !== "ready") {
+    const result: CreatePrefixResult = {
+      success: false,
+      pfxDir,
+      error: structure.detail,
+      errorType: structure.status === "not_compiled" ? "not_compiled" as any : "not_found",
+    };
+    logOperation("createPrefix", "error", {
+      pfxDir: result.pfxDir,
+      error: result.error,
+      errorType: result.errorType,
+      duration_ms: Date.now() - _start,
+    });
+    return Promise.resolve(result);
+  }
 
   return new Promise((resolve) => {
     const _loggedResolve = (result: CreatePrefixResult) => {
@@ -288,6 +333,13 @@ function findProtonWineBinary(protonPath: string, name: string): string | null {
   for (const base of ["dist", "files"]) {
     const candidate = path.join(protonPath, base, "bin", name);
     if (fs.existsSync(candidate)) return candidate;
+  }
+  // TKG compilado: wine/bin/name
+  for (const base of ["wine"]) {
+    for (const sub of ["bin", "bin-wow64"]) {
+      const candidate = path.join(protonPath, base, sub, name);
+      if (fs.existsSync(candidate)) return candidate;
+    }
   }
   return null;
 }
