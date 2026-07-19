@@ -139,6 +139,7 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
       const prefixResult = await createPrefix({
         protonPath,
         prefixPath,
+        steamClientPath: protonPath,
         gameId,
         timeout: 120000,
         onProgress: (msg) => sendToWindows("prefix", msg, "working"),

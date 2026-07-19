@@ -111,13 +111,17 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
 
     fs.mkdirSync(pfxDir, { recursive: true });
 
-    // Build base env
+    // Build base env (clean vars that break Proton's embedded Python)
     const baseEnv: Record<string, string> = {
       ...(process.env as Record<string, string>),
       WINEPREFIX: pfxDir,
     };
+    delete baseEnv.PYTHONHOME;
+    delete baseEnv.PYTHONPATH;
+    delete baseEnv.PYTHONSTARTUP;
+    delete baseEnv.PYTHONOPTIMIZE;
     if (compatDataPath) baseEnv.STEAM_COMPAT_DATA_PATH = compatDataPath;
-    if (steamClientPath) baseEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH = steamClientPath;
+    baseEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH = steamClientPath || protonPath;
     baseEnv.WINEDLLOVERRIDES = "winemenubuilder.exe=d";
 
     const trySpawn = (

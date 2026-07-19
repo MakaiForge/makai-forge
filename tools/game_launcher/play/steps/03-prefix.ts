@@ -119,6 +119,7 @@ export async function ensurePrefix(
     protonPath,
     prefixPath,
     compatDataPath: compatDataPath || undefined,
+    steamClientPath: protonPath,
     gameId,
     onProgress: (msg) => send("prefix", msg, "working"),
     timeout: 120000,
