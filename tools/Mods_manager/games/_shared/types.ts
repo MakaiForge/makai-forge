@@ -44,6 +44,8 @@ export interface GameModule {
   getWineDllOverrides?(): Record<string, string>
   getAutoInstallDeps?(): string[]
   getWinetricksComponents?(): string[]
+  /** Nome do jogo no registro Bethesda (ex: "Skyrim", "Fallout4") */
+  bethesdaRegistryName?: string
   /** Semeia registro Bethesda via proton run reg add (cada jogo Bethesda implementa) */
   seedRegistry?(prefixPath: string, gamePath: string, protonPath: string, steamAppId?: string, libraryPath?: string): boolean
   /** Retorna o subpath para o diretório My Games (ex: "Skyrim", "Fallout4") */

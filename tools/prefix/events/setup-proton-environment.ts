@@ -277,7 +277,7 @@ registerEvent("setupProtonEnvironment", async (_event, gameName: string, protonP
   addLog("📦 Aplicando configurações específicas do jogo...");
   try {
     const { getGameModule } = await import("@games/registry");
-    let gameModule = null;
+    let gameModule: import("@games/_shared/types").GameModule | null = null;
     if (appId) {
       const { listKnownGames } = await import("@games/registry");
       for (const entry of listKnownGames()) {
