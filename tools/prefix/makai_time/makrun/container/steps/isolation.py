@@ -63,6 +63,10 @@ def configure(config: dict) -> StepResult:
     if container_cfg.get("cap_drop_all", True):
         args.extend(["--cap-drop", "ALL"])
 
+    # Die-with-parent: mata container se o processo pai (makrun) morrer
+    if container_cfg.get("die_with_parent", True):
+        args.extend(["--die-with-parent"])
+
     # Seccomp (se existir)
     if container_cfg.get("seccomp", True):
         try:

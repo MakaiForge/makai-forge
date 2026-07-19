@@ -18,7 +18,17 @@ def run_command(command: tuple[Path | str, ...]) -> int:
     prctl.argtypes = [c_int, c_ulong, c_ulong, c_ulong, c_ulong]
     prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0, 0)
 
-    with Popen(command, start_new_session=True) as proc:
+    # Preserva o FD do seccomp (se existir) — Popen fecha todos FDs >= 3
+    pass_fds: list[int] = []
+    try:
+        from makrun.core.seccomp import get_seccomp_read_fd
+        fd = get_seccomp_read_fd()
+        if fd is not None:
+            pass_fds.append(fd)
+    except Exception:
+        pass
+
+    with Popen(command, start_new_session=True, pass_fds=pass_fds) as proc:
         log.debug("Child PID: %s", proc.pid)
         return proc.wait()
 

@@ -27,8 +27,14 @@ def configure(env: dict, features: dict, mounts_extra: dict | None = None) -> St
     verb = env.get("PROTON_VERB", "waitforexitandrun")
 
     if exe_resolved:
-        game_exe = f"{game_container}/{exe_resolved.name}"
-        game_quoted = game_exe.replace('"', '\\"')
+        # Caminho relativo do exe dentro do install dir montado
+        # Ex: install_root = .../Violet Games/
+        #     exe_resolved = .../Violet Games/Grand Fantasia Violet/Launcher.exe
+        #     relative = Grand Fantasia Violet/Launcher.exe
+        install_root = exe_resolved.parent.parent
+        exe_relative = exe_resolved.relative_to(install_root)
+        game_exe = f"{game_container}/{exe_relative}"
+        game_quoted = str(game_exe).replace('"', '\\"')
 
         # Watchdog wrapper em POSIX sh (mantém container vivo)
         watchdog = (

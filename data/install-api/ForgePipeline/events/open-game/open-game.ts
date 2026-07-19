@@ -2,7 +2,7 @@ import type { GameShop, Game } from "@types";
 import { gamesStore, storeKeys } from "@main/store";
 import { launchGame } from "@main/helpers";
 import { WindowManager } from "@main/services";
-import { MakaiRPC } from "@mods-manager/services/makai-rpc";
+import { createPrefix } from "@prefix/core/init";
 import { installGame } from "@game-launcher/install/install-game";
 import { sendProgress } from "./send-progress";
 import { ensureProtonAvailable } from "./ensure-proton";
@@ -62,14 +62,14 @@ export async function openGame(
 
   if (!fs.existsSync(game.winePrefixPath)) {
     sendProgress("installing", "Criando prefixo Wine...");
-    const prefixOk = await MakaiRPC.call<{ success: boolean }>("create_prefix", {
-      game_id: objectId,
-      proton_path: protonPathFinal,
-      prefix_path: game.winePrefixPath,
-      auto_dlls: true,
-      game_path: "",
+    const prefixResult = await createPrefix({
+      protonPath: protonPathFinal,
+      prefixPath: game.winePrefixPath,
+      gameId: objectId,
+      timeout: 120000,
+      onProgress: (msg) => sendProgress("installing", msg),
     });
-    if (!prefixOk?.success) {
+    if (!prefixResult.success) {
       sendProgress("error", "Falha ao criar prefixo Wine");
       return;
     }

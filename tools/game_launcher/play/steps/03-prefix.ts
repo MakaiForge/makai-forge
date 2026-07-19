@@ -1,9 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
-import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { logger } from "@main/services";
-import { getGameModule } from "@games/registry";
-import { ensurePrefixDir } from "@prefix/core/validate";
+import { createPrefix } from "@prefix/core/init";
 import type { SendProgress } from "../types";
 
 export interface PrefixResult {
@@ -117,36 +115,24 @@ export async function ensurePrefix(
 
   send("prefix", "Prefixo incompleto ou ausente. Criando...", "working");
 
-  const gameModule = getGameModule(gameId, gamePath);
-  const extraVerbs = gameModule.getWinetricksComponents?.() || [];
+  const result = await createPrefix({
+    protonPath,
+    prefixPath,
+    compatDataPath: compatDataPath || undefined,
+    gameId,
+    onProgress: (msg) => send("prefix", msg, "working"),
+    timeout: 120000,
+  });
 
-  try {
-    await MakaiRPC.call("create_prefix", {
-      game_id: gameId,
-      proton_path: protonPath,
-      prefix_path: prefixPath,
-      extra_verbs: extraVerbs,
-    });
-
-    _ensureTrackedFiles(compatDataPath);
-    setProtonVersion(prefixPath, protonPath);
-    ensureDosDevices(prefixPath);
-    send("prefix", "Prefixo criado/validado com sucesso", "done");
-    return { prefixPath, created: true };
-  } catch (err) {
-    logger.warn(`[Prefix] RPC create_prefix failed: ${err}. Using TS fallback.`);
-    send("prefix", "RPC falhou, usando fallback TypeScript...", "working");
-
-    const pfx = ensurePrefixDir(prefixPath);
-    if (!pfx) {
-      send("prefix", "Não foi possível criar o diretório do prefixo", "error");
-      throw new Error("Cannot create prefix dir");
-    }
-
-    ensureDosDevices(pfx);
-    _ensureTrackedFiles(compatDataPath);
-    setProtonVersion(pfx, protonPath);
-    send("prefix", "Prefixo criado (fallback)", "done");
-    return { prefixPath, created: true };
+  if (!result.success) {
+    const errMsg = result.error || "Falha ao criar prefixo Wine/Proton";
+    send("prefix", errMsg, "error");
+    throw new Error(errMsg);
   }
+
+  _ensureTrackedFiles(compatDataPath);
+  setProtonVersion(prefixPath, protonPath);
+  ensureDosDevices(prefixPath);
+  send("prefix", "Prefixo criado/validado com sucesso", "done");
+  return { prefixPath, created: true };
 }

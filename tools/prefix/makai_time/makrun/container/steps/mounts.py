@@ -21,10 +21,15 @@ def configure(proton_path: Path, prefix_path: str, exe_path: str,
     prefix_container = str(prefix_resolved)
     args.extend(["--bind", str(prefix_resolved), prefix_container])
 
-    # Jogo
+    # Jogo — monta o install dir raiz (2 níveis acima do exe)
+    # Ex: .../Violet Games/Grand Fantasia Violet/Launcher.exe
+    #   → monta .../Violet Games/ como install dir
+    #   → STEAM_COMPAT_INSTALL_PATH = .../Violet Games/
+    # Isso segue o padrão do PV (dirname dirname do exe)
     exe_resolved = Path(exe_path).expanduser().resolve()
-    game_container = str(exe_resolved.parent)
-    args.extend(["--ro-bind", str(exe_resolved.parent), game_container])
+    install_root = exe_resolved.parent.parent  # 2 níveis acima
+    game_container = str(install_root)
+    args.extend(["--bind", str(install_root), game_container])
 
     # Home isolation (tmpfs + bind do real)
     home = str(Path.home())

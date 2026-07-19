@@ -54,33 +54,33 @@ def set_env(env: dict[str, str], exe_path: str | None = None) -> dict[str, str]:
         env["PROTON_VERB"] = "waitforexitandrun"
 
     env["EXE"] = ""
-    env["STEAM_COMPAT_INSTALL_PATH"] = ""
+    env["MAKAI_GAME_INSTALL_DIR"] = ""
 
     if exe_path:
         try:
             exe = Path(exe_path).expanduser().resolve()
             env["EXE"] = str(exe)
-            if not env.get("STEAM_COMPAT_INSTALL_PATH"):
-                env["STEAM_COMPAT_INSTALL_PATH"] = str(exe.parent)
+            if not env.get("MAKAI_GAME_INSTALL_DIR"):
+                env["MAKAI_GAME_INSTALL_DIR"] = str(exe.parent)
         except FileNotFoundError:
             env["EXE"] = exe_path
             log.warning("Executable not found: %s", exe_path)
 
     env["UMU_ID"] = env["GAMEID"]
-    env["STEAM_COMPAT_APP_ID"] = "0"
+    env["MAKAI_APP_ID"] = "0"
     env["SteamAppId"] = "0"
     env["SteamGameId"] = "0"
     env["UMU_INVOCATION_ID"] = token_hex(16)
 
     env["WINEPREFIX"] = str(pfx)
     env["PROTONPATH"] = str(proton)
-    env["STEAM_COMPAT_DATA_PATH"] = env["WINEPREFIX"]
-    env["STEAM_COMPAT_SHADER_PATH"] = f"{env['STEAM_COMPAT_DATA_PATH']}/shadercache"
+    env["MAKAI_COMPAT_DATA_PATH"] = env["WINEPREFIX"]
+    env["MAKAI_SHADER_PATH"] = f"{env['MAKAI_COMPAT_DATA_PATH']}/shadercache"
 
     runtime_path = os.environ.get("RUNTIMEPATH", "")
     env["RUNTIMEPATH"] = str(RUNTIME_DIR / runtime_path) if runtime_path else ""
-    env["STEAM_COMPAT_TOOL_PATHS"] = f"{proton}:{env['RUNTIMEPATH']}"
-    env["STEAM_COMPAT_MOUNTS"] = env["STEAM_COMPAT_TOOL_PATHS"]
+    env["MAKAI_TOOL_PATHS"] = f"{proton}:{env['RUNTIMEPATH']}"
+    env["MAKAI_MOUNTS"] = env["MAKAI_TOOL_PATHS"]
 
     enable_game_drive(env)
 
@@ -93,11 +93,11 @@ def set_env(env: dict[str, str], exe_path: str | None = None) -> dict[str, str]:
 
 def enable_game_drive(env: dict[str, str]) -> dict[str, str]:
     paths: set[str] = set()
-    install_path = env.get("STEAM_COMPAT_INSTALL_PATH", "")
+    install_path = env.get("MAKAI_GAME_INSTALL_DIR", "")
 
     for parent in Path(install_path).parents:
         if parent.is_mount() and parent != Path("/"):
-            env["STEAM_COMPAT_LIBRARY_PATHS"] = str(parent)
+            env["MAKAI_LIBRARY_PATHS"] = str(parent)
             break
 
     if os.environ.get("LD_LIBRARY_PATH"):

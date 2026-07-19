@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { registerEvent } from "@main/events/register-event";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
+import { createPrefix } from "@prefix/core/init";
 import { ModStorageService } from "@main/services";
 import { logPlay } from "@game-launcher/play/logger";
 import { gameDllCatalog } from "../services/game-dlls-service";
@@ -173,35 +174,39 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
 
   // 6. Criar prefixo novo com o novo Proton
   const extraVerbs = getVerbsForGame(gameId);
-  let createResult;
-  try {
-    createResult = await MakaiRPC.call<{
-      success: boolean;
-      prefix_path: string;
-      initialized: boolean;
-      dlls_installed: string[];
-      errors: string[];
-    }>("create_prefix", {
-      game_id: gameId,
-      proton_path: newProtonPath,
-      prefix_path: prefixPath,
-      auto_dlls: true,
-      extra_verbs: extraVerbs,
-    });
+  let dllsInstalled: string[] = [];
 
-    if (!createResult.success) {
-      return {
-        ok: false,
-        error: `Falha ao criar novo prefixo: ${createResult.errors?.join(", ") || "erro desconhecido"}`,
-      };
-    }
-    logPlay(gameId, "modSwitchProton_created", {
-      prefixPath,
-      dlls: (createResult.dlls_installed || []).join(","),
-    });
-  } catch (err) {
-    return { ok: false, error: `Erro ao criar prefixo: ${String(err).slice(0, 200)}` };
+  const prefixResult = await createPrefix({
+    protonPath: newProtonPath,
+    prefixPath,
+    gameId,
+    timeout: 120000,
+  });
+
+  if (!prefixResult.success) {
+    return {
+      ok: false,
+      error: `Falha ao criar novo prefixo: ${prefixResult.error || "erro desconhecido"}`,
+    };
   }
+
+  // Instalar DLLs separadamente se necessário
+  if (extraVerbs.length > 0) {
+    try {
+      const dllResult = await MakaiRPC.call<{ installed: string[]; errors: string[] }>(
+        "install_game_dlls",
+        { game_id: gameId, prefix_path: prefixPath, proton_path: newProtonPath, extra_verbs: extraVerbs },
+      );
+      dllsInstalled = dllResult.installed || [];
+    } catch (err) {
+      logPlay(gameId, "modSwitchProton_dlls_error", { error: String(err) });
+    }
+  }
+
+  logPlay(gameId, "modSwitchProton_created", {
+    prefixPath,
+    dlls: dllsInstalled.join(","),
+  });
 
   // 8. Restaurar saves
   let restoredCount = 0;
@@ -245,7 +250,7 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
       newProtonPath,
       prefixPath,
       savesRestored: restoredCount,
-      dllsInstalled: createResult?.dlls_installed || [],
+      dllsInstalled,
     },
   };
 });

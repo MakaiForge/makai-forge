@@ -4,6 +4,7 @@ import os from "node:os";
 import { registerEvent } from "@main/events/register-event";
 import { ModStorageService } from "@main/services";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
+import { createPrefix } from "@prefix/core/init";
 import { logPlay } from "@game-launcher/play/logger";
 import { gameDllCatalog } from "../services/game-dlls-service";
 
@@ -126,43 +127,45 @@ registerEvent("modCreatePrefix", async (_event, gameId: string) => {
   const extraVerbs = getVerbsForGame(gameId);
   logPlay(gameId, "modCreatePrefix", { protonPath, prefixPath, gamePath: config.gamePath, extraVerbs: extraVerbs.join(",") });
 
-  try {
-    const result = await MakaiRPC.call<{
-      success: boolean;
-      prefix_path: string;
-      initialized: boolean;
-      dlls_installed: string[];
-      errors: string[];
-    }>("create_prefix", {
-      game_id: gameId,
-      proton_path: protonPath,
-      prefix_path: prefixPath,
-      auto_dlls: true,
-      extra_verbs: extraVerbs,
-    });
+  const prefixResult = await createPrefix({
+    protonPath,
+    prefixPath,
+    gameId,
+    timeout: 120000,
+  });
 
-    logPlay(gameId, "modCreatePrefix_result", {
-      success: String(result.success),
-      prefix_path: result.prefix_path,
-      initialized: String(result.initialized),
-      dlls: (result.dlls_installed || []).join(","),
-      errors: (result.errors || []).join(","),
-    });
+  let dllsInstalled: string[] = [];
 
-    return {
-      ok: result.success,
-      data: {
-        prefixPath: result.prefix_path,
-        initialized: result.initialized,
-        dllsInstalled: result.dlls_installed,
-        errors: result.errors,
-      },
-      error: result.success ? undefined : (result.errors?.[0] || "Falha ao criar prefixo"),
-    };
-  } catch (err) {
-    logPlay(gameId, "modCreatePrefix", { error: String(err).slice(0, 200) });
-    return { ok: false, error: `Erro RPC: ${String(err)}` };
+  if (prefixResult.success && extraVerbs.length > 0) {
+    try {
+      const dllResult = await MakaiRPC.call<{ installed: string[]; errors: string[] }>(
+        "install_game_dlls",
+        { game_id: gameId, prefix_path: prefixPath, proton_path: protonPath, extra_verbs: extraVerbs },
+      );
+      dllsInstalled = dllResult.installed || [];
+    } catch (err) {
+      logPlay(gameId, "modCreatePrefix_dlls_error", { error: String(err).slice(0, 200) });
+    }
   }
+
+  logPlay(gameId, "modCreatePrefix_result", {
+    success: String(prefixResult.success),
+    prefix_path: prefixPath,
+    initialized: prefixResult.success,
+    dlls: dllsInstalled.join(","),
+    error: prefixResult.error || "",
+  });
+
+  return {
+    ok: prefixResult.success,
+    data: {
+      prefixPath,
+      initialized: prefixResult.success,
+      dllsInstalled,
+      errors: prefixResult.error ? [prefixResult.error] : [],
+    },
+    error: prefixResult.success ? undefined : (prefixResult.error || "Falha ao criar prefixo"),
+  };
 });
 
 registerEvent("modInstallGameDlls", async (_event, gameId: string, extraVerbs?: string[]) => {

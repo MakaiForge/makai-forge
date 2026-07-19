@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
-import { MakaiRPC } from "@mods-manager/services/makai-rpc"
+import { createPrefix } from "@prefix/core/init"
 import { logger } from "@main/services"
 
 export function resolveActualPrefix(prefixPath: string): string {
@@ -43,28 +43,22 @@ export async function setupPrefix(
 
   if (onLog) onLog(`Criando prefixo Wine em: ${winePrefixPath}`)
 
-  try {
-    await MakaiRPC.call("create_prefix", {
-      game_id: gameId,
-      proton_path: protonPath,
-      prefix_path: winePrefixPath,
-      auto_dlls: false,
-      game_path: "",
-    })
-    const actual = resolveActualPrefix(winePrefixPath)
-    ensurePrefixMarkers(actual)
-    const valid = prefixIsValid(actual)
-    if (valid) {
-      logger.info(`[setupPrefix] Prefix created at ${actual}`)
-      if (onLog) onLog(`Prefixo criado com sucesso.`)
-    } else {
-      logger.error(`[setupPrefix] Prefix invalid at ${actual}`)
-      if (onLog) onLog(`Falha: prefixo inválido em ${actual}`)
-    }
-    return valid
-  } catch (err) {
-    logger.error(`[setupPrefix] RPC error: ${err}`)
-    if (onLog) onLog(`Erro ao criar prefixo via RPC.`)
-    return false
+  const result = await createPrefix({
+    protonPath,
+    prefixPath: winePrefixPath,
+    gameId,
+    timeout: 120000,
+    onProgress: onLog,
+  })
+  const actual = resolveActualPrefix(winePrefixPath)
+  ensurePrefixMarkers(actual)
+  const valid = result.success && prefixIsValid(actual)
+  if (valid) {
+    logger.info(`[setupPrefix] Prefix created at ${actual}`)
+    if (onLog) onLog(`Prefixo criado com sucesso.`)
+  } else {
+    logger.error(`[setupPrefix] Prefix invalid at ${actual}: ${result.error}`)
+    if (onLog) onLog(`Falha: ${result.error || "prefixo inválido"}`)
   }
+  return valid
 }

@@ -6,6 +6,9 @@
 # Cada env var aqui é passada via --setenv e é a ÚNICA coisa que o
 # processo do Proton/jogo vê (por causa do --clearenv).
 #
+# Usamos nomes MAKAI_* internamente. No final, tradutor injeta
+# STEAM_COMPAT_* que o Proton exige (ver translator.py).
+#
 # Se uma env var importante faltar, o Proton trava:
 #   - STEAM_COMPAT_CLIENT_INSTALL_PATH → Proton exige path válido
 #   - WINEPREFIX → Wine não sabe onde está o prefixo
@@ -24,18 +27,25 @@
 import os
 from pathlib import Path
 from makrun.container.steps import StepResult
+from makrun.core.translator import inject_steam_vars, translate_to_steam
 
 
 CONTAINER_VAR = "makai"
 
-# Env vars Steam que o Proton espera
-STEAM_VARS = [
-    "STEAM_COMPAT_APP_ID", "SteamAppId", "SteamGameId",
-    "STEAM_COMPAT_DATA_PATH", "STEAM_COMPAT_INSTALL_PATH",
-    "STEAM_COMPAT_CLIENT_INSTALL_PATH", "STEAM_COMPAT_TOOL_PATHS",
-    "STEAM_COMPAT_MOUNTS", "STEAM_COMPAT_LIBRARY_PATHS",
-    "STEAM_COMPAT_SHADER_PATH",
+# Nossas env vars internas (MAKAI_*)
+MAKAI_VARS = [
+    "MAKAI_APP_ID",
+    "MAKAI_COMPAT_DATA_PATH",
+    "MAKAI_GAME_INSTALL_DIR",
+    "MAKAI_CLIENT_INSTALL_PATH",
+    "MAKAI_TOOL_PATHS",
+    "MAKAI_MOUNTS",
+    "MAKAI_LIBRARY_PATHS",
+    "MAKAI_SHADER_PATH",
 ]
+
+# Steam IDs que o Proton também lê (mantemos como estão)
+STEAM_IDS = ["SteamAppId", "SteamGameId"]
 
 LOCALE_VARS = (
     "LANG", "LANGUAGE", "LC_ALL", "LC_CTYPE", "LC_NUMERIC",
@@ -70,23 +80,48 @@ def configure(env: dict, features: dict, config: dict,
     _add_env(args, "PROTONPATH", proton_container)
     _add_env(args, "HOME", home)
 
-    # 2. Steam env vars
-    for var in STEAM_VARS:
+    # 2. MAKAI env vars (nossas vars internas)
+    for var in MAKAI_VARS:
         val = env.get(var)
-        if var in ("STEAM_COMPAT_DATA_PATH",):
+        if var == "MAKAI_APP_ID":
+            val = val or "0"
+        elif var == "MAKAI_COMPAT_DATA_PATH":
             val = prefix_container
-        elif var == "STEAM_COMPAT_INSTALL_PATH":
+        elif var == "MAKAI_GAME_INSTALL_DIR":
             val = game_container
-        elif var == "STEAM_COMPAT_TOOL_PATHS":
+        elif var == "MAKAI_TOOL_PATHS":
             val = f"{proton_container}:{env.get('RUNTIMEPATH', '')}"
-        elif var == "STEAM_COMPAT_MOUNTS":
+        elif var == "MAKAI_MOUNTS":
             val = f"{proton_container}:{env.get('RUNTIMEPATH', '')}"
-        elif var == "STEAM_COMPAT_LIBRARY_PATHS":
-            val = env.get(var) or str(Path.home() / ".steam" / "steam")
-        elif var == "STEAM_COMPAT_CLIENT_INSTALL_PATH":
-            val = env.get(var) or "/tmp"  # Proton espera path válido; /tmp sempre existe
-        elif var == "STEAM_COMPAT_SHADER_PATH":
-            val = env.get(var) or f"{prefix_container}/shadercache"
+        elif var == "MAKAI_LIBRARY_PATHS":
+            val = val or str(Path.home() / ".steam" / "steam")
+        elif var == "MAKAI_CLIENT_INSTALL_PATH":
+            val = val or "/tmp"
+        elif var == "MAKAI_SHADER_PATH":
+            val = val or f"{prefix_container}/shadercache"
+        if val:
+            _add_env(args, var, str(val))
+
+    # 2.1 STEAM_COMPAT vars (tradução para Proton)
+    steam_env = {
+        "MAKAI_APP_ID": env.get("MAKAI_APP_ID", "0"),
+        "MAKAI_COMPAT_DATA_PATH": prefix_container,
+        "MAKAI_GAME_INSTALL_DIR": game_container,
+        "MAKAI_CLIENT_INSTALL_PATH": env.get("MAKAI_CLIENT_INSTALL_PATH") or "/tmp",
+        "MAKAI_TOOL_PATHS": f"{proton_container}:{env.get('RUNTIMEPATH', '')}",
+        "MAKAI_MOUNTS": f"{proton_container}:{env.get('RUNTIMEPATH', '')}",
+        "MAKAI_LIBRARY_PATHS": env.get("MAKAI_LIBRARY_PATHS") or str(Path.home() / ".steam" / "steam"),
+        "MAKAI_SHADER_PATH": env.get("MAKAI_SHADER_PATH") or f"{prefix_container}/shadercache",
+    }
+    translated = inject_steam_vars(steam_env)
+    for key, val in translated.items():
+        if key.startswith("STEAM_COMPAT_") or key in ("SteamAppId", "SteamGameId"):
+            if val:
+                _add_env(args, key, str(val))
+
+    # 2.2 Steam IDs
+    for var in STEAM_IDS:
+        val = env.get(var)
         if val:
             _add_env(args, var, str(val))
 
