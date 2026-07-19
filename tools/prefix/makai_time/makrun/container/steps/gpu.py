@@ -14,9 +14,14 @@ def _resolve_lib_on_host(soname: str) -> str | None:
             capture_output=True, text=True, timeout=5,
         )
         for line in r.stdout.split("\n"):
-            parts = line.strip().split(" => ")
-            if len(parts) == 2 and parts[0].strip().endswith(soname):
-                return parts[1].strip()
+            line = line.strip()
+            if " => " not in line:
+                continue
+            lib_part, path_part = line.split(" => ", 1)
+            # lib_part: "libGLX_nvidia.so.0 (libc6,x86-64)"
+            # queremos que COMECE com o soname (seguido de espaço ou fim)
+            if lib_part == soname or lib_part.startswith(soname + " "):
+                return path_part.strip()
     except Exception:
         pass
     return None
