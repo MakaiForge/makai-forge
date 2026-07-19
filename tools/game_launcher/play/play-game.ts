@@ -60,7 +60,7 @@ export async function playGame(
 
     const gamePath = env.gamePath;
     const steamAppId = env.steamAppId;
-    const prefixPath = env.prefixPath || "";
+    const prefixPath = env.prefixPath || path.join(os.homedir(), "Games", "Prefix", gameId.toLowerCase().replace(/[\s:/\\]+/g, "-").replace(/[^a-z0-9-]/g, ""));
     const libraryPath = env.libraryPath;
     logPlay(gameId, "detect", {
       gamePath: gamePath || "",

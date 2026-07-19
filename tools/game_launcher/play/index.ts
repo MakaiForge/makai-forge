@@ -1,85 +1,208 @@
-/**
- * tools/Mods_manager/play/index.ts
- *
- * Handlers IPC: modPlayGame e modKillGame.
- *
- * modPlayGame agora delega para o Python RPC (core/server.py)
- * via MakaiRPC, com streaming de eventos de progresso.
- * O Electron é apenas a interface — quem executa é o Python.
- */
-
+import { dialog } from "electron";
 import { registerEvent } from "@main/events/register-event";
-import { MakaiRPC, type RpcEventCallback } from "@mods/services/makai-rpc";
+import { logger } from "@main/services/logger";
+import { ModStorageService } from "@main/services";
+import { WindowManager } from "@main/services/window-manager";
+import { gamesStore, storeKeys } from "@main/store";
+import { gamesPlaytime } from "@main/services/process-watcher";
+import { createPrefix } from "@prefix/core/init";
+import { installGame } from "@game-launcher/install/install-game";
+import { playGame } from "./play-game";
 import { killGameProcess } from "./steps/07-launch";
 import type { SendProgress } from "./types";
 import { logEvent, logError } from "./activity-logger";
-import { logger } from "@main/services/logger";
-import { gamesStore, storeKeys } from "@main/store";
-import { gamesPlaytime } from "@main/services/process-watcher";
+import os from "node:os";
+import path from "node:path";
+import fs from "node:fs";
 
-registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => {
-  const sender = event.sender;
-  const send: SendProgress = (step, message, status, promptType) => {
-    sender.send("mod-launch-progress", { step, message, status, promptType });
-  };
+async function ensureGameConfig(gameId: string) {
+  const existing = ModStorageService.get<any>(`game:${gameId}:config`);
+  if (existing?.gamePath || existing?.protonVersion) return existing;
 
-  logEvent(gameId, "ipc_modPlayGame", { profile: profile || "Default" });
-
-  // Lê config do jogo do LevelDB e passa pro Python
   const parts = gameId.split(":");
   const shop = parts[0] as any;
   const objectId = parts.slice(1).join(":");
   const gameKey = storeKeys.game(shop, objectId);
   const game = await gamesStore.get(gameKey).catch(() => null);
-  const gameConfig: Record<string, unknown> = {
-    game_id: gameId,
-    profile: profile || "Default",
-    shop,
-    objectId,
+  if (!game) return existing;
+
+  const gamePath = (game as any).executablePath
+    ? path.dirname((game as any).executablePath)
+    : "";
+  const protonPath = (game as any).protonPath || (game as any).protonVersion || "";
+  const prefixPath = (game as any).winePrefixPath || (game as any).prefix || "";
+
+  if (!gamePath && !protonPath && !prefixPath) return existing;
+
+  const config = {
+    gamePath,
+    protonVersion: protonPath,
+    protonPrefix: prefixPath,
+    stagingDir: existing?.stagingDir || path.join(os.homedir(), "Games", "Mods", gameId, "staging"),
   };
-  if (game) {
-    gameConfig.gamePath = (game as any).executablePath
-      ? require("node:path").dirname((game as any).executablePath)
-      : undefined;
-    gameConfig.executablePath = (game as any).executablePath;
-    gameConfig.protonPath = (game as any).protonPath || (game as any).protonVersion;
-    gameConfig.winePrefixPath = (game as any).winePrefixPath || (game as any).prefix;
-    gameConfig.steamAppId = (game as any).steamAppId;
-    gameConfig.title = (game as any).title;
+
+  ModStorageService.put(`game:${gameId}:config`, config);
+  logger.info(`[modPlayGame] Config migrada do gamesStore para game:${gameId}:config`);
+  return config;
+}
+
+async function autoDetectProton(): Promise<string | null> {
+  const dirs = [
+    path.join(os.homedir(), ".config", "makai-forger", "compat-tools", "compatibilitytools.d"),
+    path.join(os.homedir(), ".steam", "steam", "compatibilitytools.d"),
+    path.join(os.homedir(), ".local", "share", "Steam", "steamapps", "common"),
+  ];
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const protonBin = path.join(dir, entry.name, "proton");
+      if (fs.existsSync(protonBin)) return path.dirname(protonBin);
+    }
+  }
+  return null;
+}
+
+registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => {
+  const sender = event.sender;
+
+  const parts = gameId.split(":");
+  const shop = parts[0] as any;
+  const objectId = parts.slice(1).join(":");
+  const gameKey = storeKeys.game(shop, objectId);
+
+  // Abre janela do game launcher
+  try {
+    await WindowManager.createGameLauncherWindow(shop, objectId);
+  } catch (err) {
+    logger.warn(`[modPlayGame] Erro ao criar launcher window: ${err}`);
   }
 
-  // Callback de eventos do Python RPC
-  const eventCb: RpcEventCallback = (eventType, data) => {
-    if (eventType === "progress") {
-      send(data.step as string, data.message as string, "working");
-    } else if (eventType === "error") {
-      send(data.step as string, data.message as string, "error");
-    } else if (eventType === "log") {
-      logger.info(`[MakaiRPC:event] ${String(data.level)}: ${String(data.message)}`);
-    } else if (eventType === "play_started") {
-      logEvent(gameId, "play_started", { profile: String(data.profile || "") });
-    } else if (eventType === "play_completed") {
-      logEvent(gameId, "play_completed", {
-        success: Boolean(data.success),
-        method: String(data.method || ""),
-        total_duration_ms: Number(data.total_duration_ms || 0),
-      });
-    }
+  const stepToPreflight: Record<string, string> = {
+    scan: "checking", proton: "checking",
+    prefix: "installing", configs: "installing",
+    frameworks: "installing", tools: "installing",
+    skse: "installing", deploy: "installing",
+    bridge: "installing", launch: "complete",
   };
 
-  MakaiRPC.onEvent(eventCb);
+  const sendToWindows: SendProgress = (step, message, status, promptType) => {
+    sender.send("mod-launch-progress", { step, message, status, promptType });
+    try {
+      const preflightStatus = status === "error" ? "error"
+        : status === "done" ? "complete"
+        : stepToPreflight[step] || "checking";
+      WindowManager.gameLauncherWindow?.webContents.send(
+        "preflight-progress",
+        { status: preflightStatus, detail: message, percent: null }
+      );
+    } catch { /* janela pode nao existir */ }
+  };
+
+  logEvent(gameId, "ipc_modPlayGame", { profile: profile || "Default" });
 
   try {
-    logger.info(`[modPlayGame] Delegando para Python RPC: gameId=${gameId}`);
-    const result = await MakaiRPC.call<Record<string, unknown>>("play_game", gameConfig);
+    let config = await ensureGameConfig(gameId);
+
+    // Se não tem gamePath, configura do zero: selecionar pasta + criar prefixo + copiar jogo
+    if (!config?.gamePath) {
+      sendToWindows("scan", "Selecione a pasta do jogo...", "working");
+      const folderResult = await dialog.showOpenDialog({
+        title: "Selecione a pasta do jogo",
+        properties: ["openDirectory"],
+      });
+      if (folderResult.canceled || !folderResult.filePaths?.[0]) {
+        sendToWindows("scan", "Nenhuma pasta selecionada", "error");
+        return { success: false, error: "Pasta do jogo não selecionada", failedStep: "config" };
+      }
+      const selectedPath = folderResult.filePaths[0];
+
+      // Auto-detectar Proton se não tiver
+      let protonPath = config?.protonVersion || "";
+      if (!protonPath) {
+        sendToWindows("proton", "Procurando Proton...", "working");
+        const detected = await autoDetectProton();
+        if (detected) {
+          protonPath = detected;
+          logger.info(`[modPlayGame] Proton auto-detectado: ${protonPath}`);
+        } else {
+          sendToWindows("proton", "Nenhum Proton encontrado", "error");
+          return { success: false, error: "Nenhum Proton encontrado no sistema", failedStep: "proton" };
+        }
+      }
+
+      // Definir prefixo
+      const prefixPath = path.join(os.homedir(), "Games", "Prefix", gameId);
+
+      // Criar prefixo
+      sendToWindows("prefix", "Criando prefixo Wine...", "working");
+      const prefixResult = await createPrefix({
+        protonPath,
+        prefixPath,
+        gameId,
+        timeout: 120000,
+        onProgress: (msg) => sendToWindows("prefix", msg, "working"),
+      });
+      if (!prefixResult.success) {
+        sendToWindows("prefix", `Falha ao criar prefixo: ${prefixResult.error}`, "error");
+        return { success: false, error: prefixResult.error || "Falha ao criar prefixo", failedStep: "prefix" };
+      }
+
+      // Copiar jogo para o prefixo (drive_c/)
+      sendToWindows("prefix", "Copiando jogo para o prefixo...", "working");
+      const installResult = await installGame(selectedPath, {
+        prefixPath,
+        protonPath,
+        gameId,
+        onProgress: (step, _pct, msg) => {
+          sendToWindows("prefix", msg, "working");
+        },
+      });
+
+      if (!installResult.success) {
+        sendToWindows("prefix", `Falha ao copiar jogo: ${installResult.error}`, "error");
+        return { success: false, error: installResult.error || "Falha ao copiar jogo", failedStep: "install" };
+      }
+
+      // Se encontrou executáveis, usar o primeiro
+      let exePath = "";
+      if (installResult.candidates.length > 0) {
+        exePath = installResult.candidates[0].path;
+      }
+
+      // Salvar config
+      config = {
+        gamePath: exePath ? path.dirname(exePath) : "",
+        protonVersion: protonPath,
+        protonPrefix: prefixPath,
+        stagingDir: path.join(os.homedir(), "Games", "Mods", gameId, "staging"),
+      };
+      ModStorageService.put(`game:${gameId}:config`, config);
+
+      // Salvar no gamesStore tambem
+      const game = await gamesStore.get(gameKey).catch(() => null);
+      if (game) {
+        await gamesStore.put(gameKey, {
+          ...game,
+          executablePath: exePath,
+          winePrefixPath: prefixPath,
+          protonPath,
+        });
+      }
+
+      logger.info(`[modPlayGame] Jogo configurado: exe=${exePath}, prefix=${prefixPath}`);
+      sendToWindows("prefix", "Jogo copiado e configurado. Iniciando...", "done");
+    }
+
+    logger.info(`[modPlayGame] Iniciando play via TypeScript: gameId=${gameId}`);
+    const result = await playGame(gameId, sendToWindows, profile);
 
     logEvent(gameId, "ipc_modPlayGame_result", {
       success: Boolean(result.success),
       method: String(result.method || ""),
     });
 
-    // Registra o jogo como em execução para o Game Bar mostrar Stop
-    if (result.success && game) {
+    if (result.success) {
       const now = performance.now();
       if (!gamesPlaytime.has(gameKey)) {
         gamesPlaytime.set(gameKey, {
@@ -87,7 +210,6 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
           firstTick: now,
           lastSyncTick: now,
         });
-        const { WindowManager } = await import("@main/services/window-manager");
         WindowManager.mainWindow?.webContents.send(
           "on-games-running",
           Array.from(gamesPlaytime.entries()).map(([id, data]) => ({
@@ -96,40 +218,23 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
           }))
         );
       }
+
+      // Fecha janela do game launcher apos 3s
+      setTimeout(() => {
+        try { WindowManager.gameLauncherWindow?.close(); } catch {}
+      }, 3000);
     }
 
     return result;
   } catch (err) {
     const msg = String(err);
-    logger.error(`[modPlayGame] RPC error: ${msg}`);
+    logger.error(`[modPlayGame] Error: ${msg}`);
     logError(gameId, "ipc_modPlayGame", msg);
-    send("error", `Erro no Play: ${msg}`, "error");
-    return { success: false, error: msg, failedStep: "rpc" };
-  } finally {
-    MakaiRPC.removeEvent(eventCb);
+    sendToWindows("error", `Erro no Play: ${msg}`, "error");
+    return { success: false, error: msg, failedStep: "ts" };
   }
 });
 
 registerEvent("modKillGame", async () => {
-  // Mata o processo do jogo — o Python também pode fazer isso
-  try {
-    await MakaiRPC.call("kill_game", {});
-  } catch {
-    // Fallback: mata via Node.js
-  }
   return killGameProcess();
 });
-
-/**
- * Event Map — fluxo completo do Play via Python RPC:
- *
- * 1. IPC: modPlayGame(gameId, profile?)  ← index.ts
- * 2. Python RPC: play_game()
- *    2a. detect → proton → prefix → configs → frameworks → skse → deploy → launch
- *    2b. Cada etapa emite eventos via stdout
- *    2c. Electron escuta e atualiza a overlay
- * 3. Result: { success, method, pid, error, failedStep }
- * 4. Eventos de streaming: progress, error, log, play_completed
- *
- * ZERO operações de sistema no Node.js.
- */

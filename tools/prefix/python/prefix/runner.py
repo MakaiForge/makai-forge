@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from makai_time.makai_time import build_bwrap_cmd
+from makrun.container.builder import build_bwrap_cmd
 
 STEAM_RUNTIME_DIR = os.path.expanduser("~/.local/share/makaiforge/steamrt4")
 USE_CUSTOM_CONTAINER = True  # True = bwrap, False = _v2-entry-point

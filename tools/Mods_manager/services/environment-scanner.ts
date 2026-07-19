@@ -196,8 +196,12 @@ export function scanEnvironment(opts: ScanOptions): EnvironmentStatus {
   status.prefixPath = rawPrefix ? expandHome(rawPrefix) : null;
   if (status.prefixPath) {
     const resolved = resolvePrefixDir(status.prefixPath);
-    status.prefixPath = resolved;
-    status.prefixValid = resolved ? isValidPrefix(resolved) : false;
+    if (resolved) {
+      status.prefixPath = resolved;
+      status.prefixValid = isValidPrefix(resolved);
+    } else {
+      status.prefixValid = false;
+    }
 
     // Auto-fix: limpar nested pfx (rápido, não-destrutivo)
     if (autoFix && resolved) {
