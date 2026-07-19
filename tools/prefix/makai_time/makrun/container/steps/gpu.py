@@ -121,8 +121,10 @@ def _ensure_host_gpu_libs(args: list[str]) -> dict:
     result = {
         "icd_rewritten": 0,
         "egl_rewritten": 0,
-        "icd_overrides": [],
-        "egl_overrides": [],
+        # env.py espera caminho de ARQUIVO para vk_icd
+        "icd_overrides_path": None,
+        # env.py espera caminho de DIRETÓRIO para egl_vendor
+        "egl_overrides_dir": None,
     }
     overrides_dir = "/overrides/lib"
 
@@ -140,7 +142,9 @@ def _ensure_host_gpu_libs(args: list[str]) -> dict:
             mount_path = _rewrite_gpu_json(args, host_json, overrides_dir)
             if mount_path:
                 result["icd_rewritten"] += 1
-                result["icd_overrides"].append(mount_path)
+                # Guarda o primeiro path de ICD para env vars
+                if result["icd_overrides_path"] is None:
+                    result["icd_overrides_path"] = mount_path
 
     for egl_dir in egl_dirs:
         if not egl_dir.is_dir():
@@ -149,7 +153,10 @@ def _ensure_host_gpu_libs(args: list[str]) -> dict:
             mount_path = _rewrite_gpu_json(args, host_json, overrides_dir)
             if mount_path:
                 result["egl_rewritten"] += 1
-                result["egl_overrides"].append(mount_path)
+                # Guarda o diretório base dos EGL overrides (env.py espera dir)
+                result["egl_overrides_dir"] = str(
+                    Path(mount_path).parent
+                )
 
     return result
 
@@ -284,13 +291,11 @@ def configure(config: dict) -> StepResult:
 
     # Guarda paths detectados para o step env.py usar
     # Usa os paths de override se disponíveis (montados em /overrides/share/)
-    vk_icd_overrides = icd_result.get("icd_overrides", [])
-    egl_overrides = icd_result.get("egl_overrides", [])
     gpu_info = {
-        "vk_icd": vk_icd_overrides[0] if vk_icd_overrides else _detect_vk_icd(),
+        "vk_icd": icd_result.get("icd_overrides_path") or _detect_vk_icd(),
         "vk_implicit": _detect_vk_layers()[0],
         "vk_explicit": _detect_vk_layers()[1],
-        "egl_vendor": egl_overrides[0] if egl_overrides else _detect_egl_vendor(),
+        "egl_vendor": icd_result.get("egl_overrides_dir") or _detect_egl_vendor(),
         "dri_path": _detect_dri(),
         "gbm_path": _detect_gbm(),
         "skip_nvidia": skip_nvidia,
