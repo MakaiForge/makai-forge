@@ -240,10 +240,22 @@ def _detect_gbm() -> str | None:
     return str(p) if p.is_dir() else None
 
 
-def configure(config: dict) -> StepResult:
-    """Overrides GPU + ICDs + EGL."""
+def configure(config: dict, capsule_manifest=None) -> StepResult:
+    """Overrides GPU + ICDs + EGL.
+
+    Se capsule_manifest for fornecido (do container auxiliar),
+    usa os overrides detectados DENTRO do container em vez de
+    detectar do host via ldconfig.
+
+    Args:
+        config: Config do fork (gpu, devices, etc.)
+        capsule_manifest: GPUManifest do capsule.capture_gpu_libs()
+    """
     args = []
     gpu_cfg = config.get("gpu", {})
+
+    if capsule_manifest is not None:
+        return _configure_from_capsule(args, config, capsule_manifest)
 
     # PASSO 1: Garantir que libs GPU do host sejam acessíveis
     # Lê os JSONs ICD/EGL, reescreve library_path para /overrides/lib/
@@ -330,6 +342,42 @@ def configure(config: dict) -> StepResult:
     return StepResult(
         args=args,
         applied=applied or icd_result.get("icd_rewritten", 0) > 0 or icd_result.get("egl_rewritten", 0) > 0,
+        summary=f"gpu: {', '.join(summary_parts)}",
+        extra={"gpu_info": gpu_info},
+    )
+
+
+def _configure_from_capsule(args: list[str], config: dict, manifest) -> StepResult:
+    """Configura GPU a partir do manifesto do container auxiliar."""
+    from makrun.container.capsule import get_bwrap_overrides_args
+
+    log.info("GPU: usando capsule manifest (%d libs, %d ICDs, %d EGLs)",
+             len(manifest.libs),
+             len(manifest.rewritten_icds),
+             len(manifest.rewritten_egls))
+
+    capsule_args = get_bwrap_overrides_args(manifest)
+    args.extend(capsule_args)
+
+    gpu_info = dict(manifest.gpu_info) if manifest.gpu_info else {}
+
+    summary_parts = []
+    if manifest.vendors:
+        summary_parts.append(f"vendor={','.join(manifest.vendors)}")
+    if manifest.rewritten_icds:
+        summary_parts.append(f"icd_remap={len(manifest.rewritten_icds)}")
+    if manifest.rewritten_egls:
+        summary_parts.append(f"egl_remap={len(manifest.rewritten_egls)}")
+    if manifest.libs:
+        summary_parts.append(f"libs={len(manifest.libs)}")
+    if not summary_parts:
+        summary_parts.append("no_overrides")
+
+    gpu_info["skip_nvidia"] = config.get("gpu", {}).get("skip_nvidia_overrides", False)
+
+    return StepResult(
+        args=args,
+        applied=len(capsule_args) > 0,
         summary=f"gpu: {', '.join(summary_parts)}",
         extra={"gpu_info": gpu_info},
     )

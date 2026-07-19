@@ -45,6 +45,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from makrun.container.capsule import GPUManifest, capture_gpu_libs
 from makrun.container.steps import StepResult
 from makrun.container.steps import (
     isolation, runtime, gpu, audio, display, etc as etc_step,
@@ -87,6 +88,7 @@ class Builder:
         self.ctx = ctx
         self.cmd: list[str] = [_find_bwrap()]
         self.results: list[tuple[str, StepResult]] = []
+        self.capsule_manifest: GPUManifest | None = None
 
     # ── Steps base ──────────────────────────────────────────────────────
 
@@ -152,8 +154,48 @@ class Builder:
         self.results.append(("devices", r))
         return self
 
+    def run_capsule(self, runtime_path: Path):
+        """Sobe container auxiliar para detectar GPU.
+
+        Deve ser chamado ANTES de apply_gpu().
+        O resultado fica em self.capsule_manifest.
+        """
+        if not self.ctx.get("features"):
+            return self
+        fork_id = (self.ctx.get("features") or {}).get("fork_id")
+        container_overrides = {}
+        if fork_id:
+            from makrun.intel import get_container_overrides
+            container_overrides = get_container_overrides(fork_id)
+        skip_capsule = container_overrides.get("skip_capsule", False)
+        if skip_capsule:
+            log.info("Capsule: skip (fork=%s)", fork_id)
+            return self
+
+        try:
+            self.capsule_manifest = capture_gpu_libs(
+                runtime_path=runtime_path,
+                gpu_config=self.config,
+            )
+            if self.capsule_manifest and (
+                self.capsule_manifest.libs
+                or self.capsule_manifest.rewritten_icds
+            ):
+                log.info("Capsule: OK — %d libs, %d ICDs",
+                         len(self.capsule_manifest.libs),
+                         len(self.capsule_manifest.rewritten_icds))
+            else:
+                log.info("Capsule: vazio (sem overrides GPU necessários)")
+        except Exception as e:
+            log.warning("Capsule: erro, usando fallback host: %s", e)
+            self.capsule_manifest = None
+        return self
+
     def apply_gpu(self):
-        r = gpu.configure(self.config)
+        if self.capsule_manifest is not None:
+            r = gpu.configure(self.config, capsule_manifest=self.capsule_manifest)
+        else:
+            r = gpu.configure(self.config)
         self.cmd.extend(r.args)
         self.results.append(("gpu", r))
         self.ctx["gpu_info"] = r.extra.get("gpu_info")
@@ -226,6 +268,11 @@ def build_bwrap_cmd(
     }
 
     builder = Builder(container_config, ctx)
+
+    # Capsule: container auxiliar para detecção GPU
+    # Sobe ANTES do container real para detectar libs GPU que
+    # o runtime não tem. O resultado é passado para apply_gpu().
+    builder.run_capsule(runtime_path)
 
     cmd = (
         builder

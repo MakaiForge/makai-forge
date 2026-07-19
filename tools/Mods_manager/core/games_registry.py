@@ -344,27 +344,27 @@ def get_game_frameworks(game_id: str) -> list[str]:
 
 
 def is_framework_installed(game_path: str, framework: str) -> bool:
-    checks: dict[str, str] = {
-        "BepInEx": "BepInEx/core",
-        "SMAPI": "StardewModdingAPI.exe",
-        "RED4ext": "red4ext/win64/red4ext.dll",
-        "Cyber Engine Tweaks": "bin/x64/plugins/cyber_engine_tweaks.asi",
-        "Script Extender": "",
-        "MGE XE": "MGEXEgui.exe",
-        "SML": "SML/Bootstrap.dll",
-        "tModLoader": "tModLoader.exe",
-        "Fabric Loader": "fabric-loader.jar",
-        "Forge": "forge.jar",
-        "NeoForge": "neoforge.jar",
-    }
-    rel = checks.get(framework)
-    if not rel:
-        return False
-    return os.path.exists(os.path.join(game_path, rel))
+    """Delega para framework_installer."""
+    try:
+        from core.engine.framework_installer import is_framework_installed as _fi, get_frameworks
+        for fw in get_frameworks(""):
+            if fw["name"] == framework:
+                return _fi(game_path, fw)
+    except Exception:
+        pass
+    return False
 
 
 def install_framework(game_path: str, framework: str):
-    raise NotImplementedError(f"Framework {framework} não implementado ainda")
+    """Delega para framework_installer."""
+    try:
+        from core.engine.framework_installer import install_framework as _fi, get_frameworks
+        for fw in get_frameworks(""):
+            if fw["name"] == framework:
+                return _fi(game_path, fw)
+    except Exception:
+        pass
+    raise NotImplementedError(f"Framework {framework} não encontrado")
 
 
 def get_script_extender_info(game_id: str) -> dict | None:

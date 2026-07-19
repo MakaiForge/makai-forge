@@ -147,8 +147,7 @@ def configure(env: dict, features: dict, config: dict,
 
     # 8. Display env vars
     display_cfg = config.get("display", {})
-    _add_env(args, "DISPLAY", display_cfg.get("display_env",
-              os.environ.get("DISPLAY", ":0")))
+    _add_env(args, "DISPLAY", os.environ.get("DISPLAY") or ":0")
     _add_env(args, "WAYLAND_DISPLAY", display_cfg.get("wayland_display",
               os.environ.get("WAYLAND_DISPLAY", "wayland-0")))
     _add_env(args, "XDG_SESSION_TYPE", display_cfg.get("xdg_session_type",

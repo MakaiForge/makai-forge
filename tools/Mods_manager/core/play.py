@@ -380,6 +380,42 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
             # ── Script Extender ──
             se_path = _step_script_extender(game_path, game_id)
             _emit("progress", step="skse", message="Script Extender OK", percent=70)
+
+            # ── Frameworks (BepInEx, SMAPI, RED4ext, CET, etc.) ──
+            try:
+                from core.engine.framework_installer import ensure_frameworks
+                _emit("progress", step="frameworks", message="Verificando frameworks...", percent=72)
+                fw_result = ensure_frameworks(game_path, game_id)
+                fw_summary = []
+                if fw_result["installed"]:
+                    fw_summary.append(f"Instalados: {', '.join(fw_result['installed'])}")
+                if fw_result["skipped"]:
+                    fw_summary.append(f"Existentes: {', '.join(fw_result['skipped'])}")
+                if fw_result["failed"]:
+                    fw_summary.append(f"Falhas: {', '.join(fw_result['failed'])}")
+                _emit("progress", step="frameworks",
+                      message=fw_summary[0] if fw_summary else "Nenhum framework necessário",
+                      percent=74)
+            except Exception as e:
+                _emit("log", level="warn", message=f"Frameworks: {e}")
+
+            # ── External Tools (SSEEdit, LOOT, WolvenKit, etc.) ──
+            try:
+                from core.engine.external_tool_installer import ensure_tools
+                _emit("progress", step="tools", message="Verificando tools externas...", percent=75)
+                t_result = ensure_tools(game_id)
+                t_summary = []
+                if t_result["installed"]:
+                    t_summary.append(f"Instaladas: {', '.join(t_result['installed'])}")
+                if t_result["skipped"]:
+                    t_summary.append(f"Existentes: {', '.join(t_result['skipped'])}")
+                if t_result["failed"]:
+                    t_summary.append(f"Falhas: {', '.join(t_result['failed'])}")
+                _emit("progress", step="tools",
+                      message=t_summary[0] if t_summary else "Nenhuma tool com download",
+                      percent=76)
+            except Exception as e:
+                _emit("log", level="warn", message=f"Tools: {e}")
         else:
             _emit("progress", step="proton", message="Jogo nativo Linux", percent=20)
 

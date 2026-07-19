@@ -107,31 +107,20 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
 
   const playGame = useCallback(async (game: GameConfig) => {
     const gameId = `${game.shop}:${game.objectId}`;
-    console.log(`[LAUNCH] adding ${gameId} to launchingGameIds`);
-    setLaunchingGameIds((prev) => {
-      const next = new Set(prev).add(gameId)
-      console.log(`[LAUNCH] launchingGameIds now:`, [...next])
-      return next
-    });
+    setLaunchingGameIds((prev) => new Set(prev).add(gameId));
     try {
-      await window.electron.openGame(
-        game.shop as import("@types").GameShop,
-        game.objectId,
-        game.executablePath || "",
-        game.gameArgs || null
-      );
-      setLaunchingGameIds((prev) => {
-        const next = new Set(prev)
-        next.delete(gameId)
-        return next
-      })
+      const result = await window.electron.modPlayGame(gameId);
+      if (!result?.success) {
+        console.error("Failed to play game:", result?.error);
+      }
     } catch (error) {
       console.error("Failed to play game:", error);
+    } finally {
       setLaunchingGameIds((prev) => {
-        const next = new Set(prev)
-        next.delete(gameId)
-        return next
-      })
+        const next = new Set(prev);
+        next.delete(gameId);
+        return next;
+      });
     }
   }, []);
 
