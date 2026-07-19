@@ -44,8 +44,8 @@ def _ensure_lib_override(args: list[str], lib_path: str,
             log.debug("GPU lib (abs) não encontrada no host: %s", lib_path)
             return None
         lib_name = host_path.name
-        symlink_target = f"/run/host{lib_path}"
-        args.extend(["--symlink", symlink_target, f"{overrides_dir}/{lib_name}"])
+        # --symlink para /run/host/... (path só existe dentro do container)
+        args.extend(["--symlink", f"/run/host{lib_path}", f"{overrides_dir}/{lib_name}"])
         return f"{overrides_dir}/{lib_name}"
 
     # Relative library_path (e.g. "libGLX_nvidia.so.0") — resolve via ldconfig
@@ -55,8 +55,8 @@ def _ensure_lib_override(args: list[str], lib_path: str,
         return None
 
     lib_name = Path(lib_path).name
-    symlink_target = f"/run/host{resolved}"
-    args.extend(["--symlink", symlink_target, f"{overrides_dir}/{lib_name}"])
+    # --symlink para /run/host/<realpath> (path só existe dentro do container)
+    args.extend(["--symlink", f"/run/host{resolved}", f"{overrides_dir}/{lib_name}"])
     return f"{overrides_dir}/{lib_name}"
 
 
@@ -173,6 +173,14 @@ def _collect_nvidia_so(path: Path, prefixes: tuple[str, ...]) -> list[tuple[Path
     return items
 
 
+def _has_dest(args: list[str], dest: str) -> bool:
+    """Verifica se dest já tem --ro-bind ou --symlink contido."""
+    for i, a in enumerate(args):
+        if a in ("--ro-bind", "--symlink") and i + 2 < len(args) and args[i + 2] == dest:
+            return True
+    return False
+
+
 def _add_nvidia_bind(args: list[str], items: list[tuple[Path, bool]],
                      overrides_dir: str) -> None:
     real_files: dict[str, Path] = {}
@@ -190,9 +198,15 @@ def _add_nvidia_bind(args: list[str], items: list[tuple[Path, bool]],
             real_files[p.name] = p
 
     for fname, fpath in real_files.items():
-        args.extend(["--ro-bind", str(fpath), f"{overrides_dir}/{fname}"])
+        dest = f"{overrides_dir}/{fname}"
+        if not _has_dest(args, dest):
+            args.extend(["--ro-bind", str(fpath), dest])
     for target, link_name in symlinks:
-        args.extend(["--symlink", target, f"{overrides_dir}/{link_name}"])
+        dest = f"{overrides_dir}/{link_name}"
+        if _has_dest(args, dest):
+            log.debug("GPU: pulando --symlink conflitante: %s → %s (já existe)", target, dest)
+        else:
+            args.extend(["--symlink", target, dest])
 
 
 def _detect_vk_icd() -> str | None:
