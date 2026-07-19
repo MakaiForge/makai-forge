@@ -62,44 +62,44 @@ def _ensure_lib_override(args: list[str], lib_path: str,
 
 def _rewrite_gpu_json(args: list[str], host_json: Path,
                       overrides_dir: str,
-                      lib_key: str = "library_path") -> bool:
-    """Lê JSON ICD/EGL do host, reescreve library_path e monta.
+                      lib_key: str = "library_path") -> str | None:
+    """Lê JSON ICD/EGL do host, reescreve library_path e monta em /overrides/.
 
-    Se o library_path for relativo (ex: libGLX_nvidia.so.0), resolve
-    no ldconfig do host, cria symlink em overrides, e reescreve o JSON
-    com o path do symlink.
+    O JSON reescrito é montado em /overrides/share/<relative_path> em vez
+    do path original, porque /usr/ é read-only no container (runtime) e
+    pode não ter os diretórios pai. /overrides/ é tmpfs (writable), então
+    bwrap consegue criar os subdiretórios.
 
-    Se o library_path for absoluto (ex: /usr/lib/libfoo.so), cria symlink
-    apontando para /run/host/<path>, e reescreve o JSON.
-
-    O JSON reescrito é salvo em /tmp/.makrun-<nome>.json e montado
-    via --ro-bind no lugar do original.
+    Retorna o path de montagem dentro do container, ou None se falhou.
     """
     try:
         raw = host_json.read_text()
         data = json.loads(raw)
     except Exception as e:
         log.debug("Erro ao ler %s: %s", host_json, e)
-        return False
+        return None
 
     icd = data.get("ICD") or data.get("icd") or {}
     lib_key_actual = lib_key if lib_key in icd else "library_path"
     lib_val = icd.get(lib_key_actual)
 
     if not lib_val:
-        return False
+        return None
 
     new_path = _ensure_lib_override(args, lib_val, overrides_dir)
     if not new_path:
-        return False
+        return None
 
     icd[lib_key_actual] = new_path
     data["ICD"] = icd
 
+    # Monta em /overrides/share/<path_relativo> em vez do path original
+    # Ex: /usr/share/vulkan/icd.d/nvidia_icd.json → /overrides/share/vulkan/icd.d/nvidia_icd.json
+    container_path = f"/overrides/share/{host_json.relative_to('/usr/share')}"
     tmp_json = Path(f"/tmp/.makrun-{host_json.name}")
     tmp_json.write_text(json.dumps(data, indent=2))
-    args.extend(["--ro-bind", str(tmp_json), str(host_json)])
-    return True
+    args.extend(["--ro-bind", str(tmp_json), container_path])
+    return container_path
 
 
 def _ensure_host_gpu_libs(args: list[str]) -> dict:
@@ -118,7 +118,12 @@ def _ensure_host_gpu_libs(args: list[str]) -> dict:
       5. Re-escreve o JSON com o path do symlink
       6. Monta o JSON reescrito via --ro-bind no mesmo path do container
     """
-    result = {"icd_rewritten": 0, "egl_rewritten": 0}
+    result = {
+        "icd_rewritten": 0,
+        "egl_rewritten": 0,
+        "icd_overrides": [],
+        "egl_overrides": [],
+    }
     overrides_dir = "/overrides/lib"
 
     icd_dirs = [
@@ -132,15 +137,19 @@ def _ensure_host_gpu_libs(args: list[str]) -> dict:
         if not icd_dir.is_dir():
             continue
         for host_json in sorted(icd_dir.glob("*.json")):
-            if _rewrite_gpu_json(args, host_json, overrides_dir):
+            mount_path = _rewrite_gpu_json(args, host_json, overrides_dir)
+            if mount_path:
                 result["icd_rewritten"] += 1
+                result["icd_overrides"].append(mount_path)
 
     for egl_dir in egl_dirs:
         if not egl_dir.is_dir():
             continue
         for host_json in sorted(egl_dir.glob("*.json")):
-            if _rewrite_gpu_json(args, host_json, overrides_dir):
+            mount_path = _rewrite_gpu_json(args, host_json, overrides_dir)
+            if mount_path:
                 result["egl_rewritten"] += 1
+                result["egl_overrides"].append(mount_path)
 
     return result
 
@@ -274,11 +283,14 @@ def configure(config: dict) -> StepResult:
     applied = len(args) > 0
 
     # Guarda paths detectados para o step env.py usar
+    # Usa os paths de override se disponíveis (montados em /overrides/share/)
+    vk_icd_overrides = icd_result.get("icd_overrides", [])
+    egl_overrides = icd_result.get("egl_overrides", [])
     gpu_info = {
-        "vk_icd": _detect_vk_icd(),
+        "vk_icd": vk_icd_overrides[0] if vk_icd_overrides else _detect_vk_icd(),
         "vk_implicit": _detect_vk_layers()[0],
         "vk_explicit": _detect_vk_layers()[1],
-        "egl_vendor": _detect_egl_vendor(),
+        "egl_vendor": egl_overrides[0] if egl_overrides else _detect_egl_vendor(),
         "dri_path": _detect_dri(),
         "gbm_path": _detect_gbm(),
         "skip_nvidia": skip_nvidia,
