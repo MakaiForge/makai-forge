@@ -15,6 +15,7 @@ import type { SendProgress } from "./types";
 import { logEvent, logError } from "./activity-logger";
 import { logger } from "@main/services/logger";
 import { gamesStore, storeKeys } from "@main/store";
+import { gamesPlaytime } from "@main/services/process-watcher";
 
 registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => {
   const sender = event.sender;
@@ -76,6 +77,27 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
       success: Boolean(result.success),
       method: String(result.method || ""),
     });
+
+    // Registra o jogo como em execução para o Game Bar mostrar Stop
+    if (result.success && game) {
+      const now = performance.now();
+      if (!gamesPlaytime.has(gameKey)) {
+        gamesPlaytime.set(gameKey, {
+          lastTick: now,
+          firstTick: now,
+          lastSyncTick: now,
+        });
+        const { WindowManager } = await import("@main/services/window-manager");
+        WindowManager.mainWindow?.webContents.send(
+          "on-games-running",
+          Array.from(gamesPlaytime.entries()).map(([id, data]) => ({
+            id,
+            sessionDurationInMillis: performance.now() - data.firstTick,
+          }))
+        );
+      }
+    }
+
     return result;
   } catch (err) {
     const msg = String(err);
