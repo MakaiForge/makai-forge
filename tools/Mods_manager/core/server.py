@@ -121,7 +121,11 @@ def handle_play_game(params: dict):
         raise RpcError("invalid_params", "game_id required")
     profile = params.get("profile", "Default")
     from core.play import play_game
-    return play_game(params["game_id"], profile)
+    kwargs = {}
+    for k in ("gamePath", "executablePath", "protonPath", "winePrefixPath", "steamAppId", "shop", "objectId", "title"):
+        if k in params:
+            kwargs[k] = params[k]
+    return play_game(params["game_id"], profile, **kwargs)
 
 
 @register("detect_game")

@@ -279,7 +279,7 @@ def _step_launch(game_path: str, prefix_path: str, proton_path: str, steam_app_i
 
 # ─── Main ──────────────────────────────────────────────────────
 
-def play_game(game_id: str, profile: str = "Default") -> dict:
+def play_game(game_id: str, profile: str = "Default", **kwargs) -> dict:
     _start_all = time.monotonic()
     _emit("play_started", gameId=game_id, profile=profile)
 
@@ -287,10 +287,34 @@ def play_game(game_id: str, profile: str = "Default") -> dict:
     _log.step("start", "Iniciando sessão de jogo")
 
     try:
+        # Se recebeu config do Electron, salva no storage compartilhado
+        _incoming_path = kwargs.get("gamePath") or kwargs.get("executablePath")
+        _incoming_proton = kwargs.get("protonPath")
+        _incoming_prefix = kwargs.get("winePrefixPath")
+        _incoming_steam = kwargs.get("steamAppId")
+        _incoming_title = kwargs.get("title")
+        if _incoming_path or _incoming_steam:
+            _saved = storage.get(f"game:{game_id}:config") or {}
+            if isinstance(_saved, dict):
+                if _incoming_path:
+                    path = os.path.expanduser(_incoming_path)
+                    if os.path.isdir(path):
+                        _saved["gamePath"] = path
+                    elif os.path.isfile(path):
+                        _saved["gamePath"] = os.path.dirname(path)
+                if _incoming_proton:
+                    _saved["protonVersion"] = os.path.expanduser(_incoming_proton)
+                if _incoming_prefix:
+                    _saved["protonPrefix"] = os.path.expanduser(_incoming_prefix)
+                if _incoming_steam:
+                    _saved["steamAppId"] = str(_incoming_steam)
+                if _incoming_title:
+                    _saved["title"] = str(_incoming_title)
+                storage.put(f"game:{game_id}:config", _saved)
+
         config = _load_game_config(game_id)
         game_path = config.get("gamePath")
         staging_dir = config.get("stagingDir") or _default_staging_dir(game_id)
-        # prefer_custom: True se usuário definiu prefixo explícito (não o default)
         _has_custom_prefix = bool(config.get("protonPrefix"))
         prefix_path = config.get("protonPrefix") or _default_prefix_dir(game_id)
         prefix_path = os.path.expanduser(prefix_path)

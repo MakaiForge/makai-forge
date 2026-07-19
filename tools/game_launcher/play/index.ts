@@ -14,6 +14,7 @@ import { killGameProcess } from "./steps/07-launch";
 import type { SendProgress } from "./types";
 import { logEvent, logError } from "./activity-logger";
 import { logger } from "@main/services/logger";
+import { gamesStore, storeKeys } from "@main/store";
 
 registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => {
   const sender = event.sender;
@@ -22,6 +23,29 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
   };
 
   logEvent(gameId, "ipc_modPlayGame", { profile: profile || "Default" });
+
+  // Lê config do jogo do LevelDB e passa pro Python
+  const parts = gameId.split(":");
+  const shop = parts[0] as any;
+  const objectId = parts.slice(1).join(":");
+  const gameKey = storeKeys.game(shop, objectId);
+  const game = await gamesStore.get(gameKey).catch(() => null);
+  const gameConfig: Record<string, unknown> = {
+    game_id: gameId,
+    profile: profile || "Default",
+    shop,
+    objectId,
+  };
+  if (game) {
+    gameConfig.gamePath = (game as any).executablePath
+      ? require("node:path").dirname((game as any).executablePath)
+      : undefined;
+    gameConfig.executablePath = (game as any).executablePath;
+    gameConfig.protonPath = (game as any).protonPath || (game as any).protonVersion;
+    gameConfig.winePrefixPath = (game as any).winePrefixPath || (game as any).prefix;
+    gameConfig.steamAppId = (game as any).steamAppId;
+    gameConfig.title = (game as any).title;
+  }
 
   // Callback de eventos do Python RPC
   const eventCb: RpcEventCallback = (eventType, data) => {
@@ -46,10 +70,7 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
 
   try {
     logger.info(`[modPlayGame] Delegando para Python RPC: gameId=${gameId}`);
-    const result = await MakaiRPC.call<Record<string, unknown>>("play_game", {
-      game_id: gameId,
-      profile: profile || "Default",
-    });
+    const result = await MakaiRPC.call<Record<string, unknown>>("play_game", gameConfig);
 
     logEvent(gameId, "ipc_modPlayGame_result", {
       success: Boolean(result.success),
