@@ -245,12 +245,14 @@ def _step_deploy(game_path: str, staging_dir: str, modlist: list, game_id: str):
         _emit("log", level="warn", message=f"Deploy: {e}")
 
 
-def _step_launch(game_path: str, prefix_path: str, proton_path: str, steam_app_id: str, game_id: str, se_path: str | None = None, prefer_custom_prefix: bool = False, fork_id: str | None = None, features_count: int = 0) -> dict:
+def _step_launch(game_path: str, prefix_path: str, proton_path: str, steam_app_id: str, game_id: str, se_path: str | None = None, prefer_custom_prefix: bool = False, fork_id: str | None = None, features_count: int = 0, executable_path: str | None = None) -> dict:
     """Lança o jogo."""
     _emit("progress", step="launch", message="Iniciando jogo...", percent=90)
 
     if se_path:
         exe_path = os.path.relpath(se_path, game_path)
+    elif executable_path:
+        exe_path = os.path.relpath(executable_path, game_path)
     else:
         from core.games_registry import get_launch_exe
         exe_path = get_launch_exe(game_id, None)
@@ -289,6 +291,7 @@ def play_game(game_id: str, profile: str = "Default", **kwargs) -> dict:
     try:
         # Se recebeu config do Electron, salva no storage compartilhado
         _incoming_path = kwargs.get("gamePath") or kwargs.get("executablePath")
+        _incoming_exe = kwargs.get("executablePath")
         _incoming_proton = kwargs.get("protonPath")
         _incoming_prefix = kwargs.get("winePrefixPath")
         _incoming_steam = kwargs.get("steamAppId")
@@ -302,6 +305,8 @@ def play_game(game_id: str, profile: str = "Default", **kwargs) -> dict:
                         _saved["gamePath"] = path
                     elif os.path.isfile(path):
                         _saved["gamePath"] = os.path.dirname(path)
+                if _incoming_exe:
+                    _saved["executablePath"] = os.path.expanduser(_incoming_exe)
                 if _incoming_proton:
                     _saved["protonVersion"] = os.path.expanduser(_incoming_proton)
                 if _incoming_prefix:
@@ -336,11 +341,15 @@ def play_game(game_id: str, profile: str = "Default", **kwargs) -> dict:
                 return {"success": False, "error": "Jogo não encontrado", "failedStep": "detect"}
             game_path = detection["gamePath"]
             steam_app_id = str(detection.get("steamAppId", "") or steam_app_id)
-            storage.put(f"game:{game_id}:config", {
+            cfg_detect = {
                 "gamePath": game_path, "stagingDir": staging_dir,
                 "protonPrefix": prefix_path, "protonVersion": proton_version,
                 "steamAppId": steam_app_id,
-            })
+            }
+            _incoming_exe = kwargs.get("executablePath")
+            if _incoming_exe:
+                cfg_detect["executablePath"] = os.path.expanduser(_incoming_exe)
+            storage.put(f"game:{game_id}:config", cfg_detect)
             _emit("progress", step="detect",
                   message=f"Jogo encontrado: {os.path.basename(game_path)}",
                   source=detection.get("source"), percent=15)
@@ -454,12 +463,14 @@ def play_game(game_id: str, profile: str = "Default", **kwargs) -> dict:
             launch_result = {"success": True, "pid": None, "method": "native"}
         else:
             _log.step("launch", "Iniciando jogo via makrun")
+            _saved_exe = config.get("executablePath") or kwargs.get("executablePath")
             launch_result = _step_launch(
                 game_path, prefix_path, proton_path, steam_app_id, game_id,
                 se_path,
                 prefer_custom_prefix=prefer_custom,
                 fork_id=_fork_id,
                 features_count=len(_injected.get("env", {})),
+                executable_path=_saved_exe,
             )
 
         total_ms = (time.monotonic() - _start_all) * 1000
