@@ -72,6 +72,7 @@ export default defineConfig(({ mode }) => {
           "@emulator-detail": resolve("app/EmulatorDetail"),
           "@emulators": resolve("app/Emulators"),
           "@executable-select": resolve("app/ExecutableSelect"),
+          "@folder-select": resolve("app/FolderSelect"),
         },
       },
       plugins: [svgr(), react()],
