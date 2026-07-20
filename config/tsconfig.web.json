@@ -6,8 +6,8 @@
     "../src/renderer/src/**/*.tsx",
     "../app/Catalogo/GameMod/ui/**/*",
     "../app/Catalogo/GameMod/ui/**/*.tsx",
-    "../app/Catalogo/GameMod/proton-tools/renderer/**/*",
-    "../app/Catalogo/GameMod/proton-tools/renderer/**/*.tsx",
+    "../app/ProtonTools/renderer/**/*",
+    "../app/ProtonTools/renderer/**/*.tsx",
     "../src/big-picture/src/**/*",
     "../src/big-picture/src/**/*.tsx",
     "../src/preload/*.d.ts",
@@ -33,7 +33,7 @@
       "@shared": ["src/shared/index.ts"],
       "@emulators/*": ["tools/emulators/*"],
       "@provision/*": ["data/install-api/*"],
-      "@proton/*": ["app/Catalogo/GameMod/proton-tools/*"],
+      "@proton/*": ["app/ProtonTools/*"],
 "@game-launcher/*": ["app/Games/services/game-launcher/*"],
       "@games-ui/*": ["app/Games/*"]
     }

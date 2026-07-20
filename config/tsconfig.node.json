@@ -3,7 +3,7 @@
   "include": ["../electron.vite.config.*", "../src/main/**/*", "../src/preload/**/*", "../src/locales/index.ts", "../src/shared/**/*", "../src/types/**/*", "../src/big-picture/vite-scope-big-picture-css.ts", "../app/Catalogo/GameMod/games/**/*",
   "../app/Catalogo/GameMod/events/**/*",
   "../app/Catalogo/GameMod/services/**/*",
-  "../app/Catalogo/GameMod/proton-tools/main/**/*",
+  "../app/ProtonTools/main/**/*",
   "../app/Games/**/*", "../tools/prefix/**/*", "../tools/emulators/**/*"],
   "compilerOptions": {
     "module": "ESNext",
@@ -26,7 +26,7 @@
       "@emulators/*": ["tools/emulators/*"],
       "@provision/*": ["data/install-api/*"],
       "@bootstrap/*": ["data/Bootstrap/*"],
-"@proton/*": ["app/Catalogo/GameMod/proton-tools/*"],
+"@proton/*": ["app/ProtonTools/*"],
       "@prefix/*": ["tools/prefix/*"],
 "@game-launcher/*": ["app/Games/services/game-launcher/*"],
       "@games-ui/*": ["app/Games/*"]
