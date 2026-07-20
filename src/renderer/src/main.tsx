@@ -33,7 +33,7 @@ import Games from "@games-ui";
 import Downloads from "@downloads";
 import GameDetails from "@games-ui/pages/game-details/game-details";
 import Settings from "@settings/settings";
-import Emulators from "./pages/emulators/emulators";
+import Emulators from "@emulators/emulators";
 import EmulatorDetail from "@emulator-detail/emulator-detail";
 import Profile from "@profile/profile";
 import ThemeEditor from "./pages/theme-editor/theme-editor";
