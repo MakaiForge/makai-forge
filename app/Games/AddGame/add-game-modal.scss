@@ -1,0 +1,123 @@
+@use "@games-ui/pages/games/variables" as *;
+
+.add-game-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.add-game-modal {
+  background: $bg-dark;
+  border: 1px solid $border;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 550px;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid $border;
+
+    h2 {
+      margin: 0;
+      color: $text-primary;
+      font-size: 1.25rem;
+    }
+  }
+
+  &__form {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__label {
+    font-size: 0.85rem;
+    color: $text-secondary;
+    margin-bottom: 4px;
+  }
+
+  &__input-group {
+    display: flex;
+    gap: 8px;
+
+    > *:first-child {
+      flex: 1;
+    }
+  }
+
+  &__select {
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid $border;
+    border-radius: 6px;
+    color: $text-primary;
+    font-size: 0.9rem;
+    cursor: pointer;
+    width: 100%;
+
+    &:focus {
+      outline: none;
+      border-color: $accent;
+    }
+
+    option {
+      background: $bg-dark;
+      color: $text-primary;
+    }
+  }
+
+  &__no-protons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    text-align: center;
+
+    span {
+      color: $text-secondary;
+      font-size: 0.85rem;
+    }
+
+    button {
+      background: $accent;
+      color: $bg-dark;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+
+      &:hover {
+        background: $accent-hover;
+      }
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 12px;
+  }
+}

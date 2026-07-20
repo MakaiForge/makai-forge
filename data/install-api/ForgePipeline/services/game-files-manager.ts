@@ -6,9 +6,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { ExtractionProgress, SevenZip } from "@main/services/7zip";
 import { getPathType } from "@main/services/extraction-path";
-import { GameExecutables } from "@main/services/game-executables";
+import { GameExecutables } from "@games-ui/services/game-executables";
 import { logger } from "@main/services/logger";
-import { deleteArchiveFile } from "@main/events/library/delete-archive";
+import { deleteArchiveFile } from "@games-ui/events/library/delete-archive";
 import { publishExtractionCompleteNotification } from "@main/services/notifications";
 import { WindowManager } from "@main/services/window-manager";
 

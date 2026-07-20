@@ -1,8 +1,8 @@
 import type { GameConfig } from "./add-game/games-service";
 import { AddGameModal } from "./add-game/AddGameModal";
-import { GameConfigModal } from "@renderer/pages/games/components/game-config-modal";
-import { DeleteGameModal } from "@renderer/pages/games/components/delete-game-modal";
-import { CheckDllsModal } from "@renderer/pages/games/components/check-dlls-modal";
+import { GameConfigModal } from "@games-ui/pages/games/components/game-config-modal";
+import { DeleteGameModal } from "@games-ui/pages/games/components/delete-game-modal";
+import { CheckDllsModal } from "@games-ui/pages/games/components/check-dlls-modal";
 import { BackupModal } from "./backup/BackupModal";
 import { BackupPanel } from "./backup/BackupPanel";
 

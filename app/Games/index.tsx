@@ -8,7 +8,7 @@ import { GamesTopBar } from "./components/toolbar/TopBar";
 import { GamesPageModals } from "./components/modals/Modals";
 import { GamesGameBar } from "./components/gamebar/GameBar";
 import { useGamesPage } from "./hooks/useGamesPage";
-import "@renderer/pages/games/games.scss";
+import "@games-ui/pages/games/games.scss";
 
 export default function Games() {
   const p = useGamesPage();

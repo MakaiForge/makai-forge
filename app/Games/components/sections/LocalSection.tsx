@@ -3,7 +3,7 @@ import { GameLargeCard } from "../cards/GameLargeCard";
 import { localGameCoverUrl } from "../../utils/games-utils";
 import { LocalGridCard } from "../cards/LocalGridCard";
 import type { GameConfig } from "../modals/add-game/games-service";
-import type { ViewMode } from "@renderer/pages/games/games-types";
+import type { ViewMode } from "@games-ui/pages/games/games-types";
 import type { LibraryGame } from "@types";
 
 interface Props {

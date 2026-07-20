@@ -10,9 +10,9 @@ import "./catalogue";
 import "./cloud-save";
 import "./download-sources";
 import "./games-json";
-import "./games";
+import "@games-ui/events/games";
 import "./hardware";
-import "./library";
+import "@games-ui/events/library";
 import "./store-handlers";
 import "./home";
 import "./misc";
@@ -29,9 +29,9 @@ import "./achievements/get-achievement-icon";
 import "./supplemental";
 import "./user";
 import "./user-preferences";
-import "./library/transfer-game-files";
-import "./library/update-game-config";
-import "./library/check-game-dlls";
+import "@games-ui/events/library/transfer-game-files";
+import "@games-ui/events/library/update-game-config";
+import "@games-ui/events/library/check-game-dlls";
 import "@mods/events/mod-deploy";
 import "@mods/events/mod-launch";
 import "@mods/events/mod-config";
@@ -63,9 +63,9 @@ import { registerProtonEvents } from "./proton";
 registerProtonEvents();
 
 
-import "./game-log/get-game-log-lines";
-import "./game-log/clear-game-log";
-import { setGameLogRendererSend } from "@main/services/game-log-manager";
+import "@games-ui/events/game-log/get-game-log-lines";
+import "@games-ui/events/game-log/clear-game-log";
+import { setGameLogRendererSend } from "@games-ui/services/game-log-manager";
 import { WindowManager } from "@main/services";
 
 setGameLogRendererSend((shop, objectId, lines) => {

@@ -1,6 +1,6 @@
 import { sleep } from "@main/helpers";
 import { DownloadManager } from "@provision/ForgePipeline/services/download";
-import { gamesPlaytime, watchProcesses } from "./process-watcher";
+import { gamesPlaytime, watchProcesses } from "@games-ui/services/process-watcher";
 import { INTERVALS } from "@main/constants";
 import { PowerSaveBlockerManager } from "./power-save-blocker";
 import { logger } from "./logger";

@@ -6,8 +6,8 @@ import { useTranslation } from "react-i18next";
 import type { ProtonDBData } from "@types";
 import ProtonDBLogo from "@renderer/assets/protondb-logo.svg?url";
 import SteamDeckLogo from "@renderer/assets/steam-deck-logo.svg?url";
-import { SidebarSection } from "@renderer/pages/game-details/sidebar-section/sidebar-section";
-import "@renderer/pages/game-details/sidebar/sidebar.scss";
+import { SidebarSection } from "@games-ui/pages/game-details/sidebar-section/sidebar-section";
+import "@games-ui/pages/game-details/sidebar/sidebar.scss";
 
 const protonTierTranslation: Record<string, string> = {
   borked: "protondb_tier_borked",

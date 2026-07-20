@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { SteamInstalledGame } from "@types";
 import type { GameConfig } from "../components/modals/add-game/games-service";
 import { sortGames, steamToGameConfig } from "../utils/games-utils";
-import type { SortOption } from "@renderer/pages/games/games-types";
+import type { SortOption } from "@games-ui/pages/games/games-types";
 
 interface DerivedDataInput {
   searchQuery: string;

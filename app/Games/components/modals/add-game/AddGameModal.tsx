@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button, TextField } from "@renderer/components";
-import { gamesService, type GameConfig } from "@provision/AddGame/games-service";
-import { searchGameCover } from "@renderer/pages/games/services/cover-resolver";
+import { gamesService, type GameConfig } from "@games-ui/AddGame/games-service";
+import { searchGameCover } from "@games-ui/pages/games/services/cover-resolver";
 import "./add-game-modal.scss";
 
 interface AddGameModalProps {

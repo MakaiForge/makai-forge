@@ -1,4 +1,4 @@
-import { gamesService, type GameConfig } from "@provision/AddGame/games-service";
+import { gamesService, type GameConfig } from "@games-ui/AddGame/games-service";
 import type { SteamInstalledGame } from "@types";
 
 interface SaveGameConfigParams {

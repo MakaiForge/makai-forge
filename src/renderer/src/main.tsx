@@ -31,15 +31,15 @@ import ExecutableSelect from "./pages/executable-select/executable-select";
 import FolderSelect from "./pages/folder-select/folder-select";
 import Games from "@games-ui";
 import Downloads from "./pages/downloads";
-import GameDetails from "./pages/game-details/game-details";
+import GameDetails from "@games-ui/pages/game-details/game-details";
 import Settings from "./pages/settings/settings";
 import Emulators from "./pages/emulators/emulators";
 import EmulatorDetail from "./pages/emulator-detail/emulator-detail";
 import Profile from "./pages/profile/profile";
 import ThemeEditor from "./pages/theme-editor/theme-editor";
 import Notifications from "./pages/notifications/notifications";
-import GameLauncher from "./pages/game-launcher/game-launcher";
-import GameLog from "./pages/game-log/game-log";
+import GameLauncher from "@games-ui/pages/game-launcher/game-launcher";
+import GameLog from "@games-ui/pages/game-log/game-log";
 
 console.log = logger.log;
 

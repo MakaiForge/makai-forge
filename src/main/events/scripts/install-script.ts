@@ -4,7 +4,7 @@ import { app } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { gamesStore, downloadsStore, storeKeys } from "@main/store";
-import { addGameToLibrary } from "../library/add-game-to-library";
+import { addGameToLibrary } from "@games-ui/events/library/add-game-to-library";
 import type { GameShop } from "@types";
 import { Wine, logger } from "@main/services";
 import { getDownloadsPath } from "@main/events/helpers/get-downloads-path";

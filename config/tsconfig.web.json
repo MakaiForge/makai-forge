@@ -13,9 +13,10 @@
     "../src/preload/*.d.ts",
     "../src/locales/index.ts",
     "../src/shared/**/*",
-    "../src/stories/**/*",
-    "../src/types/**/*",
-    "../.storybook/**/*"
+  "../src/stories/**/*",
+  "../src/types/**/*",
+  "../app/Games/**/*",
+  "../.storybook/**/*"
   ],
   "compilerOptions": {
     "composite": true,
@@ -33,7 +34,7 @@
       "@emulators/*": ["tools/emulators/*"],
       "@provision/*": ["data/install-api/*"],
       "@proton/*": ["app/Catalogo/GameMod/proton-tools/*"],
-"@game-launcher/*": ["tools/game_launcher/*"],
+"@game-launcher/*": ["app/Games/services/game-launcher/*"],
       "@games-ui/*": ["app/Games/*"]
     }
   }

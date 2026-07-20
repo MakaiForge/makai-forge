@@ -23,7 +23,7 @@ import {
   ContextMenuProps,
   useGameActions,
 } from "..";
-import { DeleteGameModal } from "@renderer/pages/games/components/delete-game-modal";
+import { DeleteGameModal } from "@games-ui/pages/games/components/delete-game-modal";
 import { useGameCollections, useToast, useUserDetails } from "@renderer/hooks";
 
 interface GameContextMenuProps extends Omit<ContextMenuProps, "items"> {

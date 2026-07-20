@@ -11,7 +11,7 @@ import {
   Umu,
 } from "@main/services";
 import { launchGameDetached } from "@game-launcher/launch/launch-game";
-import { GameLogManager } from "@main/services/game-log-manager";
+import { GameLogManager } from "@games-ui/services/game-log-manager";
 import { checkAndCreateWinePrefix } from "@prefix/core/init";
 
 import { parseExecutablePath } from "@main/events/helpers/parse-executable-path";

@@ -1,6 +1,6 @@
 import { registerEvent } from "@main/events/register-event";
 import { deleteGamePrefix } from "../core/clear";
-import { deleteGameFromDatabase } from "@main/services/delete-game";
+import { deleteGameFromDatabase } from "@games-ui/services/delete-game";
 import type { GameShop } from "@types";
 import { logOperation } from "../activity-logger";
 

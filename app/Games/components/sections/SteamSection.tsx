@@ -4,7 +4,7 @@ import { GameLargeCard } from "../cards/GameLargeCard";
 import { steamHeaderUrl, steamImageUrl } from "../../utils/games-utils";
 import { SteamGridCard } from "../cards/SteamGridCard";
 import type { SteamInstalledGame } from "@types";
-import type { ViewMode } from "@renderer/pages/games/games-types";
+import type { ViewMode } from "@games-ui/pages/games/games-types";
 
 interface Props {
   games: SteamInstalledGame[];
