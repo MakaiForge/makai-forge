@@ -25,6 +25,7 @@
     "../app/Emulators/**/*",
     "../app/ExecutableSelect/**/*",
     "../app/FolderSelect/**/*",
+    "../app/Library/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -53,7 +54,8 @@
       "@emulator-detail/*": ["app/EmulatorDetail/*"],
       "@emulators/*": ["app/Emulators/*"],
       "@executable-select/*": ["app/ExecutableSelect/*"],
-      "@folder-select/*": ["app/FolderSelect/*"]
+      "@folder-select/*": ["app/FolderSelect/*"],
+      "@library/*": ["app/Library/*"]
     }
   }
 }
