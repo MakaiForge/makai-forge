@@ -15,7 +15,7 @@ import {
   Modal,
   TextField,
   CheckboxField,
-} from "@renderer/components";
+} from "@components";
 import type { DownloadSource, Game, GameRepack } from "@types";
 
 import { DownloadSettingsModal } from "./download-settings-modal";

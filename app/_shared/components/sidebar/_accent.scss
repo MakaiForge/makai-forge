@@ -1,0 +1,23 @@
+@use "tokens/accent";
+
+.sidebar {
+  &__menu-item--active {
+    background: var(--sidebar-item-active, var(--el-sidebar-item-active, accent.$brand-gradient));
+
+    &:hover {
+      background: var(--sidebar-item-active, var(--el-sidebar-item-active, accent.$brand-gradient-hover));
+    }
+  }
+
+  &__help-button-icon {
+    background: accent.$brand-gradient-secondary;
+  }
+
+  &__play-button--active {
+    color: accent.$brand-teal;
+
+    &:hover {
+      color: #16b195;
+    }
+  }
+}

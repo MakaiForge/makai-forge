@@ -1,0 +1,5 @@
+@use "tokens/z-index";
+
+.fullscreen-media-modal__overlay {
+  z-index: z-index.$backdrop-z-index;
+}

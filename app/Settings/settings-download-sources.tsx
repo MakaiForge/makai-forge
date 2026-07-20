@@ -5,7 +5,7 @@ import {
   Button,
   Badge,
   ConfirmationModal,
-} from "@renderer/components";
+} from "@components";
 import { useTranslation } from "react-i18next";
 
 import type { DownloadSource } from "@types";

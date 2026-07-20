@@ -1,4 +1,4 @@
-import { BottomPanel, Header, Sidebar, Toast } from "@renderer/components";
+import { BottomPanel, Header, Sidebar, Toast } from "@components";
 import {
   useAppDispatch,
   useAppSelector,

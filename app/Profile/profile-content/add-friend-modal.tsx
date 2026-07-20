@@ -1,4 +1,4 @@
-import { Avatar, Button, Modal, TextField } from "@renderer/components";
+import { Avatar, Button, Modal, TextField } from "@components";
 import { useToast, useUserDetails } from "@renderer/hooks";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";

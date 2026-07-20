@@ -1,4 +1,4 @@
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "./services/proton-api";

@@ -1,0 +1,13 @@
+@use "tokens/text";
+
+.auto-update-sub-header {
+  border-bottom: solid 1px text.$body-color;
+
+  &__new-version-link {
+    color: #8e919b;
+  }
+
+  &__new-version-button {
+    color: text.$body-color;
+  }
+}

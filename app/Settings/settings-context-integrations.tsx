@@ -3,7 +3,7 @@ import { useContext, useState, useEffect } from "react";
 import { settingsContext } from "@renderer/context";
 import { useAppSelector } from "@renderer/hooks";
 import { SettingsDebrid } from "./settings-debrid";
-import { TextField } from "@renderer/components";
+import { TextField } from "@components";
 
 export function SettingsContextIntegrations() {
   const { t } = useTranslation("settings");

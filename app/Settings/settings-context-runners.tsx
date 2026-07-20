@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useState } from "react";
-import { ProgressBar, Button } from "@renderer/components";
+import { ProgressBar, Button } from "@components";
 import type { RunnerDefinition, RunnerStatus } from "@emulators/types";
 import "./settings-runners.scss";
 

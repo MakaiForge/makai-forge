@@ -1,0 +1,82 @@
+@use "tokens/utility";
+
+.modal {
+  animation: scale-fade-in 0.2s cubic-bezier(0.33, 1, 0.68, 1) 0s 1 normal none
+    running;
+  border-radius: 4px;
+  min-width: 400px;
+  max-width: 600px;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  &--closing {
+    animation-name: scale-fade-out;
+    opacity: 0;
+  }
+
+  &--large {
+    width: 800px;
+    max-width: 800px;
+  }
+
+  &__content {
+    height: 100%;
+    overflow: auto;
+    padding: calc(utility.$spacing-unit * 3) calc(utility.$spacing-unit * 2);
+
+    &--no-padding {
+      padding: 0;
+    }
+  }
+
+  &__header {
+    display: flex;
+    gap: utility.$spacing-unit;
+    padding: calc(utility.$spacing-unit * 2);
+    justify-content: space-between;
+    align-items: center;
+
+    &-title {
+      display: flex;
+      gap: 4px;
+      flex-direction: column;
+    }
+  }
+
+  &__close-button {
+    cursor: pointer;
+    transition: all ease 0.2s;
+    align-self: flex-start;
+
+    &:hover {
+      opacity: 0.75;
+    }
+  }
+
+  &__close-button-icon {
+  }
+}
+
+@keyframes scale-fade-in {
+  0% {
+    opacity: 0;
+    scale: 0.5;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes scale-fade-out {
+  0% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 0.5;
+  }
+}

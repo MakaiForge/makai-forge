@@ -6,7 +6,7 @@ import { orderBy } from "lodash-es";
 import {
   CheckboxField,
   SelectField,
-} from "@renderer/components";
+} from "@components";
 import { settingsContext } from "@renderer/context";
 import { useAppSelector } from "@renderer/hooks";
 import languageResources from "@locales";

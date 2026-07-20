@@ -1,0 +1,5 @@
+@use "tokens/border";
+
+.game-card {
+  border: solid 1px border.$border-color;
+}

@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal } from "@renderer/components";
+import { Modal } from "@components";
 import { formatBytes } from "@shared";
 
 import type {

@@ -1,0 +1,33 @@
+@use "tokens/text";
+
+.sidebar {
+  color: var(--text-muted, text.$muted-color);
+
+  &__menu-item {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.55));
+
+    &:hover {
+      color: var(--text-primary, rgba(255, 255, 255, 0.85));
+
+      svg {
+        color: text.$muted-color;
+      }
+    }
+
+    &--active {
+      color: var(--sidebar-active-text, #f0f1f7);
+
+      &:hover {
+        color: var(--sidebar-active-text, #f0f1f7);
+      }
+
+      svg {
+        color: var(--sidebar-active-text, #f0f1f7);
+      }
+    }
+
+    &--decky:hover {
+      color: text.$muted-color;
+    }
+  }
+}

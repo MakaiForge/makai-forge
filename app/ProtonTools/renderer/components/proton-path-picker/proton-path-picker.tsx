@@ -1,7 +1,7 @@
 import { useId } from "react";
 import type { ProtonVersion } from "@types";
 import { Tooltip } from "react-tooltip";
-import { RadioField } from "@renderer/components/radio-field/radio-field";
+import { RadioField } from "@components/radio-field/radio-field";
 import "./proton-path-picker.scss";
 
 export interface ProtonPathPickerProps {

@@ -1,4 +1,4 @@
-import { Button, CheckboxField } from "@renderer/components";
+import { Button, CheckboxField } from "@components";
 import { useContext, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 import { cloudSyncContext, gameDetailsContext } from "@renderer/context";
@@ -30,7 +30,7 @@ import { CloudSyncRenameArtifactModal } from "../cloud-sync-rename-artifact-moda
 import { GameArtifact } from "@types";
 import { orderBy } from "lodash-es";
 import { MoreVertical } from "lucide-react";
-import { DropdownMenu } from "@renderer/components/dropdown-menu/dropdown-menu";
+import { DropdownMenu } from "@components/dropdown-menu/dropdown-menu";
 import { Tooltip } from "react-tooltip";
 
 interface CloudSyncPanelProps {

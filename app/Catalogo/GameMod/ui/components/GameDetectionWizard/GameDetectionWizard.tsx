@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import "./GameDetectionWizard.scss";
 
 interface GameDetectionWizardProps {

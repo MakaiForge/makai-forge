@@ -1,5 +1,5 @@
-import { CheckboxField } from "@renderer/components/checkbox-field/checkbox-field";
-import { TextField } from "@renderer/components/text-field/text-field";
+import { CheckboxField } from "@components/checkbox-field/checkbox-field";
+import { TextField } from "@components/text-field/text-field";
 import { useFormat } from "@renderer/hooks";
 import { ChevronDownIcon } from "@primer/octicons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

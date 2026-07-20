@@ -1,7 +1,7 @@
 import { lazy, Suspense, useContext, useEffect, useState } from "react";
 import type { ProtonDBData, SteamAppDetails } from "@types";
 import { useTranslation } from "react-i18next";
-import { Button } from "@renderer/components/button/button";
+import { Button } from "@components/button/button";
 
 import { gameDetailsContext } from "@renderer/context";
 import { SidebarSection } from "../sidebar-section/sidebar-section";

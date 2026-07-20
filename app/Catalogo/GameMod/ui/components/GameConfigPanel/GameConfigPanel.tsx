@@ -1,4 +1,4 @@
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import { useState, useEffect, useCallback } from "react";
 import { useGameDllCatalog } from "../../../presets/useGameDllCatalog";
 import type { InstalledProtonTool } from "../../types/proton.types";

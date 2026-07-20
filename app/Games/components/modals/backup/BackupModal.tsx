@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 
 interface Props {
   isOpen: boolean;

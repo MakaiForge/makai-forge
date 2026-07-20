@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Button, Modal } from "@renderer/components";
+import { Button, Modal } from "@components";
 import "./delete-game-modal.scss";
 
 interface DeleteGameModalProps {

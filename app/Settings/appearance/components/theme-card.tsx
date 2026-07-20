@@ -1,6 +1,6 @@
 import { PencilIcon, TrashIcon } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@renderer/components/button/button";
+import { Button } from "@components/button/button";
 import type { Theme } from "@types";
 import "./theme-card.scss";
 import { useEffect, useState } from "react";

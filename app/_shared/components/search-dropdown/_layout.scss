@@ -1,0 +1,131 @@
+.search-dropdown {
+  position: fixed;
+  border-radius: 8px;
+  max-height: 350px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  margin-top: 4px;
+  width: 250px;
+
+  &__section {
+    padding: 4px 0;
+  }
+
+  &__section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px 8px;
+    margin-bottom: 4px;
+  }
+
+  &__section-title {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__clear-text-button {
+    cursor: pointer;
+    padding: 0;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: color ease 0.2s;
+    background: transparent;
+    border: none;
+
+    &:hover {
+      color: #ffffff;
+    }
+  }
+
+  &__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  &__item-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    &:hover .search-dropdown__item-remove {
+      opacity: 1;
+    }
+  }
+
+  &__item-remove {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 4px;
+    opacity: 0;
+    transition: opacity ease 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+
+    &:hover {
+      color: #ff3333;
+      background-color: rgba(255, 85, 85, 0.2);
+    }
+  }
+
+  &__item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+    color: #dadbe1;
+    text-align: left;
+    border: none;
+    background: transparent;
+  }
+
+  &__item-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+
+    &--image {
+      border-radius: 2px;
+      object-fit: cover;
+    }
+  }
+
+  &__item-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+  }
+
+  &__loading,
+  &__empty {
+    padding: 16px 12px;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  &__empty {
+    font-style: italic;
+  }
+
+  &__highlight {
+    background-color: rgba(255, 193, 7, 0.4);
+    color: #ffa000;
+    font-weight: 600;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+}

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal, Button } from "@renderer/components";
+import { Modal, Button } from "@components";
 import "./GameReadinessModal.scss";
 
 export interface GameReadinessCheck {

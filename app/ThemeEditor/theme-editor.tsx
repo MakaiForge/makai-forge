@@ -3,7 +3,7 @@ import "./theme-editor.scss";
 import Editor from "@monaco-editor/react";
 import { Theme } from "@types";
 import { useSearchParams } from "react-router-dom";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import { CheckIcon } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
 import { storeService } from "@renderer/services/store.service";

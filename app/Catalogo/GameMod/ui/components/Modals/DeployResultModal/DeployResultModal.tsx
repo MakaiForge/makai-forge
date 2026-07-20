@@ -1,4 +1,4 @@
-import { Modal } from "@renderer/components";
+import { Modal } from "@components";
 import type { DeploymentResult } from "@types";
 import "./DeployResultModal.scss";
 

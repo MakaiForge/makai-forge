@@ -1,0 +1,11 @@
+@use "tokens/app-bg";
+
+.toast {
+  background-color: app-bg.$dark-background-color;
+
+  &__progress {
+    &::-webkit-progress-bar {
+      background-color: app-bg.$dark-background-color;
+    }
+  }
+}

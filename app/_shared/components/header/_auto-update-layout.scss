@@ -1,0 +1,25 @@
+@use "tokens/utility";
+
+.auto-update-sub-header {
+  padding: calc(utility.$spacing-unit / 2) calc(utility.$spacing-unit * 3);
+
+  &__new-version-link {
+    display: flex;
+    align-items: center;
+    gap: utility.$spacing-unit;
+    font-size: 12px;
+  }
+
+  &__new-version-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: utility.$spacing-unit;
+    font-size: 12px;
+
+    &:hover {
+      text-decoration: underline;
+      cursor: pointer;
+    }
+  }
+}

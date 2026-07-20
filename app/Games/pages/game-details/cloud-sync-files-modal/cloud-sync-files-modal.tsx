@@ -1,4 +1,4 @@
-import { Button, Modal, ModalProps, TextField } from "@renderer/components";
+import { Button, Modal, ModalProps, TextField } from "@components";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { cloudSyncContext, gameDetailsContext } from "@renderer/context";
 import { useTranslation } from "react-i18next";

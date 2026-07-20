@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { Modal } from "@renderer/components";
+import { Modal } from "@components";
 
 interface BinaryNotFoundModalProps {
   visible: boolean;

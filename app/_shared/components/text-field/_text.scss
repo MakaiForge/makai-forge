@@ -1,0 +1,7 @@
+@use "tokens/text";
+
+.text-field-container {
+  &__toggle-password-button {
+    color: text.$muted-color;
+  }
+}

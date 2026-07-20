@@ -30,7 +30,7 @@ import {
   GameContextMenu,
   Modal,
   TextField,
-} from "@renderer/components";
+} from "@components";
 import { useSearchParams } from "react-router-dom";
 import { LibraryGameCard } from "./library-game-card";
 import { LibraryGameCardLarge } from "./library-game-card-large";

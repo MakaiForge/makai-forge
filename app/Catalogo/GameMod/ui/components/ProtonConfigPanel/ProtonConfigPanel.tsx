@@ -1,4 +1,4 @@
-import { Modal, Button } from "@renderer/components";
+import { Modal, Button } from "@components";
 import { useState, useEffect } from "react";
 import type { InstalledProtonTool, ProtonInfo } from "../../types/proton.types";
 import "./ProtonConfigPanel.scss";

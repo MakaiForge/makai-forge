@@ -1,0 +1,7 @@
+@use "tokens/text";
+
+.hero {
+  &__description {
+    color: text.$muted-color;
+  }
+}

@@ -48,6 +48,7 @@ export default defineConfig(({ mode }) => {
         preprocessorOptions: {
           scss: {
             api: "modern",
+            loadPaths: [resolve("scss")],
           },
         },
       },
@@ -78,6 +79,8 @@ export default defineConfig(({ mode }) => {
           "@notifications": resolve("app/Notifications"),
           "@shared-modals": resolve("app/SharedModals"),
           "@theme-editor": resolve("app/ThemeEditor"),
+          "@components": resolve("app/_shared/components"),
+          "@theme": resolve("src/renderer/src/theme"),
         },
       },
       plugins: [svgr(), react()],

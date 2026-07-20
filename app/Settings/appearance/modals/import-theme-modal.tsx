@@ -1,5 +1,5 @@
-import { Button } from "@renderer/components/button/button";
-import { Modal } from "@renderer/components/modal/modal";
+import { Button } from "@components/button/button";
+import { Modal } from "@components/modal/modal";
 import { useTranslation } from "react-i18next";
 import "./modals.scss";
 import { Theme } from "@types";

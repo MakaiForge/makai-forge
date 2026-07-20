@@ -1,6 +1,6 @@
 import cn from "classnames";
 import { LinkExternalIcon, StarIcon } from "@primer/octicons-react";
-import { Link } from "@renderer/components/link/link";
+import { Link } from "@components/link/link";
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import { useTranslation } from "react-i18next";
 import type { ProtonDBData } from "@types";

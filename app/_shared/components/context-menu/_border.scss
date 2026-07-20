@@ -1,0 +1,25 @@
+@use "tokens/border";
+
+.context-menu {
+  border: 1px solid border.$border-color;
+
+  &__submenu {
+    border: 1px solid border.$border-color;
+  }
+
+  &__content {
+    border-top: 1px solid border.$border-color;
+  }
+
+  &__item--danger:first-of-type {
+    border-top: 1px solid border.$border-color;
+  }
+
+  &--game-not-installed &__submenu &__item--danger:first-of-type {
+    border-top: none;
+  }
+
+  &__separator {
+    background: border.$border-color;
+  }
+}

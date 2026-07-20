@@ -1,0 +1,5 @@
+@use "tokens/border";
+
+.select-field {
+  border: 1px solid border.$border-color;
+}

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { ProgressBar } from "@renderer/components/progress-bar";
+import { ProgressBar } from "@components/progress-bar";
 import type { DownloadState } from "../../types";
 import "./download-progress.scss";
 

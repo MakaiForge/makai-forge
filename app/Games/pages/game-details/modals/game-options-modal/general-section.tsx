@@ -1,6 +1,6 @@
 import { Trans, useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
-import { Button, TextField } from "@renderer/components";
+import { Button, TextField } from "@components";
 import SteamLogo from "@renderer/assets/steam-logo.svg?react";
 import type { LibraryGame, ShortcutLocation } from "@types";
 import { FileIcon } from "@primer/octicons-react";

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Modal, Button } from "@renderer/components";
+import { Modal, Button } from "@components";
 import type { ModlistEntry, PluginEntry } from "../../../types/mod.types";
 import "./BackupModal.scss";
 

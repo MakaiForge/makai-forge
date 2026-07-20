@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { ConfirmationModal } from "@renderer/components";
+import { ConfirmationModal } from "@components";
 
 interface ArchiveDeletionModalProps {
   visible: boolean;

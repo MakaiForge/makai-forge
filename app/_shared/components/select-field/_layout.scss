@@ -1,0 +1,43 @@
+@use "tokens/utility";
+
+.select-field {
+  display: inline-flex;
+  transition: all ease 0.2s;
+  width: fit-content;
+  align-items: center;
+  border-radius: 8px;
+  height: 40px;
+  min-height: 40px;
+
+  &__container {
+    flex: 1;
+  }
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  &--focused {
+    border-color: #dadbe1;
+  }
+
+  &__option {
+    border-right: 4px solid;
+    border-color: transparent;
+    border-radius: 8px;
+    width: fit-content;
+    height: 100%;
+    outline: none;
+    color: #dadbe1;
+    cursor: default;
+    font-family: inherit;
+    text-overflow: ellipsis;
+    padding: utility.$spacing-unit;
+    font-size: utility.$body-font-size;
+  }
+
+  &__label {
+    margin-bottom: utility.$spacing-unit;
+    display: block;
+  }
+}

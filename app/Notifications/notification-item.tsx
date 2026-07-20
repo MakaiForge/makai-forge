@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { XIcon, PersonIcon, ClockIcon } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import { useDate, useUserDetails } from "@renderer/hooks";
 import cn from "classnames";
 

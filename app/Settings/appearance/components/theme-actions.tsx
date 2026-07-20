@@ -1,5 +1,5 @@
 import { GlobeIcon, FileIcon } from "@primer/octicons-react";
-import { Button } from "@renderer/components/button/button";
+import { Button } from "@components/button/button";
 import { useTranslation } from "react-i18next";
 import { useToast, useUserDetails } from "@renderer/hooks";
 import "./theme-actions.scss";

@@ -1,5 +1,5 @@
 import { useRef, useCallback } from "react";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import { PlusIcon, ChevronLeftIcon, ChevronRightIcon } from "@primer/octicons-react";
 
 interface ModManagerTopBarProps {

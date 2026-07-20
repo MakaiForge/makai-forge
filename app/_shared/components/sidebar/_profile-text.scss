@@ -1,0 +1,7 @@
+@use "tokens/text";
+
+.sidebar-profile {
+  &__button {
+    color: text.$muted-color;
+  }
+}

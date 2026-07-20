@@ -1,6 +1,6 @@
 import { TrashIcon, UploadIcon } from "@primer/octicons-react";
 import { MoreVertical } from "lucide-react";
-import { Button, ConfirmationModal } from "@renderer/components";
+import { Button, ConfirmationModal } from "@components";
 import { createPortal } from "react-dom";
 import { useContext, useEffect, useRef, useState } from "react";
 import { userProfileContext } from "@renderer/context";

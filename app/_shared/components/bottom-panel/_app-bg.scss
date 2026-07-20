@@ -1,0 +1,5 @@
+@use "tokens/app-bg";
+
+.bottom-panel {
+  background-color: app-bg.$background-color;
+}

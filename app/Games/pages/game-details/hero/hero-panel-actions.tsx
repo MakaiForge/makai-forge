@@ -8,7 +8,7 @@ import {
   PlayIcon,
   PlusCircleIcon,
 } from "@primer/octicons-react";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import { XCircle } from "lucide-react";
 import {
   useDownload,

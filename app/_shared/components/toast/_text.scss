@@ -1,0 +1,17 @@
+@use "tokens/text";
+
+.toast {
+  &__progress {
+    &::-webkit-progress-value {
+      background-color: text.$muted-color;
+    }
+  }
+
+  &__close-button {
+    color: text.$body-color;
+
+    &:hover {
+      color: text.$muted-color;
+    }
+  }
+}

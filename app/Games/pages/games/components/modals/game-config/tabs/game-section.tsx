@@ -1,4 +1,4 @@
-import { TextField } from "@renderer/components";
+import { TextField } from "@components";
 import type { GameConfig } from "@games-ui/AddGame/games-service";
 import type { SectionProps } from "../index";
 

@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect } from "react";
-import { Button, Modal, ModalProps, TextField } from "@renderer/components";
+import { Button, Modal, ModalProps, TextField } from "@components";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { GameArtifact } from "@types";

@@ -1,0 +1,9 @@
+@use "tokens/text";
+
+.modal {
+  color: text.$body-color;
+
+  &__close-button-icon {
+    color: text.$body-color;
+  }
+}

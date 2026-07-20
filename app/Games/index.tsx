@@ -1,5 +1,5 @@
 import { LibraryGame } from "@types";
-import { GameContextMenu } from "@renderer/components";
+import { GameContextMenu } from "@components";
 import { GamesSkeleton } from "./components/skeleton/GamesSkeleton";
 import { GamesSteamSection } from "./components/sections/SteamSection";
 import { GamesLocalSection } from "./components/sections/LocalSection";

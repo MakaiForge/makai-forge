@@ -10,7 +10,7 @@ import {
   Modal,
   ModalProps,
   TextField,
-} from "@renderer/components";
+} from "@components";
 import { useToast, useUserDetails } from "@renderer/hooks";
 
 import { yupResolver } from "@hookform/resolvers/yup";

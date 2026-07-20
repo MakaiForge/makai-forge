@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { BrowserView, BrowserViewEmpty } from "@renderer/components/browser-view";
+import { BrowserView, BrowserViewEmpty } from "@components/browser-view";
 
 import { useHomeData } from "./hooks/useHomeData";
 import { NewsCarousel } from "./components/news-carousel/news-carousel";

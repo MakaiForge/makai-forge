@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import { useRunners } from "@renderer/hooks/use-runners";
 import type { RunnerDefinition, RomSite } from "@emulators/types";
 import { Play, Square, Plus, ExternalLink } from "lucide-react";

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { ConfirmationModal } from "@renderer/components";
+import { ConfirmationModal } from "@components";
 import type { GameShop } from "@types";
 import type { DownloadGroupProps } from "../types";
 import { useDownloadsGroup } from "../hooks/useDownloadsGroup";

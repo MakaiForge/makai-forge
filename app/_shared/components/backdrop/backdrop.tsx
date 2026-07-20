@@ -1,0 +1,22 @@
+import "./backdrop.scss";
+import cn from "classnames";
+
+export interface BackdropProps {
+  isClosing?: boolean;
+  children: React.ReactNode;
+}
+
+export function Backdrop({
+  isClosing = false,
+  children,
+}: Readonly<BackdropProps>) {
+  return (
+    <div
+      className={cn("backdrop", {
+        "backdrop--closing": isClosing,
+      })}
+    >
+      {children}
+    </div>
+  );
+}

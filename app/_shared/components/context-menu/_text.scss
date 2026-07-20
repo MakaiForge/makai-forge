@@ -1,0 +1,19 @@
+@use "tokens/text";
+
+.context-menu {
+  &__item {
+    color: text.$body-color;
+
+    &--disabled {
+      color: text.$muted-color;
+    }
+  }
+
+  &__item-arrow {
+    color: text.$muted-color;
+  }
+
+  &__item-trailing-icon {
+    color: text.$muted-color;
+  }
+}

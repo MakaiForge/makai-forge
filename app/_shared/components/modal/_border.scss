@@ -1,0 +1,9 @@
+@use "tokens/border";
+
+.modal {
+  border: solid 1px border.$border-color;
+
+  &__header {
+    border-bottom: solid 1px border.$border-color;
+  }
+}

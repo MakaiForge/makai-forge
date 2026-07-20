@@ -1,4 +1,4 @@
-import { TextField } from "@renderer/components";
+import { TextField } from "@components";
 import type { ViewMode, SortOption } from "../../types";
 
 interface GamesToolbarProps {

@@ -1,4 +1,4 @@
-import { TextField } from "@renderer/components";
+import { TextField } from "@components";
 import type { SectionProps } from "../index";
 
 export function VirtualDesktopSection({

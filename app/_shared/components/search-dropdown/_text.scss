@@ -1,0 +1,24 @@
+@use "tokens/text";
+
+.search-dropdown {
+  &__section-title {
+    color: text.$muted-color;
+  }
+
+  &__clear-text-button {
+    color: text.$muted-color;
+  }
+
+  &__item-remove {
+    color: text.$muted-color;
+  }
+
+  &__item-icon {
+    color: text.$muted-color;
+  }
+
+  &__loading,
+  &__empty {
+    color: text.$muted-color;
+  }
+}

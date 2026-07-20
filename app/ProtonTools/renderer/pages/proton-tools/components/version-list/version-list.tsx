@@ -1,4 +1,4 @@
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import { useTranslation } from "react-i18next";
 import "./version-list.scss";
 

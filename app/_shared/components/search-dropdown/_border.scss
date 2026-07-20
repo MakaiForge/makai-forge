@@ -1,0 +1,11 @@
+@use "tokens/border";
+
+.search-dropdown {
+  border: 1px solid border.$border-color;
+
+  &__section {
+    &:not(:last-child) {
+      border-bottom: 1px solid border.$border-color;
+    }
+  }
+}

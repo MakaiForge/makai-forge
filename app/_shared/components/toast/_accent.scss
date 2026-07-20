@@ -1,0 +1,17 @@
+@use "tokens/accent";
+
+.toast {
+  &__icon {
+    &--success {
+      color: accent.$success-color;
+    }
+
+    &--error {
+      color: accent.$danger-color;
+    }
+
+    &--warning {
+      color: accent.$warning-color;
+    }
+  }
+}

@@ -1,0 +1,15 @@
+@use "tokens/app-bg";
+
+.select-field {
+  &--primary {
+    background-color: app-bg.$dark-background-color;
+  }
+
+  &--dark {
+    background-color: app-bg.$background-color;
+  }
+
+  &__option {
+    background-color: app-bg.$dark-background-color;
+  }
+}

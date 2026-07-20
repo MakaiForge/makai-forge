@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { ToastProps } from "@renderer/components/toast/toast";
+import { ToastProps } from "@components/toast/toast";
 
 export interface ToastState {
   title: string;

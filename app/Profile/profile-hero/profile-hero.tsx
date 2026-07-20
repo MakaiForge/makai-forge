@@ -15,7 +15,7 @@ import {
   Button,
   FullscreenMediaModal,
   Link,
-} from "@renderer/components";
+} from "@components";
 import { useTranslation } from "react-i18next";
 import {
   useAppSelector,

@@ -1,0 +1,13 @@
+@use "tokens/app-bg";
+
+.text-field-container {
+  &__text-field {
+    &--primary {
+      background-color: app-bg.$dark-background-color;
+    }
+
+    &--dark {
+      background-color: app-bg.$background-color;
+    }
+  }
+}

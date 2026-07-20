@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Modal } from "@renderer/components/modal/modal";
+import { Modal } from "@components/modal/modal";
 import { ExecutableCandidateModal } from "@provision/ForgePipeline/ui/executable-candidate-modal";
 import type { CandidateExe } from "@provision/ForgePipeline/ui/executable-candidate-modal";
 import type { GameShop } from "@types";

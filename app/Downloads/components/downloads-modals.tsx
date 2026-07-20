@@ -1,5 +1,5 @@
 import "./downloads-modals.scss";
-import { Modal } from "@renderer/components";
+import { Modal } from "@components";
 import { DeleteGameModal } from "./delete-game-modal";
 import { ProtonRecommendationModal } from "@provision/proton_recommended/ui/proton-recommendation-modal";
 import { InstallProgressModal } from "@provision/ForgePipeline/ui/install-progress-modal";

@@ -1,8 +1,8 @@
-import { Badge } from "@renderer/components/badge/badge";
+import { Badge } from "@components/badge/badge";
 import { buildGameDetailsPath } from "@renderer/helpers";
 import { useAppSelector, useLibrary, useModCompatibleGames } from "@renderer/hooks";
 import { lazy, Suspense, useMemo, useState, useEffect, useCallback } from "react";
-import { Link } from "@renderer/components/link/link";
+import { Link } from "@components/link/link";
 
 import "./game-item.scss";
 import { useTranslation } from "react-i18next";

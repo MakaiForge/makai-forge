@@ -1,4 +1,4 @@
-import { Button, CheckboxField, Modal } from "@renderer/components";
+import { Button, CheckboxField, Modal } from "@components";
 import { CreateSteamShortcutOptions } from "@types";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

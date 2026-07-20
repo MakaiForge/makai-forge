@@ -1,6 +1,6 @@
 import { ReportIcon } from "@primer/octicons-react";
 
-import { Button, Modal, SelectField, TextField } from "@renderer/components";
+import { Button, Modal, SelectField, TextField } from "@components";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";

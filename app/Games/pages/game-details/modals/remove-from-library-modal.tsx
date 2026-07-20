@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Button, Modal } from "@renderer/components";
+import { Button, Modal } from "@components";
 import type { Game } from "@types";
 import "./remove-from-library-modal.scss";
 

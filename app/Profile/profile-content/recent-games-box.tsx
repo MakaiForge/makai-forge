@@ -1,5 +1,5 @@
 import { buildGameDetailsPath } from "@renderer/helpers";
-import { Link } from "@renderer/components";
+import { Link } from "@components";
 import { useCallback, useContext } from "react";
 import { userProfileContext } from "@renderer/context";
 import { useTranslation } from "react-i18next";

@@ -1,0 +1,7 @@
+@use "tokens/text";
+
+.select-field {
+  &__label {
+    color: text.$body-color;
+  }
+}

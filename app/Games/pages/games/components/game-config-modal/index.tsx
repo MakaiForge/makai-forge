@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import type { ProtonVersion } from "@types";
 import type { GameConfig } from "@games-ui/AddGame/games-service";
 import { GameSection } from "./tabs/game-section";

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { SelectField } from "@renderer/components";
+import { SelectField } from "@components";
 import "./filter-options.scss";
 
 export type SortOption =

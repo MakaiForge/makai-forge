@@ -6,7 +6,7 @@ import {
   Link,
   ProtonPathPicker,
   TextField,
-} from "@renderer/components";
+} from "@components";
 import type { LibraryGame, ProtonVersion } from "@types";
 import { FileDirectoryIcon, LinkExternalIcon } from "@primer/octicons-react";
 import { Tooltip } from "react-tooltip";

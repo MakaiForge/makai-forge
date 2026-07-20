@@ -1,0 +1,70 @@
+@use "tokens/utility";
+
+.button {
+  padding: utility.$spacing-unit calc(utility.$spacing-unit * 2);
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: all ease 0.2s;
+  cursor: pointer;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: utility.$spacing-unit;
+  font-weight: 500;
+  font-size: utility.$body-font-size;
+
+  &:active {
+    opacity: utility.$active-opacity;
+  }
+
+  &:disabled {
+    opacity: utility.$disabled-opacity;
+    cursor: not-allowed;
+  }
+
+  &--primary {
+    color: #fff;
+
+    &:hover {
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--accent, #6366f1) 30%, transparent);
+    }
+
+    &:disabled {
+      box-shadow: none;
+    }
+  }
+
+  &--outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.75);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    &:disabled {
+      background: transparent;
+    }
+  }
+
+  &--dark {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.75);
+    border-color: rgba(255, 255, 255, 0.06);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
+
+  &--danger {
+    border-color: transparent;
+
+    &:hover {
+      background: #b3203f;
+    }
+  }
+}

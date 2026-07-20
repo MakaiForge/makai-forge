@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import "./PlayErrorModal.scss";
 
 interface PlayErrorModalProps {

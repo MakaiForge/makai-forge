@@ -15,7 +15,7 @@ import {
   Modal,
   SelectField,
   TextField,
-} from "@renderer/components";
+} from "@components";
 import { DOWNLOADER_NAME } from "@renderer/constants";
 import {
   useAppSelector,

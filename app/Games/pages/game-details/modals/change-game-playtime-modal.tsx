@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Button, Modal, TextField } from "@renderer/components";
+import { Button, Modal, TextField } from "@components";
 import type { Game } from "@types";
 import { useState, useEffect } from "react";
 import { AlertIcon } from "@primer/octicons-react";

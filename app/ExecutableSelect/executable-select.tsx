@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { FileDirectoryIcon, SearchIcon, CheckCircleIcon } from "@primer/octicons-react";
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import "./executable-select.scss";
 
 interface Candidate {

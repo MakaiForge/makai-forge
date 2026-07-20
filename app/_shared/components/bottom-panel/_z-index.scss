@@ -1,0 +1,5 @@
+@use "tokens/bottom-panel";
+
+.bottom-panel {
+  z-index: bottom-panel.$bottom-panel-z-index;
+}

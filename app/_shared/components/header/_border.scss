@@ -1,0 +1,5 @@
+@use "tokens/glass";
+
+.header {
+  border-bottom: 1px solid glass.$glass-border;
+}

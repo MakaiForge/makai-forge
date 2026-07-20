@@ -1,0 +1,19 @@
+@use "tokens/accent";
+
+.button {
+  &--primary {
+    background: accent.$brand-gradient;
+
+    &:hover {
+      background: accent.$brand-gradient-hover;
+    }
+
+    &:disabled {
+      background: accent.$brand-gradient;
+    }
+  }
+
+  &--danger {
+    background: accent.$danger-color;
+  }
+}

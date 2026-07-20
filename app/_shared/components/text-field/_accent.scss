@@ -1,0 +1,13 @@
+@use "tokens/accent";
+
+.text-field-container {
+  &__text-field {
+    &--has-error {
+      border-color: accent.$danger-color;
+    }
+  }
+
+  &__error-label {
+    color: accent.$error-color;
+  }
+}

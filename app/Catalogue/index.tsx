@@ -2,8 +2,8 @@ import { useTranslation } from "react-i18next";
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import { useAppDispatch, useAppSelector, useFormat } from "@renderer/hooks";
 import { setFilters, setPage } from "@renderer/features";
-import { Button } from "@renderer/components/button/button";
-import { TextField } from "@renderer/components/text-field/text-field";
+import { Button } from "@components/button/button";
+import { TextField } from "@components/text-field/text-field";
 
 import { useCatalogueSearch } from "./hooks/useCatalogueSearch";
 import { useCatalogueFilters } from "./hooks/useCatalogueFilters";

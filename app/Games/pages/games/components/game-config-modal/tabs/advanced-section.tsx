@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { TextField, Button, Toast, Modal } from "@renderer/components";
+import { TextField, Button, Toast, Modal } from "@components";
 import type { GameConfig } from "@games-ui/AddGame/games-service";
 import type { SectionProps } from "../index";
 

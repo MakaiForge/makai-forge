@@ -1,0 +1,15 @@
+@use "tokens/app-bg";
+
+.dropdown-menu {
+  &__content {
+    background-color: app-bg.$dark-background-color;
+  }
+
+  &:not(&__item--disabled) &__item:hover {
+    background-color: app-bg.$background-color;
+  }
+
+  &__item:focus {
+    background-color: app-bg.$background-color;
+  }
+}

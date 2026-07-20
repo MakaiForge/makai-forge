@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { formatBytes } from "@shared";
 import { buildGameDetailsPath } from "@renderer/helpers";
 import { ClockIcon, ColumnsIcon, DownloadIcon, GraphIcon, PlayIcon, XCircleIcon, FileIcon } from "@primer/octicons-react";
-import { Badge } from "@renderer/components";
+import { Badge } from "@components";
 import { DOWNLOADER_NAME } from "@renderer/constants";
 import { Downloader } from "@shared";
 import type { GameShop, LibraryGame } from "@types";

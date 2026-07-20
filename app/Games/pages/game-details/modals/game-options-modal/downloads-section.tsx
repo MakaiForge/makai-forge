@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { Button } from "@renderer/components";
+import { Button } from "@components";
 import type { LibraryGame } from "@types";
 
 interface DownloadsSettingsSectionProps {

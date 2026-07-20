@@ -1,0 +1,5 @@
+@use "tokens/text";
+
+.profile-avatar {
+  color: text.$muted-color;
+}

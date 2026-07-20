@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Modal, Button } from "@renderer/components";
+import { Modal, Button } from "@components";
 import "./OverwriteModal.scss";
 
 interface OverwriteModalProps {

@@ -1,0 +1,5 @@
+@use "tokens/border";
+
+.profile-avatar {
+  border: solid 1px border.$border-color;
+}

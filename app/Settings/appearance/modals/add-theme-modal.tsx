@@ -1,6 +1,6 @@
-import { Modal } from "@renderer/components/modal/modal";
-import { TextField } from "@renderer/components/text-field/text-field";
-import { Button } from "@renderer/components/button/button";
+import { Modal } from "@components/modal/modal";
+import { TextField } from "@components/text-field/text-field";
+import { Button } from "@components/button/button";
 import { useTranslation } from "react-i18next";
 import { useUserDetails, useToast } from "@renderer/hooks";
 import { Theme } from "@types";

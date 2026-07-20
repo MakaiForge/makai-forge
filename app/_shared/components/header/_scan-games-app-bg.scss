@@ -1,0 +1,7 @@
+@use "tokens/app-bg";
+
+.scan-games-modal {
+  &__games-list {
+    background-color: app-bg.$dark-background-color;
+  }
+}

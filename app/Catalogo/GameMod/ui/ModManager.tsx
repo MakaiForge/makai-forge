@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal } from "@renderer/components";
-import { BrowserMirror } from "@renderer/components/browser-view";
+import { Modal } from "@components";
+import { BrowserMirror } from "@components/browser-view";
 import type { ModlistEntry } from "./types";
 import type { ProtonVersion } from "@types";
 

@@ -1,0 +1,102 @@
+@use "tokens/utility";
+
+.game-card {
+  width: 100%;
+  height: 180px;
+  box-shadow: 0px 0px 15px 0px #000000;
+  overflow: hidden;
+  border-radius: 4px;
+  transition: all ease 0.2s;
+  cursor: pointer;
+  z-index: 1;
+
+  &:active {
+    opacity: utility.$active-opacity;
+  }
+
+  &__backdrop {
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.7) 50%, transparent 100%);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: flex-end;
+    flex-direction: column;
+    position: relative;
+  }
+
+  &__cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    position: absolute;
+    z-index: -1;
+    transition: all ease 0.2s;
+  }
+
+  &__content {
+    color: #dadbe1;
+    padding: utility.$spacing-unit calc(utility.$spacing-unit * 2);
+    display: flex;
+    align-items: flex-start;
+    gap: utility.$spacing-unit;
+    flex-direction: column;
+    transition: all ease 0.2s;
+    transform: translateY(24px);
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: bold;
+    text-align: left;
+  }
+
+  &__download-options {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    gap: utility.$spacing-unit;
+    flex-wrap: wrap;
+    list-style: none;
+  }
+
+  &__specifics {
+    display: flex;
+    gap: calc(utility.$spacing-unit * 2);
+    justify-content: center;
+  }
+
+  &__specifics-item {
+    gap: utility.$spacing-unit;
+    display: flex;
+    font-size: 12px;
+    align-items: center;
+
+    .star-rating {
+      align-items: center;
+    }
+  }
+
+  &__title-container {
+    display: flex;
+    align-items: center;
+    gap: utility.$spacing-unit;
+  }
+
+  &__shop-icon {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+  }
+
+  &__no-download-label {
+    font-weight: bold;
+  }
+
+  &:hover &__cover {
+    transform: scale(1.05);
+  }
+  &:hover &__content {
+    transform: translateY(0px);
+  }
+}

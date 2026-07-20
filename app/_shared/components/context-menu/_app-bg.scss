@@ -1,0 +1,9 @@
+@use "tokens/app-bg";
+
+.context-menu {
+  background-color: app-bg.$background-color;
+
+  &__submenu {
+    background-color: app-bg.$background-color;
+  }
+}

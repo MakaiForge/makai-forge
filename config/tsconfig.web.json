@@ -30,6 +30,8 @@
     "../app/Notifications/**/*",
     "../app/SharedModals/**/*",
     "../app/ThemeEditor/**/*",
+    "../app/_shared/components/**/*",
+    "../src/renderer/src/theme/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -63,7 +65,9 @@
       "@scripts/*": ["app/Scripts/*"],
       "@notifications/*": ["app/Notifications/*"],
       "@shared-modals/*": ["app/SharedModals/*"],
-      "@theme-editor/*": ["app/ThemeEditor/*"]
+      "@theme-editor/*": ["app/ThemeEditor/*"],
+      "@components/*": ["app/_shared/components/*"],
+      "@theme/*": ["src/renderer/src/theme/*"]
     }
   }
 }

@@ -4,7 +4,7 @@ import {
   Button,
   CheckboxField,
   SelectField,
-} from "@renderer/components";
+} from "@components";
 import { useTranslation } from "react-i18next";
 import { useAppSelector } from "@renderer/hooks";
 import { changeLanguage } from "i18next";
