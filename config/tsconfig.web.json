@@ -23,6 +23,7 @@
     "../app/Profile/**/*",
     "../app/EmulatorDetail/**/*",
     "../app/Emulators/**/*",
+    "../app/ExecutableSelect/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -49,7 +50,8 @@
       "@settings/*": ["app/Settings/*"],
       "@profile/*": ["app/Profile/*"],
       "@emulator-detail/*": ["app/EmulatorDetail/*"],
-      "@emulators/*": ["app/Emulators/*"]
+      "@emulators/*": ["app/Emulators/*"],
+      "@executable-select/*": ["app/ExecutableSelect/*"]
     }
   }
 }

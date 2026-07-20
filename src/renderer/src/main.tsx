@@ -27,7 +27,7 @@ import Catalogue from "@catalogue";
 import Home from "@home/home";
 import ProtonToolsPage from "@proton/renderer/pages/proton-tools/index";
 import ModManager from "@mods/ui/ModManager";
-import ExecutableSelect from "./pages/executable-select/executable-select";
+import ExecutableSelect from "@executable-select/executable-select";
 import FolderSelect from "./pages/folder-select/folder-select";
 import Games from "@games-ui";
 import Downloads from "@downloads";
