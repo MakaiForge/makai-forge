@@ -13,7 +13,7 @@ import "@fontsource/noto-sans/700.css";
 import "react-loading-skeleton/dist/skeleton.css";
 import "react-tooltip/dist/react-tooltip.css";
 
-import { App } from "./app";
+import { App } from "../../../app/app";
 
 import { store } from "@shared-store";
 

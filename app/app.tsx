@@ -26,7 +26,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { ArchiveDeletionModal } from "@downloads/components/archive-deletion-error-modal";
 
 import type { UserPreferences } from "@types";
-import "../../../app/app.scss";
+import "./app.scss";
 import { ThemeProvider } from "@theme/ThemeProvider";
 import { storeService } from "@shared-services/store.service";
 
