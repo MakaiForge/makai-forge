@@ -163,7 +163,7 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
       }
 
       // Definir prefixo — usa o winePrefixPath do JSON se existir
-      const prefixPath = config?.protonPrefix || path.join(os.homedir(), "Games", "Makai-forger", gameId);
+      const prefixPath = config?.protonPrefix || path.join(os.homedir(), "Games", "Makai-forger", gameId.toLowerCase().replace(/[\s:/\\]+/g, "-").replace(/[^a-z0-9-]/g, ""));
 
       // Criar prefixo
       sendToWindows("prefix", "Criando prefixo Wine...", "working");
