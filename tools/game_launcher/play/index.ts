@@ -46,6 +46,33 @@ async function ensureGameConfig(gameId: string) {
   return config;
 }
 
+async function pickExecutable(
+  installResult: { candidates: Array<{ path: string; name: string; size: number }> },
+  prefixPath: string,
+): Promise<string> {
+  const driveC = path.resolve(prefixPath, "drive_c");
+
+  // Com candidatos: mostra dialog apontando pro primeiro candidato
+  if (installResult.candidates.length > 0) {
+    const result = await dialog.showOpenDialog({
+      title: "Selecione o executável do jogo",
+      defaultPath: installResult.candidates[0].path,
+      filters: [{ name: "Executáveis", extensions: ["exe"] }],
+      properties: ["openFile"],
+    });
+    if (!result.canceled && result.filePaths?.[0]) return result.filePaths[0];
+  }
+
+  // Fallback/sem candidatos: navegação manual no drive_c
+  const manual = await dialog.showOpenDialog({
+    title: "Procurar executável do jogo",
+    defaultPath: driveC,
+    filters: [{ name: "Executáveis", extensions: ["exe", "msi"] }],
+    properties: ["openFile"],
+  });
+  return manual.canceled ? "" : manual.filePaths[0];
+}
+
 async function autoDetectProton(): Promise<string | null> {
   const dirs = [
     path.join(os.homedir(), ".config", "makai-forger", "compat-tools", "compatibilitytools.d"),
@@ -104,18 +131,20 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
   try {
     let config = await ensureGameConfig(gameId);
 
-    // Se não tem gamePath, configura do zero: selecionar pasta + criar prefixo + copiar jogo
-    if (!config?.gamePath) {
-      sendToWindows("scan", "Selecione a pasta do jogo...", "working");
-      const folderResult = await dialog.showOpenDialog({
-        title: "Selecione a pasta do jogo",
-        properties: ["openDirectory"],
+    // Se não tem gamePath ou o executablePath aponta pra um instalador, faz setup do zero
+    const needsSetup = !config?.gamePath;
+    if (needsSetup) {
+      sendToWindows("scan", "Selecione a pasta ou executável do jogo...", "working");
+      const fileResult = await dialog.showOpenDialog({
+        title: "Selecione a pasta ou executável do jogo",
+        properties: ["openFile", "openDirectory"],
+        filters: [{ name: "Jogo/Instalador", extensions: ["exe", "msi"] }],
       });
-      if (folderResult.canceled || !folderResult.filePaths?.[0]) {
-        sendToWindows("scan", "Nenhuma pasta selecionada", "error");
-        return { success: false, error: "Pasta do jogo não selecionada", failedStep: "config" };
+      if (fileResult.canceled || !fileResult.filePaths?.[0]) {
+        sendToWindows("scan", "Nada selecionado", "error");
+        return { success: false, error: "Nada selecionado", failedStep: "config" };
       }
-      const selectedPath = folderResult.filePaths[0];
+      const selectedPath = fileResult.filePaths[0];
 
       // Auto-detectar Proton se não tiver
       let protonPath = config?.protonVersion || "";
@@ -149,8 +178,8 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
         return { success: false, error: prefixResult.error || "Falha ao criar prefixo", failedStep: "prefix" };
       }
 
-      // Copiar jogo para o prefixo (drive_c/)
-      sendToWindows("prefix", "Copiando jogo para o prefixo...", "working");
+      // Detectar se é instalador vs portátil e executar
+      sendToWindows("prefix", "Analisando e copiando/instalando jogo...", "working");
       const installResult = await installGame(selectedPath, {
         prefixPath,
         protonPath,
@@ -161,19 +190,21 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
       });
 
       if (!installResult.success) {
-        sendToWindows("prefix", `Falha ao copiar jogo: ${installResult.error}`, "error");
-        return { success: false, error: installResult.error || "Falha ao copiar jogo", failedStep: "install" };
+        sendToWindows("prefix", `Falha ao processar jogo: ${installResult.error}`, "error");
+        return { success: false, error: installResult.error || "Falha ao processar jogo", failedStep: "install" };
       }
 
-      // Se encontrou executáveis, usar o primeiro
-      let exePath = "";
-      if (installResult.candidates.length > 0) {
-        exePath = installResult.candidates[0].path;
+      // Escolha do executável pelo usuário
+      let exePath = await pickExecutable(installResult, prefixPath);
+
+      if (!exePath) {
+        sendToWindows("scan", "Nenhum executável selecionado", "error");
+        return { success: false, error: "Nenhum executável selecionado", failedStep: "config" };
       }
 
       // Salvar config
       config = {
-        gamePath: exePath ? path.dirname(exePath) : "",
+        gamePath: path.dirname(exePath),
         protonVersion: protonPath,
         protonPrefix: prefixPath,
         stagingDir: path.join(os.homedir(), "Games", "Mods", gameId, "staging"),
@@ -192,7 +223,7 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
       }
 
       logger.info(`[modPlayGame] Jogo configurado: exe=${exePath}, prefix=${prefixPath}`);
-      sendToWindows("prefix", "Jogo copiado e configurado. Iniciando...", "done");
+      sendToWindows("prefix", "Jogo configurado. Iniciando...", "done");
     }
 
     logger.info(`[modPlayGame] Iniciando play via TypeScript: gameId=${gameId}`);
