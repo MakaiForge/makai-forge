@@ -530,20 +530,14 @@ def _run_installer_in_container(installer_exe: str, proton_path: str,
     """Executa instalador via Makai Time e aguarda exit."""
     import subprocess as _subprocess
 
-    _prefix_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "..", "..", "prefix",
-    )
+    _file_dir = os.path.dirname(os.path.abspath(__file__))
+    _makrun_dir = os.path.abspath(os.path.join(_file_dir, "..", "..", "prefix", "makai_time"))
     expanded_proton = os.path.expanduser(proton_path)
     expanded_prefix = os.path.expanduser(prefix_path)
 
     _cmd = [
-        sys.executable, "-m", "makai_time.makai_time",
-        "--game-exe", installer_exe,
-        "--proton-path", expanded_proton,
-        "--prefix-path", expanded_prefix,
-        "--game-path", game_path,
-        "--quiet",
+        sys.executable, "-m", "makrun",
+        "waitforexitandrun", installer_exe,
     ]
     try:
         _proc = _subprocess.Popen(
@@ -551,7 +545,12 @@ def _run_installer_in_container(installer_exe: str, proton_path: str,
             stdout=_subprocess.DEVNULL,
             stderr=_subprocess.DEVNULL,
             start_new_session=False,
-            cwd=_prefix_dir,
+            cwd=_makrun_dir,
+            env={
+                **os.environ,
+                "WINEPREFIX": expanded_prefix,
+                "PROTONPATH": expanded_proton,
+            },
         )
         _exit_code = _proc.wait()
         return {"exitCode": _exit_code}

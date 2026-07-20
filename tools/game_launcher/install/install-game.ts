@@ -1,10 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { spawn } from "node:child_process"
-import { detectInstallerType } from "./installer-detector"
-import { copyToPrefix } from "./prefix-copier"
-import { scanPrefixForExes } from "./prefix-scanner"
-import { snapshotPrefix, findNewExecutables } from "./snapshot"
+import { MakaiRPC } from "@mods-manager/services/makai-rpc"
 import type { InstallResult, ProgressCallback } from "./types"
 
 function resolveActualPrefix(prefixPath: string): string {
@@ -97,12 +94,17 @@ export async function installGame(
       ? absSource
       : path.dirname(absSource)
     if (fs.statSync(folder, { throwIfNoEntry: false })?.isDirectory()) {
-      await copyToPrefix(folder, absPrefix, (pct) => {
-        progress("copying", 50 + Math.round(pct * 0.3), `Copiando... ${pct}%`)
+      await MakaiRPC.call("copy_to_prefix", {
+        source_path: folder,
+        prefix_path: absPrefix,
       })
+      progress("copying", 80, "Cópia concluída")
     }
     progress("scanning", 85, "Procurando executáveis...")
-    const scan = scanPrefixForExes(absPrefix, gameFolderName)
+    const scan = await MakaiRPC.call<any>("scan_prefix_for_exes", {
+      prefix_path: absPrefix,
+      game_folder_name: gameFolderName,
+    })
     progress("complete", 100, `${scan.candidates.length} executável(eis) encontrado(s)`)
     return {
       success: true,
@@ -112,18 +114,22 @@ export async function installGame(
     }
   }
 
-  // 1. Detect type
+  // 1. Detect type via Python RPC
   progress("analyzing", 5, "Analisando instalador...")
-  const detection = detectInstallerType(absSource)
+  const detection = await MakaiRPC.call<any>("detect_installer_type", {
+    source_path: absSource,
+  })
   const isInstaller = detection.is_installer
   const installerPath = detection.installer_path
 
   if (isInstaller) {
     progress("preparing", 10, `Instalador: ${path.basename(installerPath!)}`)
 
-    // Snapshot BEFORE
+    // Snapshot BEFORE via Python RPC
     progress("snapshot", 15, "Registrando estado do prefixo...")
-    const before = snapshotPrefix(absPrefix)
+    const before = await MakaiRPC.call<any>("snapshot_prefix", {
+      prefix_path: absPrefix,
+    })
 
     // Run installer
     progress("installing", 30, "Executando instalador...")
@@ -139,18 +145,23 @@ export async function installGame(
       progress("error", 50, `Instalador encerrou com código ${result.exitCode}`)
     }
 
-    // Snapshot AFTER
+    // Snapshot AFTER via Python RPC
     progress("scanning", 70, "Verificando novos arquivos...")
-    const after = snapshotPrefix(absPrefix)
+    const after = await MakaiRPC.call<any>("snapshot_prefix", {
+      prefix_path: absPrefix,
+    })
 
-    // Compare
-    const candidates = findNewExecutables(before, after)
+    // Compare via Python RPC
+    const candidates = await MakaiRPC.call<any>("find_new_executables", {
+      before,
+      after,
+    })
 
     if (candidates.length > 0) {
       progress("complete", 100, `${candidates.length} executável(eis) encontrado(s)`)
       return {
         success: true,
-        candidates: candidates.map((e) => ({
+        candidates: candidates.map((e: any) => ({
           path: e.path,
           name: path.basename(e.path),
           size: e.size,
@@ -167,8 +178,9 @@ export async function installGame(
       ? absSource
       : path.dirname(absSource)
 
-    const copyResult = await copyToPrefix(folderPath, absPrefix, (pct) => {
-      progress("copying", 80 + Math.round(pct * 0.1), `Copiando... ${pct}%`)
+    const copyResult = await MakaiRPC.call<any>("copy_to_prefix", {
+      source_path: folderPath,
+      prefix_path: absPrefix,
     })
 
     if (!copyResult.success) {
@@ -182,7 +194,10 @@ export async function installGame(
     }
 
     progress("scanning", 92, "Procurando executáveis após cópia...")
-    const scan = scanPrefixForExes(absPrefix, gameFolderName)
+    const scan = await MakaiRPC.call<any>("scan_prefix_for_exes", {
+      prefix_path: absPrefix,
+      game_folder_name: gameFolderName,
+    })
 
     progress("complete", 100, `${scan.candidates.length} executável(eis) encontrado(s)`)
     return {
@@ -228,8 +243,9 @@ export async function installGame(
     folderToCopy = path.dirname(absSource)
   }
 
-  const copyResult = await copyToPrefix(folderToCopy, absPrefix, (pct) => {
-    progress("copying", 5 + Math.round(pct * 0.92), `Copiando... ${pct}%`)
+  const copyResult = await MakaiRPC.call<any>("copy_to_prefix", {
+    source_path: folderToCopy,
+    prefix_path: absPrefix,
   })
 
   if (!copyResult.success) {
@@ -243,7 +259,10 @@ export async function installGame(
   }
 
   progress("scanning", 97, "Procurando executáveis...")
-  const scan = scanPrefixForExes(absPrefix, gameFolderName)
+  const scan = await MakaiRPC.call<any>("scan_prefix_for_exes", {
+    prefix_path: absPrefix,
+    game_folder_name: gameFolderName,
+  })
 
   progress("complete", 100, `${scan.candidates.length} executável(eis) encontrado(s)`)
   return {

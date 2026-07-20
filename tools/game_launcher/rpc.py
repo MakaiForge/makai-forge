@@ -18,16 +18,21 @@ def register_handlers(register):
         prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
         if not source_path or not prefix_path:
             raise RpcError("invalid_params", "source_path and prefix_path required")
-        return copy_to_prefix(str(source_path), str(prefix_path))
+
+        def _progress(pct):
+            write_event("copy_progress", percent=pct)
+
+        return copy_to_prefix(str(source_path), str(prefix_path), progress_callback=_progress)
 
 
     @register("scan_prefix_for_exes")
     def handle_scan_prefix_for_exes(params: dict):
         from game_launcher.game_install import scan_prefix_for_exes
         prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
+        game_folder_name = params.get("game_folder_name") if isinstance(params, dict) else None
         if not prefix_path:
             raise RpcError("invalid_params", "prefix_path required")
-        return scan_prefix_for_exes(str(prefix_path))
+        return scan_prefix_for_exes(str(prefix_path), str(game_folder_name) if game_folder_name else None)
 
 
     @register("snapshot_prefix")

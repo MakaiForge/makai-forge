@@ -2,6 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { getGameInfo, getGameModule } from "@games/registry";
 import { logger } from "@main/services";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { launchGame } from "@game-launcher/launch/launch-game";
 import type { PlayResult, SendProgress } from "../types";
 
