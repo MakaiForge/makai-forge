@@ -65,6 +65,7 @@ export default defineConfig(({ mode }) => {
           "@game-launcher": resolve("app/Games/services/game-launcher"),
           "@games-ui": resolve("app/Games"),
           "@home": resolve("app/Home"),
+          "@catalogue": resolve("app/Catalogue"),
         },
       },
       plugins: [svgr(), react()],

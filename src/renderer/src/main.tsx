@@ -23,7 +23,7 @@ import { logger } from "./logger";
 import { addCookieInterceptor } from "./cookies";
 import * as Sentry from "@sentry/react";
 import { storeService } from "./services/store.service";
-import Catalogue from "./pages/catalogue";
+import Catalogue from "@catalogue";
 import Home from "@home/home";
 import ProtonToolsPage from "@proton/renderer/pages/proton-tools/index";
 import ModManager from "@mods/ui/ModManager";

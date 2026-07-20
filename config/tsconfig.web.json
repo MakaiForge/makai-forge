@@ -17,6 +17,7 @@
   "../src/types/**/*",
   "../app/Games/**/*",
     "../app/Home/**/*",
+    "../app/Catalogue/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -37,7 +38,8 @@
       "@proton/*": ["app/ProtonTools/*"],
 "@game-launcher/*": ["app/Games/services/game-launcher/*"],
       "@games-ui/*": ["app/Games/*"],
-      "@home/*": ["app/Home/*"]
+      "@home/*": ["app/Home/*"],
+      "@catalogue/*": ["app/Catalogue/*"]
     }
   }
 }
