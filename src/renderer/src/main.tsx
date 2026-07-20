@@ -35,7 +35,7 @@ import GameDetails from "@games-ui/pages/game-details/game-details";
 import Settings from "@settings/settings";
 import Emulators from "./pages/emulators/emulators";
 import EmulatorDetail from "./pages/emulator-detail/emulator-detail";
-import Profile from "./pages/profile/profile";
+import Profile from "@profile/profile";
 import ThemeEditor from "./pages/theme-editor/theme-editor";
 import Notifications from "./pages/notifications/notifications";
 import GameLauncher from "@games-ui/pages/game-launcher/game-launcher";

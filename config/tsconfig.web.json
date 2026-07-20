@@ -20,6 +20,7 @@
     "../app/Catalogue/**/*",
     "../app/Downloads/**/*",
     "../app/Settings/**/*",
+    "../app/Profile/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -43,7 +44,8 @@
       "@home/*": ["app/Home/*"],
       "@catalogue/*": ["app/Catalogue/*"],
       "@downloads/*": ["app/Downloads/*"],
-      "@settings/*": ["app/Settings/*"]
+      "@settings/*": ["app/Settings/*"],
+      "@profile/*": ["app/Profile/*"]
     }
   }
 }
