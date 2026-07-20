@@ -24,7 +24,7 @@ import { addCookieInterceptor } from "./cookies";
 import * as Sentry from "@sentry/react";
 import { storeService } from "./services/store.service";
 import Catalogue from "./pages/catalogue";
-import Home from "./pages/home/home";
+import Home from "@home/home";
 import ProtonToolsPage from "@proton/renderer/pages/proton-tools/index";
 import ModManager from "@mods/ui/ModManager";
 import ExecutableSelect from "./pages/executable-select/executable-select";
