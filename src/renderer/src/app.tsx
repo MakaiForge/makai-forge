@@ -23,7 +23,7 @@ import {
 } from "@renderer/features";
 import { useTranslation } from "react-i18next";
 import { Outlet, useLocation } from "react-router-dom";
-import { ArchiveDeletionModal } from "./pages/downloads/components/archive-deletion-error-modal";
+import { ArchiveDeletionModal } from "@downloads/components/archive-deletion-error-modal";
 
 import type { UserPreferences } from "@types";
 import "./app.scss";

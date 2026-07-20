@@ -67,6 +67,7 @@ export default defineConfig(({ mode }) => {
           "@home": resolve("app/Home"),
           "@catalogue": resolve("app/Catalogue"),
           "@downloads": resolve("app/Downloads"),
+          "@settings": resolve("app/Settings"),
         },
       },
       plugins: [svgr(), react()],

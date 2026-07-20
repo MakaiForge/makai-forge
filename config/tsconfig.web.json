@@ -19,6 +19,7 @@
     "../app/Home/**/*",
     "../app/Catalogue/**/*",
     "../app/Downloads/**/*",
+    "../app/Settings/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -41,7 +42,8 @@
       "@games-ui/*": ["app/Games/*"],
       "@home/*": ["app/Home/*"],
       "@catalogue/*": ["app/Catalogue/*"],
-      "@downloads/*": ["app/Downloads/*"]
+      "@downloads/*": ["app/Downloads/*"],
+      "@settings/*": ["app/Settings/*"]
     }
   }
 }

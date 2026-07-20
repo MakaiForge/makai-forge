@@ -32,7 +32,7 @@ import FolderSelect from "./pages/folder-select/folder-select";
 import Games from "@games-ui";
 import Downloads from "@downloads";
 import GameDetails from "@games-ui/pages/game-details/game-details";
-import Settings from "./pages/settings/settings";
+import Settings from "@settings/settings";
 import Emulators from "./pages/emulators/emulators";
 import EmulatorDetail from "./pages/emulator-detail/emulator-detail";
 import Profile from "./pages/profile/profile";
