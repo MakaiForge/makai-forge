@@ -171,40 +171,14 @@ export async function installGame(
       }
     }
 
-    // Fallback: copy game folder to prefix
-    progress("copying", 80, "Nenhum executável encontrado. Copiando pasta...")
-    const fallbackStat = fs.statSync(absSource, { throwIfNoEntry: false })
-    const folderPath = fallbackStat?.isDirectory()
-      ? absSource
-      : path.dirname(absSource)
-
-    const copyResult = await MakaiRPC.call<any>("copy_to_prefix", {
-      source_path: folderPath,
-      prefix_path: absPrefix,
-    })
-
-    if (!copyResult.success) {
-      return {
-        success: false,
-        candidates: [],
-        suggested_dir: driveC,
-        method: "installer_fallback_copy",
-        error: copyResult.error ?? "Falha ao copiar pasta",
-      }
-    }
-
-    progress("scanning", 92, "Procurando executáveis após cópia...")
-    const scan = await MakaiRPC.call<any>("scan_prefix_for_exes", {
-      prefix_path: absPrefix,
-      game_folder_name: gameFolderName,
-    })
-
-    progress("complete", 100, `${scan.candidates.length} executável(eis) encontrado(s)`)
+    // Instalador não produziu executáveis — falha, não copia lixo
+    progress("error", 90, "Instalador não produziu executáveis detectáveis")
     return {
-      success: true,
-      candidates: scan.candidates,
-      suggested_dir: scan.suggested_dir,
-      method: "installer_fallback_copy",
+      success: false,
+      candidates: [],
+      suggested_dir: driveC,
+      method: "installer",
+      error: "Instalador executado mas nenhum .exe foi criado no prefixo",
     }
   }
 

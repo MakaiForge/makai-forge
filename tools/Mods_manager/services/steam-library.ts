@@ -10,7 +10,7 @@ export function defaultStagingDir(gameId: string): string {
 
 export function defaultPrefixDir(gameId: string): string {
   const slug = gameId.toLowerCase().replace(/[\s:/\\]+/g, "-").replace(/[^a-z0-9-]/g, "");
-  return path.join(os.homedir(), "Games", "Prefix", slug);
+  return path.join(os.homedir(), "Games", "Makai-forger", slug);
 }
 
 export function steamCompatDataPath(libraryPath: string, steamAppId: string): string | null {
