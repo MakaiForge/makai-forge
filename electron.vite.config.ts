@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => {
         preprocessorOptions: {
           scss: {
             api: "modern",
-            loadPaths: [resolve("scss")],
+            loadPaths: [resolve("app/_styles/scss")],
           },
         },
       },
@@ -90,7 +90,8 @@ export default defineConfig(({ mode }) => {
           "@shared-helpers": resolve("app/_shared/helpers.ts"),
           "@shared-constants": resolve("app/_shared/constants.ts"),
           "@shared-cookies": resolve("app/_shared/cookies.ts"),
-          "@theme": resolve("src/renderer/src/theme"),
+          "@styles": resolve("app/_styles"),
+          "@theme": resolve("app/_styles/theme"),
         },
       },
       plugins: [svgr(), react()],

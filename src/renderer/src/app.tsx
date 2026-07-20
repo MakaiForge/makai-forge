@@ -27,7 +27,7 @@ import { ArchiveDeletionModal } from "@downloads/components/archive-deletion-err
 
 import type { UserPreferences } from "@types";
 import "./app.scss";
-import { ThemeProvider } from "./theme/ThemeProvider";
+import { ThemeProvider } from "@theme/ThemeProvider";
 import { storeService } from "@shared-services/store.service";
 
 export interface AppProps {

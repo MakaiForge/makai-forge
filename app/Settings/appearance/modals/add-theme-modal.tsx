@@ -11,7 +11,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { useCallback, useState, useRef } from "react";
 import { generateUUID } from "@shared-helpers";
 import { storeService } from "@shared-services/store.service";
-import { ThemeImporter } from "@renderer/theme/ThemeImporter";
+import { ThemeImporter } from "@theme/ThemeImporter";
 
 import "./modals.scss";
 
