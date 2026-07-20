@@ -3,7 +3,7 @@ import { GameCardProfile } from "./game-card-profile";
 import { GameCardProfileLarge } from "./game-card-profile-large";
 import { GameCardCover } from "./game-card-cover";
 import type { GameConfig } from "@games-ui/AddGame/games-service";
-import { ViewMode } from "@renderer/pages/library/view-options";
+import { ViewMode } from "@library/view-options";
 
 interface GameCardWrapperProps {
   game: GameConfig;

@@ -1,9 +1,8 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
   "include": [
+    "../src/renderer/src/main.tsx",
     "../src/renderer/src/env.d.ts",
-    "../src/renderer/src/**/*",
-    "../src/renderer/src/**/*.tsx",
     "../app/Catalogo/GameMod/ui/**/*",
     "../app/Catalogo/GameMod/ui/**/*.tsx",
     "../app/ProtonTools/renderer/**/*",
@@ -41,10 +40,10 @@
     "../app/_shared/helpers.ts",
     "../app/_shared/constants.ts",
     "../app/_shared/cookies.ts",
+    "../app/_shared/types/**/*",
     "../app/_styles/scss/**/*",
     "../app/_styles/theme/**/*",
     "../app/_assets/**/*",
-    "../src/renderer/src/theme/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -53,9 +52,6 @@
     "baseUrl": "..",
     "noUnusedLocals": false,
     "paths": {
-      "@renderer/*": [
-        "src/renderer/src/*"
-      ],
       "@types": ["src/types/index.ts"],
       "@mods/*": ["app/Catalogo/GameMod/*"],
       "@locales": ["src/locales/index.ts"],

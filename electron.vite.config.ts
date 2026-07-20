@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          "@renderer": resolve("src/renderer/src"),
+          // @renderer removido — usar @components, @hooks, @features, etc.
           "@mods": resolve("app/Catalogo/GameMod"),
           "@mods-manager": resolve("app/Catalogo/GameMod"),
           "@locales": resolve("src/locales"),
