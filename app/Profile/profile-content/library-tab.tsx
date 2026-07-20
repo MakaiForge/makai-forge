@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { TelescopeIcon } from "@primer/octicons-react";
 import InfiniteScroll from "react-infinite-scroll-component";
-import { useFormat } from "@renderer/hooks";
+import { useFormat } from "@hooks";
 import type { UserGame } from "@types";
 import { SortOptions } from "./sort-options";
 import { UserLibraryGameCard } from "./user-library-game-card";

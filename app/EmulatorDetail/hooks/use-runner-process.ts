@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useRunnersRunning } from "@renderer/hooks";
+import { useRunnersRunning } from "@hooks";
 
 const PREFS_KEY = "runner-preferences";
 

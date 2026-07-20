@@ -22,7 +22,7 @@ import {
   useDownload,
   useFeature,
   useToast,
-} from "@renderer/hooks";
+} from "@hooks";
 import {
   DownloadError,
   Downloader,

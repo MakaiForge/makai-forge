@@ -19,7 +19,7 @@ import {
   GameDetailsContextConsumer,
   GameDetailsContextProvider,
 } from "@renderer/context";
-import { useDownload } from "@renderer/hooks";
+import { useDownload } from "@hooks";
 import { GameOptionsModal, RepacksModal } from "./modals";
 import { Downloader, getDownloadersForUri } from "@shared";
 import { CloudSyncFilesModal } from "./cloud-sync-files-modal/cloud-sync-files-modal";

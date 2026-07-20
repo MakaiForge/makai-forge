@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { FileDirectoryIcon } from "@primer/octicons-react";
 
 import { Modal, TextField, Button } from "@components";
-import { useLibrary, useToast } from "@renderer/hooks";
+import { useLibrary, useToast } from "@hooks";
 import {
   buildGameDetailsPath,
   generateRandomGradient,

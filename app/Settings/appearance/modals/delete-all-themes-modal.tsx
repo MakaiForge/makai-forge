@@ -3,7 +3,7 @@ import { Modal } from "@components/modal/modal";
 import { useTranslation } from "react-i18next";
 import "./modals.scss";
 import { removeCustomCss } from "@renderer/helpers";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 
 interface DeleteAllThemesModalProps {
   visible: boolean;

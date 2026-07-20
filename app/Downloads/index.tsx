@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
-import { useLibrary } from "@renderer/hooks";
+import { useLibrary } from "@hooks";
 import "./downloads.scss";
 import { DownloadsContent } from "./components/downloads-content";
 import { DownloadsModals } from "./components/downloads-modals";

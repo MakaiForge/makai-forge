@@ -6,7 +6,7 @@ import "./theme-card.scss";
 import { useEffect, useState } from "react";
 import { DeleteThemeModal } from "../modals/delete-theme-modal";
 import { injectCustomCss, removeCustomCss } from "@renderer/helpers";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 
 interface ThemeCardProps {
   theme: Theme;

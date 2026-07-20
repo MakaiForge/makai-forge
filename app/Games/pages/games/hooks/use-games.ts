@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 import { gamesService, type GameConfig } from "@games-ui/AddGame/games-service";
 
 export interface UseGamesOptions {

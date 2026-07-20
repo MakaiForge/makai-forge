@@ -4,7 +4,7 @@ import { useCallback, useContext } from "react";
 import { userProfileContext } from "@renderer/context";
 import { useTranslation } from "react-i18next";
 import { ClockIcon } from "@primer/octicons-react";
-import { useFormat } from "@renderer/hooks";
+import { useFormat } from "@hooks";
 import type { UserGame } from "@types";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
 import "./recent-games-box.scss";

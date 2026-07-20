@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useAppSelector, useLibrary } from "@renderer/hooks";
+import { useAppSelector, useLibrary } from "@hooks";
 import { useDownload } from "@provision/ForgePipeline/ui/use-download";
 import { orderBy } from "lodash-es";
 import type { LibraryGame } from "@types";

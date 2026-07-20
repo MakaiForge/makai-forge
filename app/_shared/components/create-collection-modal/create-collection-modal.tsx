@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { GameCollection } from "@types";
 
 import { Button, Modal, TextField } from "@components";
-import { useGameCollections, useToast } from "@renderer/hooks";
+import { useGameCollections, useToast } from "@hooks";
 
 import "./create-collection-modal.scss";
 

@@ -12,7 +12,7 @@ import {
   useAppSelector,
   useGameCollections,
   useToast,
-} from "@renderer/hooks";
+} from "@hooks";
 import { setHeaderTitle } from "@renderer/features";
 import {
   HeartIcon,

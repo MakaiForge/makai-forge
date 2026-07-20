@@ -1,6 +1,6 @@
 import { CheckboxField } from "@components/checkbox-field/checkbox-field";
 import { TextField } from "@components/text-field/text-field";
-import { useFormat } from "@renderer/hooks";
+import { useFormat } from "@hooks";
 import { ChevronDownIcon } from "@primer/octicons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./filter-section.scss";

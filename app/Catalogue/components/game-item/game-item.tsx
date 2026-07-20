@@ -1,6 +1,6 @@
 import { Badge } from "@components/badge/badge";
 import { buildGameDetailsPath } from "@renderer/helpers";
-import { useAppSelector, useLibrary, useModCompatibleGames } from "@renderer/hooks";
+import { useAppSelector, useLibrary, useModCompatibleGames } from "@hooks";
 import { lazy, Suspense, useMemo, useState, useEffect, useCallback } from "react";
 import { Link } from "@components/link/link";
 

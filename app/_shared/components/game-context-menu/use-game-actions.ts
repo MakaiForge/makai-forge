@@ -6,7 +6,7 @@ import {
   useGameCollections,
   useLibrary,
   useToast,
-} from "@renderer/hooks";
+} from "@hooks";
 import { useNavigate, useLocation } from "react-router-dom";
 import { buildGameDetailsPath } from "@renderer/helpers";
 import { logger } from "@renderer/logger";

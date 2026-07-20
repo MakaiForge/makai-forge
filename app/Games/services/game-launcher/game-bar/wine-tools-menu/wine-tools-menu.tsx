@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { GameConfig } from "@games-ui/AddGame/games-service";
-import { useClickOutside } from "@renderer/hooks/use-click-outside";
+import { useClickOutside } from "@hooks/use-click-outside";
 import "./wine-tools-menu.scss";
 
 interface WineToolsMenuProps {

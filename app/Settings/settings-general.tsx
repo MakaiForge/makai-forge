@@ -6,7 +6,7 @@ import {
   SelectField,
 } from "@components";
 import { useTranslation } from "react-i18next";
-import { useAppSelector } from "@renderer/hooks";
+import { useAppSelector } from "@hooks";
 import { changeLanguage } from "i18next";
 import languageResources from "@locales";
 import { orderBy } from "lodash-es";

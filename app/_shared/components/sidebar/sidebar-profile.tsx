@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { BellIcon } from "@primer/octicons-react";
-import { useAppSelector, useUserDetails } from "@renderer/hooks";
+import { useAppSelector, useUserDetails } from "@hooks";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import SteamLogo from "@renderer/assets/steam-logo.svg?react";
 import { Avatar } from "../avatar/avatar";
 import { logger } from "@renderer/logger";
-import { useMakaiBadges } from "@renderer/hooks/use-makai-badges";
+import { useMakaiBadges } from "@hooks/use-makai-badges";
 import { BadgeIcon } from "@renderer/utils/badge-icons";
 import type { NotificationCountResponse } from "@types";
 import "./sidebar-profile.scss";

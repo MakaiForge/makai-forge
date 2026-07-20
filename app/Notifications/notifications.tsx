@@ -3,7 +3,7 @@ import { BellIcon } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@components";
-import { useAppDispatch, useToast, useUserDetails } from "@renderer/hooks";
+import { useAppDispatch, useToast, useUserDetails } from "@hooks";
 import { setHeaderTitle } from "@renderer/features";
 import { logger } from "@renderer/logger";
 

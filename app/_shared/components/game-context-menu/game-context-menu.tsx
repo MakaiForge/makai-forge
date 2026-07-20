@@ -24,7 +24,7 @@ import {
   useGameActions,
 } from "..";
 import { DeleteGameModal } from "@games-ui/pages/games/components/delete-game-modal";
-import { useGameCollections, useToast, useUserDetails } from "@renderer/hooks";
+import { useGameCollections, useToast, useUserDetails } from "@hooks";
 
 interface GameContextMenuProps extends Omit<ContextMenuProps, "items"> {
   game: LibraryGame;

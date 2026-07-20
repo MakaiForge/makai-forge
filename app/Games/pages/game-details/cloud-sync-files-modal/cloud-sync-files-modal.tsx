@@ -6,7 +6,7 @@ import { CheckCircleFillIcon, FileDirectoryIcon } from "@primer/octicons-react";
 
 import "./cloud-sync-files-modal.scss";
 import { formatBytes } from "@shared";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 import { useForm } from "react-hook-form";
 
 export interface CloudSyncFilesModalProps

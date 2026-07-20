@@ -16,8 +16,8 @@ import {
   TrashIcon,
 } from "@primer/octicons-react";
 import { AddDownloadSourceModal } from "./add-download-source-modal";
-import { useAppDispatch, useToast } from "@renderer/hooks";
-import { useFormat } from "@renderer/hooks/use-format";
+import { useAppDispatch, useToast } from "@hooks";
+import { useFormat } from "@hooks/use-format";
 import { DownloadSourceStatus } from "@shared";
 import { settingsContext } from "@renderer/context";
 import { useNavigate } from "react-router-dom";

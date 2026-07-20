@@ -8,7 +8,7 @@ import {
   SelectField,
 } from "@components";
 import { settingsContext } from "@renderer/context";
-import { useAppSelector } from "@renderer/hooks";
+import { useAppSelector } from "@hooks";
 import languageResources from "@locales";
 import { SettingsAppearance } from "./appearance/settings-appearance";
 

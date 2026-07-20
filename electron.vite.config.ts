@@ -80,6 +80,7 @@ export default defineConfig(({ mode }) => {
           "@shared-modals": resolve("app/SharedModals"),
           "@theme-editor": resolve("app/ThemeEditor"),
           "@components": resolve("app/_shared/components"),
+          "@hooks": resolve("app/_shared/hooks"),
           "@theme": resolve("src/renderer/src/theme"),
         },
       },

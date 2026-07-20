@@ -22,7 +22,7 @@ import {
   useFormat,
   useToast,
   useUserDetails,
-} from "@renderer/hooks";
+} from "@hooks";
 import { useTranslation } from "react-i18next";
 import { AxiosProgressEvent } from "axios";
 import { formatDownloadProgress } from "@renderer/helpers";

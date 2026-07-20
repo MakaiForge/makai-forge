@@ -8,7 +8,7 @@ import { logger } from "@renderer/logger";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { InferType } from "yup";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 
 import "./cloud-sync-rename-artifact-modal.scss";
 

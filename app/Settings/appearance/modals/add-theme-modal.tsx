@@ -2,7 +2,7 @@ import { Modal } from "@components/modal/modal";
 import { TextField } from "@components/text-field/text-field";
 import { Button } from "@components/button/button";
 import { useTranslation } from "react-i18next";
-import { useUserDetails, useToast } from "@renderer/hooks";
+import { useUserDetails, useToast } from "@hooks";
 import { Theme } from "@types";
 import { useForm } from "react-hook-form";
 

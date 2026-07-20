@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAppSelector, useDownload, useLibrary, useDate } from "@renderer/hooks";
+import { useAppSelector, useDownload, useLibrary, useDate } from "@hooks";
 import { formatBytes, formatBytesToMbps } from "@shared";
 import { addMilliseconds } from "date-fns";
 import type { GameShop, LibraryGame, SeedingStatus } from "@types";

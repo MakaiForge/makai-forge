@@ -8,7 +8,7 @@ import {
   removeCustomCss,
   generateUUID,
 } from "@renderer/helpers";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 import { THEME_WEB_STORE_URL } from "@renderer/constants";
 import { logger } from "@renderer/logger";
 import { storeService } from "@renderer/services/store.service";

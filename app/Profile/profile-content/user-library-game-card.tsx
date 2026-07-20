@@ -1,5 +1,5 @@
 import { UserGame } from "@types";
-import { useFormat, useToast } from "@renderer/hooks";
+import { useFormat, useToast } from "@hooks";
 import { useNavigate } from "react-router-dom";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { buildGameDetailsPath } from "@renderer/helpers";

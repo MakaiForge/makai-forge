@@ -1,4 +1,4 @@
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 import { logger } from "@renderer/logger";
 import type { LudusaviBackup, GameArtifact, GameShop } from "@types";
 import React, {

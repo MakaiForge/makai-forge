@@ -12,7 +12,7 @@ import {
   useUserDetails,
   useRunnersRunning,
   useSupplemental,
-} from "@renderer/hooks";
+} from "@hooks";
 
 import { routes } from "./routes";
 

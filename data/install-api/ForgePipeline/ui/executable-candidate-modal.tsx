@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { FileDirectoryIcon, SearchIcon } from "@primer/octicons-react";
-import { Modal } from "@renderer/components";
+import { Modal } from "@components";
 
 import "./executable-candidate-modal.scss";
 

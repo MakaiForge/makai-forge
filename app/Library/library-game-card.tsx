@@ -1,5 +1,5 @@
 import { LibraryGame } from "@types";
-import { useGameCard } from "@renderer/hooks";
+import { useGameCard } from "@hooks";
 import { memo, useEffect, useState } from "react";
 import { ClockIcon, AlertFillIcon, ImageIcon } from "@primer/octicons-react";
 import "./library-game-card.scss";

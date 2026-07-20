@@ -7,8 +7,8 @@ import {
   useMakaiNotifications,
   useToast,
   useUserDetails,
-} from "@renderer/hooks";
-import { useDownloadOptionsListener } from "@renderer/hooks/use-download-options-listener";
+} from "@hooks";
+import { useDownloadOptionsListener } from "@hooks/use-download-options-listener";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {

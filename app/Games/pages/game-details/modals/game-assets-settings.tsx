@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ImageIcon, XIcon } from "@primer/octicons-react";
 import { Button, TextField } from "@components";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 import { generateRandomGradient } from "@renderer/helpers";
 import type { Game, LibraryGame, ShopDetailsWithAssets } from "@types";
 

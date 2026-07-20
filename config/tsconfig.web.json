@@ -31,6 +31,7 @@
     "../app/SharedModals/**/*",
     "../app/ThemeEditor/**/*",
     "../app/_shared/components/**/*",
+    "../app/_shared/hooks/**/*",
     "../src/renderer/src/theme/**/*",
   "../.storybook/**/*"
   ],
@@ -67,6 +68,7 @@
       "@shared-modals/*": ["app/SharedModals/*"],
       "@theme-editor/*": ["app/ThemeEditor/*"],
       "@components/*": ["app/_shared/components/*"],
+      "@hooks/*": ["app/_shared/hooks/*"],
       "@theme/*": ["src/renderer/src/theme/*"]
     }
   }

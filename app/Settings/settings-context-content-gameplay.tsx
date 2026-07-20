@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { CheckboxField } from "@components";
 import { settingsContext } from "@renderer/context";
-import { useAppSelector } from "@renderer/hooks";
+import { useAppSelector } from "@hooks";
 import "./settings-behavior.scss";
 
 export function SettingsContextContentGameplay() {

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Modal } from "@renderer/components";
-import { ProgressBar } from "@renderer/components/progress-bar";
+import { Modal } from "@components";
+import { ProgressBar } from "@components/progress-bar";
 import { useEffect, useRef, useState, useCallback } from "react";
 
 import "./install-progress-modal.scss";

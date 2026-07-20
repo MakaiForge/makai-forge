@@ -11,7 +11,7 @@ import {
   ModalProps,
   TextField,
 } from "@components";
-import { useToast, useUserDetails } from "@renderer/hooks";
+import { useToast, useUserDetails } from "@hooks";
 
 import { yupResolver } from "@hookform/resolvers/yup";
 

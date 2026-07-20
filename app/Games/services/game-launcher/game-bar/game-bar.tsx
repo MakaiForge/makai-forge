@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { GameConfig } from "@games-ui/AddGame/games-service";
 import { WineToolsMenu } from "./wine-tools-menu/wine-tools-menu";
 import { HeartFillIcon, HeartIcon } from "@primer/octicons-react";
-import { useClickOutside } from "@renderer/hooks/use-click-outside";
+import { useClickOutside } from "@hooks/use-click-outside";
 import "./game-bar.scss";
 
 interface GameBarProps {

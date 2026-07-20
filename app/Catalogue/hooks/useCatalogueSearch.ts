@@ -1,6 +1,6 @@
 import type { CatalogueSearchPayload, CatalogueSearchResult, DownloadSource } from "@types";
-import { useAppSelector } from "@renderer/hooks";
-import { useCatalogue } from "@renderer/hooks/use-catalogue";
+import { useAppSelector } from "@hooks";
+import { useCatalogue } from "@hooks/use-catalogue";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { debounce } from "lodash-es";
 import { PAGE_SIZE } from "../types";

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Modal } from "@renderer/components";
+import { Modal } from "@components";
 import makaiIcon from "@resources/icons/icon.png";
 import "./PrefixSetupModal.scss";
 

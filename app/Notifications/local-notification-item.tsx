@@ -8,7 +8,7 @@ import {
 } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { useDate } from "@renderer/hooks";
+import { useDate } from "@hooks";
 import cn from "classnames";
 
 import type { LocalNotification } from "@types";

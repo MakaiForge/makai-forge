@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useAppSelector, useDate, useDownload } from "@renderer/hooks";
+import { useAppSelector, useDate, useDownload } from "@hooks";
 
 import { HeroPanelActions } from "./hero-panel-actions";
 import { HeroPanelPlaytime } from "./hero-panel-playtime";

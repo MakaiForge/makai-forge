@@ -1,9 +1,9 @@
 import { useCallback } from "react";
-import { useAppDispatch, useToast } from "@renderer/hooks";
+import { useAppDispatch, useToast } from "@hooks";
 import { useTranslation } from "react-i18next";
 import { LibraryGame } from "@types";
 import { useGames } from "@games-ui/pages/games/hooks/use-games";
-import { useLibrary } from "@renderer/hooks/use-library";
+import { useLibrary } from "@hooks/use-library";
 import type { GameConfig } from "@games-ui/AddGame/games-service";
 import { steamToGameConfig } from "../utils/games-utils";
 import { useSteamState } from "./useSteamState";

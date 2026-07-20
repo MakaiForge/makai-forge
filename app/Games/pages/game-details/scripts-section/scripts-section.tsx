@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 import { InstallScriptModal } from "@shared-modals/install-script-modal";
 import "./scripts-section.scss";
 

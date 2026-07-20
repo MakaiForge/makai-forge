@@ -1,7 +1,7 @@
 import { Avatar, Button, SelectField } from "@components";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { useToast, useUserDetails } from "@renderer/hooks";
+import { useToast, useUserDetails } from "@hooks";
 import { useCallback, useContext, useEffect, useState } from "react";
 import {
   KeyIcon,

@@ -3,7 +3,7 @@ import { XIcon, PersonIcon, ClockIcon } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@components";
-import { useDate, useUserDetails } from "@renderer/hooks";
+import { useDate, useUserDetails } from "@hooks";
 import cn from "classnames";
 
 import type { Notification, Badge } from "@types";

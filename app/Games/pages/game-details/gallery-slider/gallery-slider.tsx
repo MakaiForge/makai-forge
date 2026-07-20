@@ -7,7 +7,7 @@ import {
 } from "@primer/octicons-react";
 import useEmblaCarousel from "embla-carousel-react";
 import { gameDetailsContext } from "@renderer/context";
-import { useAppSelector } from "@renderer/hooks";
+import { useAppSelector } from "@hooks";
 import { VideoPlayer } from "./video-player";
 import "./gallery-slider.scss";
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Modal, Button } from "@renderer/components";
+import { Modal, Button } from "@components";
 import type { ProtonVersion, ProtonFork } from "@types";
 import "./proton-recommendation-modal.scss";
 

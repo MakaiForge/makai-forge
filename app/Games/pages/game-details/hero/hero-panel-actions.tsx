@@ -15,7 +15,7 @@ import {
   useLibrary,
   useToast,
   useUserDetails,
-} from "@renderer/hooks";
+} from "@hooks";
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { gameDetailsContext } from "@renderer/context";

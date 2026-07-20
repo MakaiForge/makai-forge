@@ -5,7 +5,7 @@ import cn from "classnames";
 import { useLocation } from "react-router-dom";
 import { useState } from "react";
 import { GameContextMenu } from "..";
-import { useAppSelector } from "@renderer/hooks";
+import { useAppSelector } from "@hooks";
 
 interface SidebarGameItemProps {
   game: LibraryGame;

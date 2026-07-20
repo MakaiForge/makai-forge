@@ -7,7 +7,7 @@ import { gameDetailsContext } from "@renderer/context";
 import { SidebarSection } from "../sidebar-section/sidebar-section";
 import "./sidebar.scss";
 import { GameLanguageSection } from "./game-language-section";
-import { useModCompatibleGames } from "@renderer/hooks";
+import { useModCompatibleGames } from "@hooks";
 
 const ProtonDBSection = lazy(async () => {
   const mod = await import("@proton/renderer/components/protondb-section/protondb-section");

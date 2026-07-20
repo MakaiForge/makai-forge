@@ -27,7 +27,7 @@ import {
   useFeature,
   useAppDispatch,
   useAppSelector,
-} from "@renderer/hooks";
+} from "@hooks";
 import { clearNewDownloadOptions } from "@renderer/features";
 import { storeService } from "@renderer/services/store.service";
 import { getGameKey } from "@renderer/helpers";

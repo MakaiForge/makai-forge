@@ -18,7 +18,7 @@ import {
   useGameCollections,
   useLibrary,
   useToast,
-} from "@renderer/hooks";
+} from "@hooks";
 import { RemoveGameFromLibraryModal } from "./remove-from-library-modal";
 import { ChangeGamePlaytimeModal } from "./change-game-playtime-modal";
 import {

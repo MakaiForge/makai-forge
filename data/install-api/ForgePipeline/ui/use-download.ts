@@ -1,8 +1,8 @@
 import { addMilliseconds } from "date-fns";
 
 import { formatDownloadProgress } from "@renderer/helpers";
-import { useLibrary } from "@renderer/hooks/use-library";
-import { useAppDispatch, useAppSelector } from "@renderer/hooks/redux";
+import { useLibrary } from "@hooks/use-library";
+import { useAppDispatch, useAppSelector } from "@hooks/redux";
 import {
   setLastPacket,
   clearDownload,
@@ -14,7 +14,7 @@ import type {
   GameShop,
   StartGameDownloadPayload,
 } from "@types";
-import { useDate } from "@renderer/hooks/use-date";
+import { useDate } from "@hooks/use-date";
 import { formatBytes, formatBytesToMbps } from "@shared";
 
 export function useDownload() {

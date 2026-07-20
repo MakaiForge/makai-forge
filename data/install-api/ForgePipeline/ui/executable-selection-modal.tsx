@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileDirectoryIcon, SearchIcon } from "@primer/octicons-react";
-import { Modal, Button } from "@renderer/components";
+import { Modal, Button } from "@components";
 
 interface SuggestedExe {
   path: string;

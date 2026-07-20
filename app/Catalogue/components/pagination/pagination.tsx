@@ -5,7 +5,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
-import { useFormat } from "@renderer/hooks/use-format";
+import { useFormat } from "@hooks/use-format";
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, KeyboardEvent, RefObject } from "react";
 import { useTranslation } from "react-i18next";

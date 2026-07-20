@@ -3,8 +3,8 @@ import { createPortal } from "react-dom";
 import { ClockIcon, SearchIcon, XIcon } from "@primer/octicons-react";
 import cn from "classnames";
 import { useTranslation } from "react-i18next";
-import type { SearchHistoryEntry } from "@renderer/hooks/use-search-history";
-import type { SearchSuggestion } from "@renderer/hooks/use-search-suggestions";
+import type { SearchHistoryEntry } from "@hooks/use-search-history";
+import type { SearchSuggestion } from "@hooks/use-search-suggestions";
 import { HighlightText } from "./highlight-text";
 import "./search-dropdown.scss";
 

@@ -1,5 +1,5 @@
 import { userProfileContext } from "@renderer/context";
-import { useUserDetails } from "@renderer/hooks";
+import { useUserDetails } from "@hooks";
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PlusIcon } from "@primer/octicons-react";

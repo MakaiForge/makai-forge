@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CheckboxField, ProtonPathPicker } from "@components";
-import { useAppSelector } from "@renderer/hooks";
+import { useAppSelector } from "@hooks";
 import { settingsContext } from "@renderer/context";
 import "./settings-behavior.scss";
 import type { ProtonVersion } from "@types";

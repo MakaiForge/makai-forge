@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 
 const SEQUENCE_LENGTH = 10;
 

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { CheckboxField, Link, ProtonPathPicker } from "@components";
 import { settingsContext } from "@renderer/context";
-import { useAppSelector } from "@renderer/hooks";
+import { useAppSelector } from "@hooks";
 import type { ProtonVersion } from "@types";
 import { LinkExternalIcon } from "@primer/octicons-react";
 import { Tooltip } from "react-tooltip";

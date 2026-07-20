@@ -1,5 +1,5 @@
-import { useAppSelector } from "@renderer/hooks";
-import { useCatalogue } from "@renderer/hooks/use-catalogue";
+import { useAppSelector } from "@hooks";
+import { useCatalogue } from "@hooks/use-catalogue";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {

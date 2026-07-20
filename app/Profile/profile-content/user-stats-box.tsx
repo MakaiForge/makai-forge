@@ -1,7 +1,7 @@
 import { useCallback, useContext, useState } from "react";
 import { userProfileContext } from "@renderer/context";
 import { useTranslation } from "react-i18next";
-import { useFormat, useUserDetails } from "@renderer/hooks";
+import { useFormat, useUserDetails } from "@hooks";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
 import { ClockIcon } from "@primer/octicons-react";
 import { Award } from "lucide-react";

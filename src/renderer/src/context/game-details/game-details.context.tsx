@@ -4,7 +4,7 @@ import { setHeaderTitle } from "@renderer/features";
 import { storeService } from "@renderer/services/store.service";
 import { orderBy } from "lodash-es";
 import { getSteamLanguage } from "@renderer/helpers";
-import { useAppDispatch, useAppSelector, useDownload } from "@renderer/hooks";
+import { useAppDispatch, useAppSelector, useDownload } from "@hooks";
 
 import type {
   DownloadSource,

@@ -1,7 +1,7 @@
 import { userProfileContext } from "@renderer/context";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { ProfileHero } from "../profile-hero/profile-hero";
-import { useAppDispatch } from "@renderer/hooks";
+import { useAppDispatch } from "@hooks";
 import { setHeaderTitle } from "@renderer/features";
 import { useTranslation } from "react-i18next";
 import { LockedProfile } from "./locked-profile";

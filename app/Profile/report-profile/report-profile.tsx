@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import * as yup from "yup";
 import { userProfileContext } from "@renderer/context";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { useToast } from "@renderer/hooks";
+import { useToast } from "@hooks";
 import "./report-profile.scss";
 
 const reportReasons = ["hate", "sexual_content", "violence", "spam", "other"];

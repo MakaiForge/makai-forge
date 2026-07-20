@@ -1,5 +1,5 @@
 import { LibraryGame } from "@types";
-import { useGameCard } from "@renderer/hooks";
+import { useGameCard } from "@hooks";
 import { formatBytes } from "@shared";
 import {
   ClockIcon,

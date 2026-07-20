@@ -6,7 +6,7 @@ import {
   useDate,
   useDownload,
   useFormat,
-} from "@renderer/hooks";
+} from "@hooks";
 import { Link } from "@components";
 import { gameDetailsContext } from "@renderer/context";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
