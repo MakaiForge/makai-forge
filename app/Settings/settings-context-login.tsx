@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BadgeIcon } from "@renderer/utils/badge-icons";
+import { BadgeIcon } from "@shared-utils/badge-icons";
 import "./settings-general.scss";
 import "./settings-login.scss";
 

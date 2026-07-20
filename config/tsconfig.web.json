@@ -34,6 +34,7 @@
     "../app/_shared/hooks/**/*",
     "../app/_shared/context/**/*",
     "../app/_shared/services/**/*",
+    "../app/_shared/utils/**/*",
     "../src/renderer/src/theme/**/*",
   "../.storybook/**/*"
   ],
@@ -73,6 +74,7 @@
       "@hooks/*": ["app/_shared/hooks/*"],
       "@context/*": ["app/_shared/context/*"],
       "@shared-services/*": ["app/_shared/services/*"],
+      "@shared-utils/*": ["app/_shared/utils/*"],
       "@theme/*": ["src/renderer/src/theme/*"]
     }
   }

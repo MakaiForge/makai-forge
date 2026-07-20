@@ -22,7 +22,7 @@ import resources from "@locales";
 import { logger } from "./logger";
 import { addCookieInterceptor } from "./cookies";
 import * as Sentry from "@sentry/react";
-import { storeService } from "./services/store.service";
+import { storeService } from "@shared-services/store.service";
 import Catalogue from "@catalogue";
 import Home from "@home/home";
 import ProtonToolsPage from "@proton/renderer/pages/proton-tools/index";

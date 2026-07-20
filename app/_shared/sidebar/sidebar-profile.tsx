@@ -7,7 +7,7 @@ import SteamLogo from "@renderer/assets/steam-logo.svg?react";
 import { Avatar } from "../avatar/avatar";
 import { logger } from "@renderer/logger";
 import { useMakaiBadges } from "@hooks/use-makai-badges";
-import { BadgeIcon } from "@renderer/utils/badge-icons";
+import { BadgeIcon } from "@shared-utils/badge-icons";
 import type { NotificationCountResponse } from "@types";
 import "./sidebar-profile.scss";
 
