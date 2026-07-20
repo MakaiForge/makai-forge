@@ -75,6 +75,7 @@ export default defineConfig(({ mode }) => {
           "@folder-select": resolve("app/FolderSelect"),
           "@library": resolve("app/Library"),
           "@scripts": resolve("app/Scripts"),
+          "@notifications": resolve("app/Notifications"),
         },
       },
       plugins: [svgr(), react()],

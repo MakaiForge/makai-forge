@@ -27,6 +27,7 @@
     "../app/FolderSelect/**/*",
     "../app/Library/**/*",
     "../app/Scripts/**/*",
+    "../app/Notifications/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -57,7 +58,8 @@
       "@executable-select/*": ["app/ExecutableSelect/*"],
       "@folder-select/*": ["app/FolderSelect/*"],
       "@library/*": ["app/Library/*"],
-      "@scripts/*": ["app/Scripts/*"]
+      "@scripts/*": ["app/Scripts/*"],
+      "@notifications/*": ["app/Notifications/*"]
     }
   }
 }
