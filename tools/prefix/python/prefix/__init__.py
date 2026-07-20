@@ -61,6 +61,12 @@ from .runner import (
     run_proton_command_for_game,
 )
 
+from .prefix_universal import (
+    create_prefix_universal,
+    find_wine_binary,
+    find_wineserver,
+)
+
 __all__ = [
     "get_venv_python",
     "resolve_prefix_path",
@@ -75,4 +81,7 @@ __all__ = [
     "run_makaitricks",
     "run_makaitricks_verbs",
     "run_proton_command_for_game",
+    "create_prefix_universal",
+    "find_wine_binary",
+    "find_wineserver",
 ]
