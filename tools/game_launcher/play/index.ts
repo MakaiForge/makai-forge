@@ -1,7 +1,8 @@
 import { dialog } from "electron";
 import { registerEvent } from "@main/events/register-event";
 import { logger } from "@main/services/logger";
-import { ModStorageService, MakaiRPC } from "@main/services";
+import { ModStorageService } from "@main/services";
+import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { WindowManager } from "@main/services/window-manager";
 import { gamesStore, storeKeys } from "@main/store";
 import { gamesPlaytime } from "@main/services/process-watcher";
@@ -162,7 +163,7 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
       }
 
       // Definir prefixo — usa o winePrefixPath do JSON se existir
-      const prefixPath = config?.protonPrefix || path.join(os.homedir(), "Games", "Prefix", gameId);
+      const prefixPath = config?.protonPrefix || path.join(os.homedir(), "Games", "Makai-forger", gameId);
 
       // Criar prefixo
       sendToWindows("prefix", "Criando prefixo Wine...", "working");
@@ -255,34 +256,6 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
       ModStorageService.put(`game:${gameId}:config`, config);
 
       // Salvar no gamesStore
-      const game = await gamesStore.get(gameKey).catch(() => null);
-      if (game) {
-        await gamesStore.put(gameKey, {
-          ...game,
-          executablePath: exePath,
-          winePrefixPath: prefixPath,
-          protonPath,
-        });
-      }
-
-      logger.info(`[modPlayGame] Jogo configurado: exe=${exePath}, prefix=${prefixPath}`);
-      sendToWindows("prefix", "Jogo configurado. Iniciando...", "done");
-
-      if (!exePath) {
-        sendToWindows("scan", "Nenhum executável selecionado", "error");
-        return { success: false, error: "Nenhum executável selecionado", failedStep: "config" };
-      }
-
-      // Salvar config
-      config = {
-        gamePath: path.dirname(exePath),
-        protonVersion: protonPath,
-        protonPrefix: prefixPath,
-        stagingDir: path.join(os.homedir(), "Games", "Mods", gameId, "staging"),
-      };
-      ModStorageService.put(`game:${gameId}:config`, config);
-
-      // Salvar no gamesStore tambem
       const game = await gamesStore.get(gameKey).catch(() => null);
       if (game) {
         await gamesStore.put(gameKey, {
