@@ -1,4 +1,4 @@
-@use "tokens/border";
+@use "scss/tokens/border";
 
 .context-menu {
   border: 1px solid border.$border-color;

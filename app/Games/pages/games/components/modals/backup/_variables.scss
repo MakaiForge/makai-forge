@@ -1,7 +1,7 @@
-@use "../../../../../scss/tokens/app-bg" as bg;
-@use "../../../../../scss/tokens/border" as border;
-@use "../../../../../scss/tokens/text" as text;
-@use "../../../../../scss/tokens/accent" as accent;
+@use "scss/tokens/app-bg" as bg;
+@use "scss/tokens/border" as border;
+@use "scss/tokens/text" as text;
+@use "scss/tokens/accent" as accent;
 
 $bg-dark: bg.$background-color;
 $border: border.$border-color;

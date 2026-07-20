@@ -3,7 +3,7 @@ import { BellIcon } from "@primer/octicons-react";
 import { useAppSelector, useUserDetails } from "@hooks";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import SteamLogo from "@renderer/assets/steam-logo.svg?react";
+import SteamLogo from "@assets/assets/steam-logo.svg?react";
 import { Avatar } from "../avatar/avatar";
 import { logger } from "@shared-logger";
 import { useMakaiBadges } from "@hooks/use-makai-badges";

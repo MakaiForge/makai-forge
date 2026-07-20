@@ -1,5 +1,5 @@
-@use "../../../../../scss/tokens/glass" as token;
-@use "../../../../../scss/tokens/border" as border;
+@use "scss/tokens/glass" as token;
+@use "scss/tokens/border" as border;
 
 .game-config-modal {
   @include token.glass-strong;

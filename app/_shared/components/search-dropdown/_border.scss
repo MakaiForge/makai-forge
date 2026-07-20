@@ -1,4 +1,4 @@
-@use "tokens/border";
+@use "scss/tokens/border";
 
 .search-dropdown {
   border: 1px solid border.$border-color;

@@ -1,7 +1,7 @@
 import { DownloadIcon, PeopleIcon, StarFillIcon } from "@primer/octicons-react";
 import type { ShopAssets } from "@types";
 
-import SteamLogo from "@renderer/assets/steam-logo.svg?react";
+import SteamLogo from "@assets/assets/steam-logo.svg?react";
 
 import "./game-card.scss";
 

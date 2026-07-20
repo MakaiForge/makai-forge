@@ -19,7 +19,7 @@ import { routes } from "./routes";
 import "./sidebar.scss";
 
 import { CommentDiscussionIcon } from "@primer/octicons-react";
-import deckyIcon from "@renderer/assets/icons/decky.png";
+import deckyIcon from "@assets/assets/icons/decky.png";
 import { setFriendRequestCount } from "@features/user-details-slice";
 import cn from "classnames";
 import { useDispatch } from "react-redux";

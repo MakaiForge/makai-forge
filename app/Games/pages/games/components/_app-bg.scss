@@ -1,5 +1,5 @@
-@use "../../../scss/tokens/app-bg" as token;
-@use "../../../scss/tokens/border" as border;
+@use "scss/tokens/app-bg" as token;
+@use "scss/tokens/border" as border;
 
 .delete-game-modal-content {
   background: token.$background-color;

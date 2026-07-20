@@ -4,8 +4,8 @@ import { Link } from "@components/link/link";
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import { useTranslation } from "react-i18next";
 import type { ProtonDBData } from "@types";
-import ProtonDBLogo from "@renderer/assets/protondb-logo.svg?url";
-import SteamDeckLogo from "@renderer/assets/steam-deck-logo.svg?url";
+import ProtonDBLogo from "@assets/assets/protondb-logo.svg?url";
+import SteamDeckLogo from "@assets/assets/steam-deck-logo.svg?url";
 import { SidebarSection } from "@games-ui/pages/game-details/sidebar-section/sidebar-section";
 import "@games-ui/pages/game-details/sidebar/sidebar.scss";
 

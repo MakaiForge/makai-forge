@@ -1,6 +1,6 @@
-@use "../../../../../scss/tokens/text" as token;
-@use "../../../../../scss/tokens/border" as border;
-@use "../../../../../scss/tokens/app-bg" as bg;
+@use "scss/tokens/text" as token;
+@use "scss/tokens/border" as border;
+@use "scss/tokens/app-bg" as bg;
 
 .game-config-modal {
   &__header {

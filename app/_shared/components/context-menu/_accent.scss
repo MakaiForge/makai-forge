@@ -1,4 +1,4 @@
-@use "tokens/accent";
+@use "scss/tokens/accent";
 
 $context-menu-danger-color: accent.$error-color;
 

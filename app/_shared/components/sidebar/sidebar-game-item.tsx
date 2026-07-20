@@ -1,5 +1,5 @@
-import SteamLogo from "@renderer/assets/steam-logo.svg?react";
-import PlayLogo from "@renderer/assets/play-logo.svg?react";
+import SteamLogo from "@assets/assets/steam-logo.svg?react";
+import PlayLogo from "@assets/assets/play-logo.svg?react";
 import { LibraryGame } from "@types";
 import cn from "classnames";
 import { useLocation } from "react-router-dom";

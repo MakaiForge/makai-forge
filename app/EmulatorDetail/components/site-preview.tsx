@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
-import freeromsImg from "@renderer/assets/freeroms.png";
-import coolromImg from "@renderer/assets/coolrom.png";
-import romsgamesImg from "@renderer/assets/romsgames.png";
+import freeromsImg from "@assets/assets/freeroms.png";
+import coolromImg from "@assets/assets/coolrom.png";
+import romsgamesImg from "@assets/assets/romsgames.png";
 
 const DEFAULT_IMAGES: Record<string, string> = {
   "FreeROMs": freeromsImg,

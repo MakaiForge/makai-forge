@@ -43,6 +43,7 @@
     "../app/_shared/cookies.ts",
     "../app/_styles/scss/**/*",
     "../app/_styles/theme/**/*",
+    "../app/_assets/**/*",
     "../src/renderer/src/theme/**/*",
   "../.storybook/**/*"
   ],
@@ -94,6 +95,7 @@
       "@shared-constants/*": ["app/_shared/*"],
       "@shared-cookies": ["app/_shared/cookies.ts"],
       "@shared-cookies/*": ["app/_shared/*"],
+      "@assets/*": ["app/_assets/*"],
       "@theme/*": ["app/_styles/theme/*"]
     }
   }

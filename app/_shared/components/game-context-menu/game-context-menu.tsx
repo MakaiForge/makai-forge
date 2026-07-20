@@ -15,7 +15,7 @@ import {
   XIcon,
   SearchIcon,
 } from "@primer/octicons-react";
-import SteamLogo from "@renderer/assets/steam-logo.svg?react";
+import SteamLogo from "@assets/assets/steam-logo.svg?react";
 import { LibraryGame } from "@types";
 import {
   ContextMenu,

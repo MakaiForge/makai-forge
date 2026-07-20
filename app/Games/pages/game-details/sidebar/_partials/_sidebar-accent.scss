@@ -1,4 +1,4 @@
-@use "../../../../scss/tokens/accent" as token;
+@use "scss/tokens/accent" as token;
 
 .subscription-required-button {
   color: token.$warning-color;

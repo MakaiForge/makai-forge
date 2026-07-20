@@ -1,5 +1,5 @@
 import cn from "classnames";
-import ProtonDBLogo from "@renderer/assets/protondb-logo.svg?url";
+import ProtonDBLogo from "@assets/assets/protondb-logo.svg?url";
 import { useTranslation } from "react-i18next";
 
 interface ProtonDBBadgeProps {

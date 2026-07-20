@@ -1,4 +1,4 @@
-@use "tokens/z-index";
+@use "scss/tokens/z-index";
 
 .toast {
   z-index: z-index.$toast-z-index;

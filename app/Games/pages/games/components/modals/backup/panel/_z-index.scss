@@ -1,4 +1,4 @@
-@use "../../../../../../scss/tokens/z-index" as token;
+@use "scss/tokens/z-index" as token;
 
 .backup-panel-overlay {
   z-index: token.$modal-z-index;

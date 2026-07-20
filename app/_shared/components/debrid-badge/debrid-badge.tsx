@@ -1,4 +1,4 @@
-import Meteor from "@renderer/assets/meteor.svg?react";
+import Meteor from "@assets/assets/meteor.svg?react";
 import "./debrid-badge.scss";
 import { useTranslation } from "react-i18next";
 

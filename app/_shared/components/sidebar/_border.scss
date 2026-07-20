@@ -1,4 +1,4 @@
-@use "tokens/border";
+@use "scss/tokens/border";
 
 .sidebar {
   border-right: 1px solid var(--el-sidebar-border, var(--border-color, border.$border-color));

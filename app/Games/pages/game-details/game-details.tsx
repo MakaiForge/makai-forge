@@ -6,7 +6,7 @@ import type { GameRepack, GameShop, Steam250Game } from "@types";
 import { Button, ConfirmationModal } from "@components";
 import { buildGameDetailsPath } from "@shared-helpers";
 
-import starsIconAnimated from "@renderer/assets/icons/stars-animated.gif";
+import starsIconAnimated from "@assets/assets/icons/stars-animated.gif";
 
 import { useTranslation } from "react-i18next";
 import { SkeletonTheme } from "react-loading-skeleton";

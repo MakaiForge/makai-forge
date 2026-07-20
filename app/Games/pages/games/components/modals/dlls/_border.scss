@@ -1,4 +1,4 @@
-@use "../../../../../scss/tokens/border" as token;
+@use "scss/tokens/border" as token;
 
 .check-dlls-modal__header {
   border-bottom: 1px solid token.$border-color;

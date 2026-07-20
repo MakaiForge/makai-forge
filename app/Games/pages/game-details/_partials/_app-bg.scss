@@ -1,5 +1,5 @@
-@use "../../../scss/tokens/app-bg" as token;
-@use "../../../scss/tokens/utility" as util;
+@use "scss/tokens/app-bg" as token;
+@use "scss/tokens/utility" as util;
 
 .game-details {
   &__description-container {

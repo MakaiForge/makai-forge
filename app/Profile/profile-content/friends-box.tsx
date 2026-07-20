@@ -3,7 +3,7 @@ import { useUserDetails } from "@hooks";
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PlusIcon } from "@primer/octicons-react";
-import SteamLogo from "@renderer/assets/steam-logo.svg?react";
+import SteamLogo from "@assets/assets/steam-logo.svg?react";
 import { Avatar, Link } from "@components";
 import { AllFriendsModal } from "./all-friends-modal";
 import { AddFriendModal } from "./add-friend-modal";

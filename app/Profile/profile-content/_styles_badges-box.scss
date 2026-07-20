@@ -1,6 +1,6 @@
-@use '../../../scss/tokens/utility' as utility;
-@use '../../../scss/tokens/app-bg' as app-bg;
-@use '../../../scss/tokens/text' as text;
+@use "scss/tokens/utility" as utility;
+@use "scss/tokens/app-bg" as app-bg;
+@use "scss/tokens/text" as text;
 
 .badges-box {
   &__box {

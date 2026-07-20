@@ -1,7 +1,7 @@
-@use "../../../src/renderer/src/scss/tokens/glass" as token;
-@use "../../../src/renderer/src/scss/tokens/text" as text;
-@use "../../../src/renderer/src/scss/tokens/border" as border;
-@use "../../../src/renderer/src/scss/tokens/accent" as accent;
+@use "scss/tokens/glass" as token;
+@use "scss/tokens/text" as text;
+@use "scss/tokens/border" as border;
+@use "scss/tokens/accent" as accent;
 
 .game-bar {
   &__container {

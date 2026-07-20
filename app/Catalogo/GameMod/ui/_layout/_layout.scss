@@ -1,4 +1,4 @@
-@use "@renderer/scss/tokens/utility" as utility;
+@use "scss/tokens/utility" as utility;
 
 .container__content:has(> .mod-manager) {
   overflow: hidden;

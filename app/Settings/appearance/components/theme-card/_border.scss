@@ -1,4 +1,4 @@
-@use "../../../../../scss/tokens/border";
+@use "scss/tokens/border";
 
 .theme-card {
   background-color: rgba(border.$border-color, 0.01);

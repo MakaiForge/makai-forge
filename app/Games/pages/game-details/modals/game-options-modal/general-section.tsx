@@ -1,7 +1,7 @@
 import { Trans, useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Button, TextField } from "@components";
-import SteamLogo from "@renderer/assets/steam-logo.svg?react";
+import SteamLogo from "@assets/assets/steam-logo.svg?react";
 import type { LibraryGame, ShortcutLocation } from "@types";
 import { FileIcon } from "@primer/octicons-react";
 import { X, FolderOpen, HardDrive } from "lucide-react";
