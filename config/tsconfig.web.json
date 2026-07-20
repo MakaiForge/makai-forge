@@ -26,6 +26,7 @@
     "../app/ExecutableSelect/**/*",
     "../app/FolderSelect/**/*",
     "../app/Library/**/*",
+    "../app/Scripts/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -55,7 +56,8 @@
       "@emulators/*": ["app/Emulators/*"],
       "@executable-select/*": ["app/ExecutableSelect/*"],
       "@folder-select/*": ["app/FolderSelect/*"],
-      "@library/*": ["app/Library/*"]
+      "@library/*": ["app/Library/*"],
+      "@scripts/*": ["app/Scripts/*"]
     }
   }
 }

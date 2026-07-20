@@ -74,6 +74,7 @@ export default defineConfig(({ mode }) => {
           "@executable-select": resolve("app/ExecutableSelect"),
           "@folder-select": resolve("app/FolderSelect"),
           "@library": resolve("app/Library"),
+          "@scripts": resolve("app/Scripts"),
         },
       },
       plugins: [svgr(), react()],
