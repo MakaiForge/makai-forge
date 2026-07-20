@@ -29,7 +29,7 @@ import ProtonToolsPage from "@proton/renderer/pages/proton-tools/index";
 import ModManager from "@mods/ui/ModManager";
 import ExecutableSelect from "./pages/executable-select/executable-select";
 import FolderSelect from "./pages/folder-select/folder-select";
-import Games from "@provision/Games";
+import Games from "@games-ui";
 import Downloads from "./pages/downloads";
 import GameDetails from "./pages/game-details/game-details";
 import Settings from "./pages/settings/settings";

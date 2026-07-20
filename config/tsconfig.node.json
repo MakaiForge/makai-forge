@@ -24,7 +24,8 @@
       "@bootstrap/*": ["data/Bootstrap/*"],
 "@proton/*": ["app/Catalogo/GameMod/proton-tools/*"],
       "@prefix/*": ["tools/prefix/*"],
-"@game-launcher/*": ["tools/game_launcher/*"]
+"@game-launcher/*": ["tools/game_launcher/*"],
+      "@games-ui/*": ["app/Games/*"]
     }
   }
 }

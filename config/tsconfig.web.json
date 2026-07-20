@@ -33,7 +33,8 @@
       "@emulators/*": ["tools/emulators/*"],
       "@provision/*": ["data/install-api/*"],
       "@proton/*": ["app/Catalogo/GameMod/proton-tools/*"],
-"@game-launcher/*": ["tools/game_launcher/*"]
+"@game-launcher/*": ["tools/game_launcher/*"],
+      "@games-ui/*": ["app/Games/*"]
     }
   }
 }
