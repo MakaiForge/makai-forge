@@ -28,6 +28,7 @@
     "../app/Library/**/*",
     "../app/Scripts/**/*",
     "../app/Notifications/**/*",
+    "../app/SharedModals/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -59,7 +60,8 @@
       "@folder-select/*": ["app/FolderSelect/*"],
       "@library/*": ["app/Library/*"],
       "@scripts/*": ["app/Scripts/*"],
-      "@notifications/*": ["app/Notifications/*"]
+      "@notifications/*": ["app/Notifications/*"],
+      "@shared-modals/*": ["app/SharedModals/*"]
     }
   }
 }

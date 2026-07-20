@@ -76,6 +76,7 @@ export default defineConfig(({ mode }) => {
           "@library": resolve("app/Library"),
           "@scripts": resolve("app/Scripts"),
           "@notifications": resolve("app/Notifications"),
+          "@shared-modals": resolve("app/SharedModals"),
         },
       },
       plugins: [svgr(), react()],
