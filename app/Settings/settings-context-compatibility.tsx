@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CheckboxField, Link, ProtonPathPicker } from "@components";
-import { settingsContext } from "@renderer/context";
+import { settingsContext } from "@context";
 import { useAppSelector } from "@hooks";
 import type { ProtonVersion } from "@types";
 import { LinkExternalIcon } from "@primer/octicons-react";

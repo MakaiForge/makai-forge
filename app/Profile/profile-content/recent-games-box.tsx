@@ -1,7 +1,7 @@
 import { buildGameDetailsPath } from "@renderer/helpers";
 import { Link } from "@components";
 import { useCallback, useContext } from "react";
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import { useTranslation } from "react-i18next";
 import { ClockIcon } from "@primer/octicons-react";
 import { useFormat } from "@hooks";

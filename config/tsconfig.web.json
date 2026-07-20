@@ -32,6 +32,7 @@
     "../app/ThemeEditor/**/*",
     "../app/_shared/components/**/*",
     "../app/_shared/hooks/**/*",
+    "../app/_shared/context/**/*",
     "../src/renderer/src/theme/**/*",
   "../.storybook/**/*"
   ],
@@ -69,6 +70,7 @@
       "@theme-editor/*": ["app/ThemeEditor/*"],
       "@components/*": ["app/_shared/components/*"],
       "@hooks/*": ["app/_shared/hooks/*"],
+      "@context/*": ["app/_shared/context/*"],
       "@theme/*": ["src/renderer/src/theme/*"]
     }
   }

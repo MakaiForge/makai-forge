@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { CheckboxField, ProtonPathPicker } from "@components";
 import { useAppSelector } from "@hooks";
-import { settingsContext } from "@renderer/context";
+import { settingsContext } from "@context";
 import "./settings-behavior.scss";
 import type { ProtonVersion } from "@types";
 

@@ -10,7 +10,7 @@ import { useAppSelector } from "@hooks";
 import { changeLanguage } from "i18next";
 import languageResources from "@locales";
 import { orderBy } from "lodash-es";
-import { settingsContext } from "@renderer/context";
+import { settingsContext } from "@context";
 import "./settings-general.scss";
 import { DesktopDownloadIcon } from "@primer/octicons-react";
 import { logger } from "@renderer/logger";

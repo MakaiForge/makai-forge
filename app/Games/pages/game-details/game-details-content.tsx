@@ -10,7 +10,7 @@ import { Sidebar } from "./sidebar/sidebar";
 import { GameLogo } from "./game-logo";
 import { ScriptsSection } from "./scripts-section/scripts-section";
 
-import { cloudSyncContext, gameDetailsContext } from "@renderer/context";
+import { cloudSyncContext, gameDetailsContext } from "@context";
 
 import "./game-details.scss";
 import "./hero.scss";

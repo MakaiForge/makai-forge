@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, Modal, TextField } from "@components";
-import { settingsContext } from "@renderer/context";
+import { settingsContext } from "@context";
 import { useForm } from "react-hook-form";
 import { logger } from "@renderer/logger";
 

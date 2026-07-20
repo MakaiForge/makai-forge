@@ -8,7 +8,7 @@ import {
   useFormat,
 } from "@hooks";
 import { Link } from "@components";
-import { gameDetailsContext } from "@renderer/context";
+import { gameDetailsContext } from "@context";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
 import { AlertFillIcon } from "@primer/octicons-react";
 import { Tooltip } from "react-tooltip";

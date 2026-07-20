@@ -3,7 +3,7 @@ import { MoreVertical } from "lucide-react";
 import { Button, ConfirmationModal } from "@components";
 import { createPortal } from "react-dom";
 import { useContext, useEffect, useRef, useState } from "react";
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import { useToast, useUserDetails } from "@hooks";
 import { useTranslation } from "react-i18next";
 import "./upload-background-image-button.scss";

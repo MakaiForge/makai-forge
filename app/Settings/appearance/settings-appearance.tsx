@@ -3,7 +3,7 @@ import "./settings-appearance.scss";
 import { ThemeActions, ThemeCard, ThemePlaceholder } from "./index";
 import type { Theme } from "@types";
 import { ImportThemeModal } from "./modals/import-theme-modal";
-import { settingsContext } from "@renderer/context";
+import { settingsContext } from "@context";
 import { useNavigate } from "react-router-dom";
 import { storeService } from "@renderer/services/store.service";
 

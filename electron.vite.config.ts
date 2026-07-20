@@ -81,6 +81,7 @@ export default defineConfig(({ mode }) => {
           "@theme-editor": resolve("app/ThemeEditor"),
           "@components": resolve("app/_shared/components"),
           "@hooks": resolve("app/_shared/hooks"),
+          "@context": resolve("app/_shared/context"),
           "@theme": resolve("src/renderer/src/theme"),
         },
       },

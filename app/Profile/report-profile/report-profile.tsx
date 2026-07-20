@@ -5,7 +5,7 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import * as yup from "yup";
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useToast } from "@hooks";
 import "./report-profile.scss";

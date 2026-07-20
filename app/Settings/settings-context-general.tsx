@@ -7,7 +7,7 @@ import {
   CheckboxField,
   SelectField,
 } from "@components";
-import { settingsContext } from "@renderer/context";
+import { settingsContext } from "@context";
 import { useAppSelector } from "@hooks";
 import languageResources from "@locales";
 import { SettingsAppearance } from "./appearance/settings-appearance";

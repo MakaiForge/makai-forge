@@ -1,4 +1,4 @@
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { ProfileHero } from "../profile-hero/profile-hero";
 import { useAppDispatch } from "@hooks";

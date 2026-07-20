@@ -6,7 +6,7 @@ import { useAppSelector, useDate, useDownload } from "@hooks";
 import { HeroPanelActions } from "./hero-panel-actions";
 import { HeroPanelPlaytime } from "./hero-panel-playtime";
 
-import { gameDetailsContext } from "@renderer/context";
+import { gameDetailsContext } from "@context";
 import "./hero-panel.scss";
 
 export function HeroPanel() {

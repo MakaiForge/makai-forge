@@ -1,6 +1,6 @@
 import { ProfileContent } from "./profile-content/profile-content";
 import { SkeletonTheme } from "react-loading-skeleton";
-import { UserProfileContextProvider } from "@renderer/context";
+import { UserProfileContextProvider } from "@context";
 import { useParams } from "react-router-dom";
 import "./profile.scss";
 

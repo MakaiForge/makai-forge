@@ -1,4 +1,4 @@
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import { useUserDetails } from "@hooks";
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";

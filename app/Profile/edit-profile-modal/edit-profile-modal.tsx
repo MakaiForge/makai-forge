@@ -17,7 +17,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 
 import * as yup from "yup";
 
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import "./edit-profile-modal.scss";
 
 interface FormValues {

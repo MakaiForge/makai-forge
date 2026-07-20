@@ -18,7 +18,7 @@ import {
 } from "@hooks";
 import { useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { gameDetailsContext } from "@renderer/context";
+import { gameDetailsContext } from "@context";
 
 import "./hero-panel-actions.scss";
 import { useEffect } from "react";

@@ -3,7 +3,7 @@ import { useFormat, useToast } from "@hooks";
 import { useNavigate } from "react-router-dom";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { buildGameDetailsPath } from "@renderer/helpers";
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import {
   ClockIcon,
   AlertFillIcon,

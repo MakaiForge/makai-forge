@@ -8,7 +8,7 @@ import {
   MailIcon,
   XCircleFillIcon,
 } from "@primer/octicons-react";
-import { settingsContext } from "@renderer/context";
+import { settingsContext } from "@context";
 import { AuthPage } from "@shared";
 import "./settings-account.scss";
 

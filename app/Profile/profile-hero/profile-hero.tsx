@@ -1,5 +1,5 @@
 import { useCallback, useContext, useMemo, useState } from "react";
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import {
   BlockedIcon,
   CheckCircleFillIcon,

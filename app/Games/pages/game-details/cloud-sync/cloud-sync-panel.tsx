@@ -1,7 +1,7 @@
 import { Button, CheckboxField } from "@components";
 import { useContext, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
-import { cloudSyncContext, gameDetailsContext } from "@renderer/context";
+import { cloudSyncContext, gameDetailsContext } from "@context";
 import "./cloud-sync-panel.scss";
 import { formatBytes } from "@shared";
 import {

@@ -1,5 +1,5 @@
 import { useCallback, useContext, useState } from "react";
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import { useTranslation } from "react-i18next";
 import { useFormat, useUserDetails } from "@hooks";
 import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";

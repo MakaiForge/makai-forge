@@ -10,7 +10,7 @@ import type {
   ProtonVersion,
   ShortcutLocation,
 } from "@types";
-import { gameDetailsContext } from "@renderer/context";
+import { gameDetailsContext } from "@context";
 
 import {
   useAppSelector,
@@ -35,7 +35,7 @@ import { logger } from "@renderer/logger";
 import { GameOptionsSidebar } from "./game-options-modal/sidebar";
 import { GeneralSettingsSection } from "./game-options-modal/general-section";
 
-import type { GameOptionsCategoryId } from "@renderer/context/game-details/game-details.context.types";
+import type { GameOptionsCategoryId } from "@context/game-details/game-details.context.types";
 import { CreateSteamShortcutModal } from "./create-steam-shortcut-modal";
 
 export interface GameOptionsModalProps {

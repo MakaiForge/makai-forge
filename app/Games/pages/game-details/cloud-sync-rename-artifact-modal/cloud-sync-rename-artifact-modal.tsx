@@ -3,7 +3,7 @@ import { Button, Modal, ModalProps, TextField } from "@components";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { GameArtifact } from "@types";
-import { cloudSyncContext } from "@renderer/context";
+import { cloudSyncContext } from "@context";
 import { logger } from "@renderer/logger";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";

@@ -3,7 +3,7 @@ import type { ProtonDBData, SteamAppDetails } from "@types";
 import { useTranslation } from "react-i18next";
 import { Button } from "@components/button/button";
 
-import { gameDetailsContext } from "@renderer/context";
+import { gameDetailsContext } from "@context";
 import { SidebarSection } from "../sidebar-section/sidebar-section";
 import "./sidebar.scss";
 import { GameLanguageSection } from "./game-language-section";

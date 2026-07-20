@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@components";
-import { userProfileContext } from "@renderer/context";
+import { userProfileContext } from "@context";
 import "./all-badges-modal.scss";
 
 interface AllBadgesModalProps {

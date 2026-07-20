@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useContext, useState, useEffect } from "react";
-import { settingsContext } from "@renderer/context";
+import { settingsContext } from "@context";
 import { useAppSelector } from "@hooks";
 import { SettingsDebrid } from "./settings-debrid";
 import { TextField } from "@components";

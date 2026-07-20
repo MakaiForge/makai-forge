@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useContext, useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { gameDetailsContext } from "@renderer/context";
+import { gameDetailsContext } from "@context";
 import type { GamePrices } from "@types";
 
 import "./description-header.scss";

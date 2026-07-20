@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { GameOptionsCategoryId } from "@renderer/context/game-details/game-details.context.types";
+import type { GameOptionsCategoryId } from "@context/game-details/game-details.context.types";
 
 interface CategoryItem {
   id: GameOptionsCategoryId;

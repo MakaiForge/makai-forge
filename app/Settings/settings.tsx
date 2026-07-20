@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import {
   SettingsContextConsumer,
   SettingsContextProvider,
-} from "@renderer/context";
+} from "@context";
 import { useMemo } from "react";
 import "./settings.scss";
 import {

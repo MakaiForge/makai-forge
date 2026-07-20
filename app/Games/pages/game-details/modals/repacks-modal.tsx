@@ -19,7 +19,7 @@ import {
 import type { DownloadSource, Game, GameRepack } from "@types";
 
 import { DownloadSettingsModal } from "./download-settings-modal";
-import { gameDetailsContext } from "@renderer/context";
+import { gameDetailsContext } from "@context";
 import { Downloader } from "@shared";
 import { orderBy } from "lodash-es";
 import {
