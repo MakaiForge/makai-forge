@@ -6,7 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { Button } from "@components";
 import { CheckIcon } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
-import { storeService } from "@renderer/services/store.service";
+import { storeService } from "@shared-services/store.service";
 
 export default function ThemeEditor() {
   const [searchParams] = useSearchParams();

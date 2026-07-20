@@ -28,7 +28,7 @@ import {
 } from "@primer/octicons-react";
 import { GameAssetsSettings } from "./game-assets-settings";
 import { debounce } from "lodash-es";
-import { storeService } from "@renderer/services/store.service";
+import { storeService } from "@shared-services/store.service";
 import { getGameKey } from "@renderer/helpers";
 import "./game-options-modal.scss";
 import { logger } from "@renderer/logger";

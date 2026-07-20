@@ -10,7 +10,7 @@ import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useCallback, useState, useRef } from "react";
 import { generateUUID } from "@renderer/helpers";
-import { storeService } from "@renderer/services/store.service";
+import { storeService } from "@shared-services/store.service";
 import { ThemeImporter } from "@renderer/theme/ThemeImporter";
 
 import "./modals.scss";

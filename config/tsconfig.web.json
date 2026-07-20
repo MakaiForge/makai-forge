@@ -33,6 +33,7 @@
     "../app/_shared/components/**/*",
     "../app/_shared/hooks/**/*",
     "../app/_shared/context/**/*",
+    "../app/_shared/services/**/*",
     "../src/renderer/src/theme/**/*",
   "../.storybook/**/*"
   ],
@@ -71,6 +72,7 @@
       "@components/*": ["app/_shared/components/*"],
       "@hooks/*": ["app/_shared/hooks/*"],
       "@context/*": ["app/_shared/context/*"],
+      "@shared-services/*": ["app/_shared/services/*"],
       "@theme/*": ["src/renderer/src/theme/*"]
     }
   }

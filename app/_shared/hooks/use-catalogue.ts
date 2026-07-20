@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { storeService } from "@renderer/services/store.service";
+import { storeService } from "@shared-services/store.service";
 import type { DownloadSource } from "@types";
 import { useAppDispatch } from "./redux";
 import { setGenres, setTags } from "@renderer/features";

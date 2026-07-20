@@ -11,7 +11,7 @@ import {
 import { useToast } from "@hooks";
 import { THEME_WEB_STORE_URL } from "@renderer/constants";
 import { logger } from "@renderer/logger";
-import { storeService } from "@renderer/services/store.service";
+import { storeService } from "@shared-services/store.service";
 
 interface ImportThemeModalProps {
   visible: boolean;

@@ -5,7 +5,7 @@ import type { Theme } from "@types";
 import { ImportThemeModal } from "./modals/import-theme-modal";
 import { settingsContext } from "@context";
 import { useNavigate } from "react-router-dom";
-import { storeService } from "@renderer/services/store.service";
+import { storeService } from "@shared-services/store.service";
 
 interface SettingsAppearanceProps {
   appearance: {

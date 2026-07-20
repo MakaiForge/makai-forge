@@ -6,7 +6,7 @@ import "./theme-actions.scss";
 import { useRef, useCallback } from "react";
 import { THEME_WEB_STORE_URL } from "@renderer/constants";
 import { generateUUID, injectCustomCss, removeCustomCss } from "@renderer/helpers";
-import { storeService } from "@renderer/services/store.service";
+import { storeService } from "@shared-services/store.service";
 import type { Theme } from "@types";
 
 interface ThemeActionsProps {

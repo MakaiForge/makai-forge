@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { storeService } from "@renderer/services/store.service";
+import { storeService } from "@shared-services/store.service";
 
 export interface SearchHistoryEntry {
   query: string;

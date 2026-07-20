@@ -29,7 +29,7 @@ import {
   useAppSelector,
 } from "@hooks";
 import { clearNewDownloadOptions } from "@renderer/features";
-import { storeService } from "@renderer/services/store.service";
+import { storeService } from "@shared-services/store.service";
 import { getGameKey } from "@renderer/helpers";
 import "./repacks-modal.scss";
 
