@@ -621,6 +621,20 @@ declare global {
     onSelectExecutable: (cb: (value: { candidates: { path: string; name: string; size: number }[]; suggestedDir: string | null; prefixDriveCPath: string; shop: string; objectId: string }) => void) => () => Electron.IpcRenderer;
     onGameExecutableUpdated: (cb: () => void) => () => Electron.IpcRenderer;
     selectExecutable: (shop: string, objectId: string, path: string) => Promise<void>;
+
+    // Folder selection (portable game)
+    getPendingFileSelection: () => Promise<{
+      folderPath: string;
+      items: { name: string; path: string; isDirectory: boolean; size: number }[];
+      prefixPath: string;
+      protonPath: string;
+      gameId: string;
+      shop: string;
+      objectId: string;
+    } | null>;
+    confirmFileSelection: (shop: string, objectId: string, selectedPaths: string[]) => Promise<{ success: boolean; canceled?: boolean; candidates?: any[]; suggestedDir?: string | null; error?: string }>;
+    cancelFileSelection: () => Promise<void>;
+
     getGameLogLines: (shop: string, objectId: string) => Promise<string[]>;
     clearGameLog: (shop: string, objectId: string) => Promise<void>;
     onGameLogLine: (cb: (data: { shop: string; objectId: string; lines: string[] }) => void) => () => Electron.IpcRenderer;

@@ -752,6 +752,13 @@ contextBridge.exposeInMainWorld("electron", {
   },
   selectExecutable: (shop: string, objectId: string, path: string) =>
     ipcRenderer.invoke("selectExecutable", shop, objectId, path),
+
+  // Folder selection (portable game)
+  getPendingFileSelection: () => ipcRenderer.invoke("getPendingFileSelection"),
+  confirmFileSelection: (shop: string, objectId: string, selectedPaths: string[]) =>
+    ipcRenderer.invoke("confirmFileSelection", shop, objectId, selectedPaths),
+  cancelFileSelection: () => ipcRenderer.invoke("cancelFileSelection"),
+
   getGameLogLines: (shop: string, objectId: string) =>
     ipcRenderer.invoke("getGameLogLines", shop, objectId),
   clearGameLog: (shop: string, objectId: string) =>

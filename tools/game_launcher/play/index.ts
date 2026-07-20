@@ -1,7 +1,7 @@
 import { dialog } from "electron";
 import { registerEvent } from "@main/events/register-event";
 import { logger } from "@main/services/logger";
-import { ModStorageService } from "@main/services";
+import { ModStorageService, MakaiRPC } from "@main/services";
 import { WindowManager } from "@main/services/window-manager";
 import { gamesStore, storeKeys } from "@main/store";
 import { gamesPlaytime } from "@main/services/process-watcher";
@@ -9,6 +9,7 @@ import { createPrefix } from "@prefix/core/init";
 import { installGame } from "@game-launcher/install/install-game";
 import { playGame } from "./play-game";
 import { killGameProcess } from "./steps/07-launch";
+import { waitForFolderSelection } from "@provision/ForgePipeline/events/folder-select-window";
 import type { SendProgress } from "./types";
 import { logEvent, logError } from "./activity-logger";
 import os from "node:os";
@@ -178,24 +179,94 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
         return { success: false, error: prefixResult.error || "Falha ao criar prefixo", failedStep: "prefix" };
       }
 
-      // Detectar se é instalador vs portátil e executar
-      sendToWindows("prefix", "Analisando e copiando/instalando jogo...", "working");
-      const installResult = await installGame(selectedPath, {
-        prefixPath,
-        protonPath,
-        gameId,
-        onProgress: (step, _pct, msg) => {
-          sendToWindows("prefix", msg, "working");
-        },
+      // Detectar se é instalador vs portátil
+      sendToWindows("prefix", "Analisando instalador...", "working");
+      const detection = await MakaiRPC.call<any>("detect_installer_type", {
+        source_path: selectedPath,
       });
 
-      if (!installResult.success) {
-        sendToWindows("prefix", `Falha ao processar jogo: ${installResult.error}`, "error");
-        return { success: false, error: installResult.error || "Falha ao processar jogo", failedStep: "install" };
+      let exePath = "";
+
+      if (detection.is_installer) {
+        // ── Instalador ──
+        sendToWindows("prefix", "Instalando jogo no prefixo...", "working");
+        const installResult = await installGame(selectedPath, {
+          prefixPath,
+          protonPath,
+          gameId,
+          onProgress: (step, _pct, msg) => {
+            sendToWindows("prefix", msg, "working");
+          },
+        });
+
+        if (!installResult.success) {
+          sendToWindows("prefix", `Falha ao instalar: ${installResult.error}`, "error");
+          return { success: false, error: installResult.error || "Falha ao instalar", failedStep: "install" };
+        }
+
+        exePath = await pickExecutable(installResult, prefixPath);
+      } else {
+        // ── Portátil: mostrar seletor de pastas/arquivos ──
+        sendToWindows("prefix", "Selecione os itens para copiar...", "working");
+
+        const dirItems = fs.readdirSync(selectedPath, { withFileTypes: true });
+        const items = dirItems.map((e) => {
+          const full = path.join(selectedPath, e.name);
+          let size = 0;
+          if (e.isFile()) try { size = fs.statSync(full).size; } catch { /* ignore */ }
+          return { name: e.name, path: full, isDirectory: e.isDirectory(), size };
+        });
+
+        WindowManager.createFolderSelectWindow({
+          folderPath: selectedPath,
+          items,
+          prefixPath,
+          protonPath,
+          gameId,
+          shop,
+          objectId,
+        });
+        WindowManager.showFolderSelectWindow();
+
+        const folderResult = await waitForFolderSelection();
+
+        if (folderResult.canceled) {
+          sendToWindows("scan", "Seleção cancelada", "error");
+          return { success: false, error: "Seleção cancelada", failedStep: "config" };
+        }
+
+        exePath = await pickExecutable(
+          { candidates: folderResult.candidates },
+          prefixPath,
+        );
       }
 
-      // Escolha do executável pelo usuário
-      let exePath = await pickExecutable(installResult, prefixPath);
+      if (!exePath) {
+        sendToWindows("scan", "Nenhum executável selecionado", "error");
+        return { success: false, error: "Nenhum executável selecionado", failedStep: "config" };
+      }
+
+      config = {
+        gamePath: path.dirname(exePath),
+        protonVersion: protonPath,
+        protonPrefix: prefixPath,
+        stagingDir: path.join(os.homedir(), "Games", "Mods", gameId, "staging"),
+      };
+      ModStorageService.put(`game:${gameId}:config`, config);
+
+      // Salvar no gamesStore
+      const game = await gamesStore.get(gameKey).catch(() => null);
+      if (game) {
+        await gamesStore.put(gameKey, {
+          ...game,
+          executablePath: exePath,
+          winePrefixPath: prefixPath,
+          protonPath,
+        });
+      }
+
+      logger.info(`[modPlayGame] Jogo configurado: exe=${exePath}, prefix=${prefixPath}`);
+      sendToWindows("prefix", "Jogo configurado. Iniciando...", "done");
 
       if (!exePath) {
         sendToWindows("scan", "Nenhum executável selecionado", "error");

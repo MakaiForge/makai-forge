@@ -28,6 +28,7 @@ import Home from "./pages/home/home";
 import ProtonToolsPage from "@proton/renderer/pages/proton-tools/index";
 import ModManager from "@mods/ui/ModManager";
 import ExecutableSelect from "./pages/executable-select/executable-select";
+import FolderSelect from "./pages/folder-select/folder-select";
 import Games from "@provision/Games";
 import Downloads from "./pages/downloads";
 import GameDetails from "./pages/game-details/game-details";
@@ -111,6 +112,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/game-log" element={<GameLog />} />
 
           <Route path="/executable-select" element={<ExecutableSelect />} />
+          <Route path="/folder-select" element={<FolderSelect />} />
 
           <Route path="/theme-editor" element={<ThemeEditor />} />
           <Route path="/game-launcher" element={<GameLauncher />} />

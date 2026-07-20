@@ -18,13 +18,20 @@ import {
   getPendingExecutableSelectData,
   clearPendingExecutableSelectData,
 } from "./window-manager/executable-select";
+import {
+  createFolderSelectWindow,
+  showFolderSelectWindow,
+  closeFolderSelectWindow,
+  getPendingFileSelectData,
+  clearPendingFileSelectData,
+} from "./window-manager/folder-select";
 import { redirect, openMainWindow } from "./window-manager/redirect";
 import {
   createGameLogWindow,
   showGameLogWindow,
   closeGameLogWindow,
 } from "./window-manager/game-log";
-export type { ExecutableSelectData } from "./window-manager/types";
+export type { ExecutableSelectData, FileSelectData, FolderItem } from "./window-manager/types";
 
 const INITIAL_CONFIG: Electron.BrowserWindowConstructorOptions = {
   width: 1200,
@@ -54,8 +61,10 @@ export class WindowManager {
   public static notificationWindow: Electron.BrowserWindow | null = null;
   public static gameLauncherWindow: Electron.BrowserWindow | null = null;
   public static executableSelectWindow: Electron.BrowserWindow | null = null;
+  public static folderSelectWindow: Electron.BrowserWindow | null = null;
   static gameLogWindow: Electron.BrowserWindow | null = null;
   static pendingExecutableSelectData: import("./window-manager/types").ExecutableSelectData | null = null;
+  static pendingFileSelectData: import("./window-manager/types").FileSelectData | null = null;
   static readonly editorWindows: Map<string, BrowserWindow> = new Map();
   static initialConfigInitializationMainWindow = INITIAL_CONFIG;
 
@@ -77,6 +86,26 @@ export class WindowManager {
 
   public static async createGameLauncherWindow(shop: string, objectId: string) {
     await createGameLauncherWindow(WindowManager, shop, objectId);
+  }
+
+  public static createFolderSelectWindow(data: import("./window-manager/types").FileSelectData) {
+    createFolderSelectWindow(WindowManager, data);
+  }
+
+  public static showFolderSelectWindow() {
+    showFolderSelectWindow(WindowManager);
+  }
+
+  public static closeFolderSelectWindow() {
+    closeFolderSelectWindow(WindowManager);
+  }
+
+  public static getPendingFileSelectData() {
+    return getPendingFileSelectData(WindowManager);
+  }
+
+  public static clearPendingFileSelectData() {
+    clearPendingFileSelectData(WindowManager);
   }
 
   public static showGameLauncherWindow() {

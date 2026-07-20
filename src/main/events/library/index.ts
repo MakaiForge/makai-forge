@@ -24,6 +24,7 @@ import "@provision/ForgePipeline/events/set-game-executable-path";
 import "@provision/ForgePipeline/events/install-library";
 import "@provision/ForgePipeline/events/select-executable";
 import "@provision/ForgePipeline/events/executable-select-window";
+import "@provision/ForgePipeline/events/folder-select-window";
 import "./get-default-wine-prefix-selection-path";
 import "./get-installed-proton-versions";
 import "./is-gamemode-available";
