@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@components";
 import { useAppDispatch, useToast, useUserDetails } from "@hooks";
-import { setHeaderTitle } from "@renderer/features";
+import { setHeaderTitle } from "@features";
 import { logger } from "@renderer/logger";
 
 import { NotificationItem } from "./notification-item";

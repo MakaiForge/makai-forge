@@ -7,7 +7,7 @@ import {
   setCollections,
   setCollectionsLoading,
   setGameCollectionIds,
-} from "@renderer/features";
+} from "@features";
 
 const getNormalizedCollectionIds = (
   game: Partial<LibraryGame> | undefined

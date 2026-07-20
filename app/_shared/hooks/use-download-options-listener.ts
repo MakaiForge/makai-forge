@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useAppDispatch } from "./redux";
-import { updateGameNewDownloadOptions } from "@renderer/features";
+import { updateGameNewDownloadOptions } from "@features";
 
 export function useDownloadOptionsListener() {
   const dispatch = useAppDispatch();

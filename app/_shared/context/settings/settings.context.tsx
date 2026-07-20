@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useState } from "react";
 
-import { setUserPreferences } from "@renderer/features";
+import { setUserPreferences } from "@features";
 import { useAppDispatch } from "@hooks";
 import { storeService } from "@shared-services/store.service";
 import type { UserBlocks, UserPreferences } from "@types";

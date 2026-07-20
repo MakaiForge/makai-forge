@@ -5,7 +5,7 @@ import {
   setUserDetails,
   setFriendRequests,
   clearCollections,
-} from "@renderer/features";
+} from "@features";
 import type {
   FriendRequestAction,
   UpdateProfileRequest,

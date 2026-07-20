@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import { useAppDispatch, useAppSelector, useFormat } from "@hooks";
-import { setFilters, setPage } from "@renderer/features";
+import { setFilters, setPage } from "@features";
 import { Button } from "@components/button/button";
 import { TextField } from "@components/text-field/text-field";
 

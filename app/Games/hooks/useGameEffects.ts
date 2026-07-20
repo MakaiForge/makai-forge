@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { setHeaderTitle } from "@renderer/features";
+import { setHeaderTitle } from "@features";
 
 interface GameEffectsParams {
   dispatch: (action: unknown) => void;

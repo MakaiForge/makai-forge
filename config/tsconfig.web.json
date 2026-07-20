@@ -35,6 +35,8 @@
     "../app/_shared/context/**/*",
     "../app/_shared/services/**/*",
     "../app/_shared/utils/**/*",
+    "../app/_shared/features/**/*",
+    "../app/_shared/store.ts",
     "../src/renderer/src/theme/**/*",
   "../.storybook/**/*"
   ],
@@ -75,6 +77,8 @@
       "@context/*": ["app/_shared/context/*"],
       "@shared-services/*": ["app/_shared/services/*"],
       "@shared-utils/*": ["app/_shared/utils/*"],
+      "@features/*": ["app/_shared/features/*"],
+      "@shared-store/*": ["app/_shared/*"],
       "@theme/*": ["src/renderer/src/theme/*"]
     }
   }

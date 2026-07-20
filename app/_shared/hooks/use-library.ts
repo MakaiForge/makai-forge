@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "./redux";
-import { setLibrary } from "@renderer/features";
+import { setLibrary } from "@features";
 
 export function useLibrary() {
   const dispatch = useAppDispatch();

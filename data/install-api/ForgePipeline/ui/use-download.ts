@@ -8,7 +8,7 @@ import {
   clearDownload,
   setGameDeleting,
   removeGameFromDeleting,
-} from "@renderer/features";
+} from "@features";
 import type {
   DownloadProgress,
   GameShop,

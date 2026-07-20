@@ -20,7 +20,7 @@ import {
   setUserDetails,
   setUserPreferences,
   toggleDraggingDisabled,
-} from "@renderer/features";
+} from "@features";
 import { useTranslation } from "react-i18next";
 import { Outlet, useLocation } from "react-router-dom";
 import { ArchiveDeletionModal } from "@downloads/components/archive-deletion-error-modal";

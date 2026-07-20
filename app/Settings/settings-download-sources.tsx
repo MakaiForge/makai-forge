@@ -21,7 +21,7 @@ import { useFormat } from "@hooks/use-format";
 import { DownloadSourceStatus } from "@shared";
 import { settingsContext } from "@context";
 import { useNavigate } from "react-router-dom";
-import { setFilters, clearFilters } from "@renderer/features";
+import { setFilters, clearFilters } from "@features";
 import { storeService } from "@shared-services/store.service";
 import { orderBy } from "lodash-es";
 import "./settings-download-sources.scss";

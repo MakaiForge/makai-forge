@@ -13,7 +13,7 @@ import {
   useGameCollections,
   useToast,
 } from "@hooks";
-import { setHeaderTitle } from "@renderer/features";
+import { setHeaderTitle } from "@features";
 import {
   HeartIcon,
   TelescopeIcon,

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useAppDispatch } from "./redux";
-import { showToast } from "@renderer/features";
+import { showToast } from "@features";
 
 export function useToast() {
   const dispatch = useAppDispatch();

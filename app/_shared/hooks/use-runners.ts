@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "./redux";
-import { setInstalledRunners, setRunnerIcons } from "@renderer/features";
+import { setInstalledRunners, setRunnerIcons } from "@features";
 
 export function useRunners() {
   const dispatch = useAppDispatch();

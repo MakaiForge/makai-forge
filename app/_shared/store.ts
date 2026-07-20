@@ -11,7 +11,7 @@ import {
   catalogueSearchSlice,
   collectionsSlice,
   runnersSlice,
-} from "@renderer/features";
+} from "@features";
 
 export const store = configureStore({
   reducer: {

@@ -28,7 +28,7 @@ import {
   useAppDispatch,
   useAppSelector,
 } from "@hooks";
-import { clearNewDownloadOptions } from "@renderer/features";
+import { clearNewDownloadOptions } from "@features";
 import { storeService } from "@shared-services/store.service";
 import { getGameKey } from "@renderer/helpers";
 import "./repacks-modal.scss";

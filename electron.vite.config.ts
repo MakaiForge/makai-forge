@@ -84,6 +84,8 @@ export default defineConfig(({ mode }) => {
           "@context": resolve("app/_shared/context"),
           "@shared-services": resolve("app/_shared/services"),
           "@shared-utils": resolve("app/_shared/utils"),
+          "@features": resolve("app/_shared/features"),
+          "@shared-store": resolve("app/_shared"),
           "@theme": resolve("src/renderer/src/theme"),
         },
       },

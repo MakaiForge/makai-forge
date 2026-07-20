@@ -15,7 +15,7 @@ import "react-tooltip/dist/react-tooltip.css";
 
 import { App } from "./app";
 
-import { store } from "./store";
+import { store } from "@shared-store/store";
 
 import resources from "@locales";
 

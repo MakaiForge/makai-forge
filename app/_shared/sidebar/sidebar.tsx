@@ -20,7 +20,7 @@ import "./sidebar.scss";
 
 import { CommentDiscussionIcon } from "@primer/octicons-react";
 import deckyIcon from "@renderer/assets/icons/decky.png";
-import { setFriendRequestCount } from "@renderer/features/user-details-slice";
+import { setFriendRequestCount } from "@features/user-details-slice";
 import cn from "classnames";
 import { useDispatch } from "react-redux";
 import { SidebarAddingCustomGameModal } from "./sidebar-adding-custom-game-modal";
