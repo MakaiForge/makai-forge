@@ -69,6 +69,7 @@ export default defineConfig(({ mode }) => {
           "@downloads": resolve("app/Downloads"),
           "@settings": resolve("app/Settings"),
           "@profile": resolve("app/Profile"),
+          "@emulator-detail": resolve("app/EmulatorDetail"),
         },
       },
       plugins: [svgr(), react()],

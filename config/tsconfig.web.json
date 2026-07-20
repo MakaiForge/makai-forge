@@ -21,6 +21,7 @@
     "../app/Downloads/**/*",
     "../app/Settings/**/*",
     "../app/Profile/**/*",
+    "../app/EmulatorDetail/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -45,7 +46,8 @@
       "@catalogue/*": ["app/Catalogue/*"],
       "@downloads/*": ["app/Downloads/*"],
       "@settings/*": ["app/Settings/*"],
-      "@profile/*": ["app/Profile/*"]
+      "@profile/*": ["app/Profile/*"],
+      "@emulator-detail/*": ["app/EmulatorDetail/*"]
     }
   }
 }
