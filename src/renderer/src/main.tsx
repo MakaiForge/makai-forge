@@ -36,7 +36,7 @@ import Settings from "@settings/settings";
 import Emulators from "@emulators/emulators";
 import EmulatorDetail from "@emulator-detail/emulator-detail";
 import Profile from "@profile/profile";
-import ThemeEditor from "./pages/theme-editor/theme-editor";
+import ThemeEditor from "@theme-editor/theme-editor";
 import Notifications from "@notifications/notifications";
 import GameLauncher from "@games-ui/pages/game-launcher/game-launcher";
 import GameLog from "@games-ui/pages/game-log/game-log";

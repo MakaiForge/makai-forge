@@ -77,6 +77,7 @@ export default defineConfig(({ mode }) => {
           "@scripts": resolve("app/Scripts"),
           "@notifications": resolve("app/Notifications"),
           "@shared-modals": resolve("app/SharedModals"),
+          "@theme-editor": resolve("app/ThemeEditor"),
         },
       },
       plugins: [svgr(), react()],

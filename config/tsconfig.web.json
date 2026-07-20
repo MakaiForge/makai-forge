@@ -29,6 +29,7 @@
     "../app/Scripts/**/*",
     "../app/Notifications/**/*",
     "../app/SharedModals/**/*",
+    "../app/ThemeEditor/**/*",
   "../.storybook/**/*"
   ],
   "compilerOptions": {
@@ -61,7 +62,8 @@
       "@library/*": ["app/Library/*"],
       "@scripts/*": ["app/Scripts/*"],
       "@notifications/*": ["app/Notifications/*"],
-      "@shared-modals/*": ["app/SharedModals/*"]
+      "@shared-modals/*": ["app/SharedModals/*"],
+      "@theme-editor/*": ["app/ThemeEditor/*"]
     }
   }
 }

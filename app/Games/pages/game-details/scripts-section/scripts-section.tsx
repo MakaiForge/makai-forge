@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@renderer/hooks";
-import { InstallScriptModal } from "@renderer/pages/shared-modals/install-script-modal";
+import { InstallScriptModal } from "@shared-modals/install-script-modal";
 import "./scripts-section.scss";
 
 interface ScriptComment {
