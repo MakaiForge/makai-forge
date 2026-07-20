@@ -1,6 +1,6 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
-  "include": ["../electron.vite.config.*", "../src/main/**/*", "../src/preload/**/*", "../src/locales/index.ts", "../src/shared/**/*", "../src/types/**/*", "../src/big-picture/vite-scope-big-picture-css.ts", "../tools/Mods_manager/games/**/*", "../tools/Mods_manager/events/**/*", "../tools/Mods_manager/services/**/*", "../tools/game_launcher/**/*", "../tools/Mods_manager/proton-tools/main/**/*", "../tools/prefix/**/*", "../tools/emulators/**/*"],
+  "include": ["../electron.vite.config.*", "../src/main/**/*", "../src/preload/**/*", "../src/locales/index.ts", "../src/shared/**/*", "../src/types/**/*", "../src/big-picture/vite-scope-big-picture-css.ts", "../app/Catalogo/GameMod/games/**/*", "../app/Catalogo/GameMod/events/**/*", "../app/Catalogo/GameMod/services/**/*", "../tools/game_launcher/**/*", "../app/Catalogo/GameMod/proton-tools/main/**/*", "../tools/prefix/**/*", "../tools/emulators/**/*"],
   "compilerOptions": {
     "module": "ESNext",
     "composite": true,
@@ -13,16 +13,16 @@
       "@main/*": ["src/main/*"],
       "@renderer/*": ["src/renderer/src/*"],
       "@types": ["src/types/index.ts"],
-      "@mods/*": ["tools/Mods_manager/*"],
-      "@mods-manager/*": ["tools/Mods_manager/*"],
-      "@games/*": ["tools/Mods_manager/games/*"],
+      "@mods/*": ["app/Catalogo/GameMod/*"],
+      "@mods-manager/*": ["app/Catalogo/GameMod/*"],
+      "@games/*": ["app/Catalogo/GameMod/games/*"],
       "@locales": ["src/locales/index.ts"],
       "@resources": ["src/resources/index.ts"],
       "@shared": ["src/shared/index.ts"],
       "@emulators/*": ["tools/emulators/*"],
       "@provision/*": ["data/install-api/*"],
       "@bootstrap/*": ["data/Bootstrap/*"],
-"@proton/*": ["tools/Mods_manager/proton-tools/*"],
+"@proton/*": ["app/Catalogo/GameMod/proton-tools/*"],
       "@prefix/*": ["tools/prefix/*"],
 "@game-launcher/*": ["tools/game_launcher/*"]
     }

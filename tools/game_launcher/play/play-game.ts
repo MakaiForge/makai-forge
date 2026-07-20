@@ -243,7 +243,13 @@ export async function playGame(
       total_duration_ms: totalMs,
     });
 
-    return { success: launchResult.success, method: launchResult.method, gamePath, failedStep: launchResult.success ? undefined : "launch" };
+    return {
+      success: launchResult.success,
+      method: launchResult.method,
+      gamePath,
+      error: launchResult.error,
+      failedStep: launchResult.success ? undefined : "launch",
+    };
   } catch (err) {
     const msg = String(err).slice(0, 200);
     const totalMs = Date.now() - _startAll;

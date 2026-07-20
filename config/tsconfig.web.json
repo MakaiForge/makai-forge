@@ -4,10 +4,10 @@
     "../src/renderer/src/env.d.ts",
     "../src/renderer/src/**/*",
     "../src/renderer/src/**/*.tsx",
-    "../tools/Mods_manager/ui/**/*",
-    "../tools/Mods_manager/ui/**/*.tsx",
-    "../tools/Mods_manager/proton-tools/renderer/**/*",
-    "../tools/Mods_manager/proton-tools/renderer/**/*.tsx",
+    "../app/Catalogo/GameMod/ui/**/*",
+    "../app/Catalogo/GameMod/ui/**/*.tsx",
+    "../app/Catalogo/GameMod/proton-tools/renderer/**/*",
+    "../app/Catalogo/GameMod/proton-tools/renderer/**/*.tsx",
     "../src/big-picture/src/**/*",
     "../src/big-picture/src/**/*.tsx",
     "../src/preload/*.d.ts",
@@ -27,12 +27,12 @@
         "src/renderer/src/*"
       ],
       "@types": ["src/types/index.ts"],
-      "@mods/*": ["tools/Mods_manager/*"],
+      "@mods/*": ["app/Catalogo/GameMod/*"],
       "@locales": ["src/locales/index.ts"],
       "@shared": ["src/shared/index.ts"],
       "@emulators/*": ["tools/emulators/*"],
       "@provision/*": ["data/install-api/*"],
-      "@proton/*": ["tools/Mods_manager/proton-tools/*"],
+      "@proton/*": ["app/Catalogo/GameMod/proton-tools/*"],
 "@game-launcher/*": ["tools/game_launcher/*"]
     }
   }

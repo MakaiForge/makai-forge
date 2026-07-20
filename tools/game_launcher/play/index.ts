@@ -10,6 +10,7 @@ import { setupGame } from "./setup-game";
 import type { SendProgress } from "./types";
 import { logEvent, logError } from "./activity-logger";
 import path from "node:path";
+import fs from "node:fs";
 import os from "node:os";
 
 async function ensureGameConfig(gameId: string) {
@@ -77,7 +78,7 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
   try {
     let config = await ensureGameConfig(gameId);
 
-    if (!config?.gamePath) {
+    if (!config?.gamePath || !fs.existsSync(config.gamePath)) {
       const setupResult = await setupGame(gameId, shop, objectId, config, sendToWindows);
       if (!setupResult.success) return setupResult;
       config = ModStorageService.get<any>(`game:${gameId}:config`);

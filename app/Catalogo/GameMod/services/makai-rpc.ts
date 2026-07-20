@@ -101,7 +101,7 @@ export class MakaiRPC {
     }
 
     const serverScript = path.join(
-      app.getAppPath(), "tools", "Mods_manager", "core", "server.py",
+      app.getAppPath(), "app", "Catalogo", "GameMod", "core", "server.py",
     );
 
     if (!fs.existsSync(serverScript)) {
