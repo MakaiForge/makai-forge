@@ -30,7 +30,7 @@ import ModManager from "@mods/ui/ModManager";
 import ExecutableSelect from "./pages/executable-select/executable-select";
 import FolderSelect from "./pages/folder-select/folder-select";
 import Games from "@games-ui";
-import Downloads from "./pages/downloads";
+import Downloads from "@downloads";
 import GameDetails from "@games-ui/pages/game-details/game-details";
 import Settings from "./pages/settings/settings";
 import Emulators from "./pages/emulators/emulators";
