@@ -1,7 +1,0 @@
-@use "../../scss/tokens/text";
-
-.hero {
-  &__description {
-    color: text.$muted-color;
-  }
-}

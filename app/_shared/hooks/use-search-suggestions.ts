@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAppSelector } from "./redux";
 import { debounce } from "lodash-es";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 import type { GameShop } from "@types";
 
 export interface SearchSuggestion {

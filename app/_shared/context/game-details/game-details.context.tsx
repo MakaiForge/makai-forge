@@ -3,7 +3,7 @@ import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { setHeaderTitle } from "@features";
 import { storeService } from "@shared-services/store.service";
 import { orderBy } from "lodash-es";
-import { getSteamLanguage } from "@renderer/helpers";
+import { getSteamLanguage } from "@shared-helpers";
 import { useAppDispatch, useAppSelector, useDownload } from "@hooks";
 
 import type {

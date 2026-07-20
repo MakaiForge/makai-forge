@@ -1,7 +1,0 @@
-@use "../../scss/tokens/border";
-
-.text-field-container {
-  &__text-field {
-    border: solid 1px border.$border-color;
-  }
-}

@@ -25,7 +25,7 @@ import {
 } from "@hooks";
 import { useTranslation } from "react-i18next";
 import { AxiosProgressEvent } from "axios";
-import { formatDownloadProgress } from "@renderer/helpers";
+import { formatDownloadProgress } from "@shared-helpers";
 import { CloudSyncRenameArtifactModal } from "../cloud-sync-rename-artifact-modal/cloud-sync-rename-artifact-modal";
 import { GameArtifact } from "@types";
 import { orderBy } from "lodash-es";

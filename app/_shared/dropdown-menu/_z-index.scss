@@ -1,7 +1,0 @@
-@use "../../scss/tokens/z-index";
-
-.dropdown-menu {
-  &__content {
-    z-index: calc(z-index.$modal-z-index + 1);
-  }
-}

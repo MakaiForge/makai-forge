@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { formatDownloadProgress } from "@renderer/helpers";
+import { formatDownloadProgress } from "@shared-helpers";
 
 interface AnimatedPercentageProps {
   value: number;

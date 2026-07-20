@@ -1,7 +1,0 @@
-@use "../../scss/tokens/border";
-
-.checkbox-field {
-  &__checkbox {
-    border: solid 1px border.$border-color;
-  }
-}

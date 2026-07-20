@@ -1,7 +1,0 @@
-@use "../../scss/tokens/accent";
-
-.auto-update-sub-header {
-  &__new-version-icon {
-    color: accent.$success-color;
-  }
-}

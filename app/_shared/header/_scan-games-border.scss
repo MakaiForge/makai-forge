@@ -1,7 +1,0 @@
-@use "../../scss/tokens/border";
-
-.scan-games-modal {
-  &__game-item {
-    border-bottom: 1px solid border.$border-color;
-  }
-}

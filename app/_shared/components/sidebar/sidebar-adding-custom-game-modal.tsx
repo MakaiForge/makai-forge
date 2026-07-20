@@ -8,7 +8,7 @@ import { useLibrary, useToast } from "@hooks";
 import {
   buildGameDetailsPath,
   generateRandomGradient,
-} from "@renderer/helpers";
+} from "@shared-helpers";
 
 import "./sidebar-adding-custom-game-modal.scss";
 

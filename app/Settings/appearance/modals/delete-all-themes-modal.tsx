@@ -2,7 +2,7 @@ import { Button } from "@components/button/button";
 import { Modal } from "@components/modal/modal";
 import { useTranslation } from "react-i18next";
 import "./modals.scss";
-import { removeCustomCss } from "@renderer/helpers";
+import { removeCustomCss } from "@shared-helpers";
 import { useToast } from "@hooks";
 
 interface DeleteAllThemesModalProps {

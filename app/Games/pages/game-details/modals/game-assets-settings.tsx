@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ImageIcon, XIcon } from "@primer/octicons-react";
 import { Button, TextField } from "@components";
 import { useToast } from "@hooks";
-import { generateRandomGradient } from "@renderer/helpers";
+import { generateRandomGradient } from "@shared-helpers";
 import type { Game, LibraryGame, ShopDetailsWithAssets } from "@types";
 
 import "./game-assets-settings.scss";

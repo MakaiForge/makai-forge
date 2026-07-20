@@ -9,7 +9,7 @@ import {
   SignOutIcon,
   XCircleFillIcon,
 } from "@primer/octicons-react";
-import { buildGameDetailsPath } from "@renderer/helpers";
+import { buildGameDetailsPath } from "@shared-helpers";
 import {
   Avatar,
   Button,

@@ -13,7 +13,7 @@ import { orderBy } from "lodash-es";
 import { settingsContext } from "@context";
 import "./settings-general.scss";
 import { DesktopDownloadIcon } from "@primer/octicons-react";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 
 interface LanguageOption {
   option: string;

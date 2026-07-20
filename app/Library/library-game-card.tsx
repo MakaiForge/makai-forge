@@ -3,7 +3,7 @@ import { useGameCard } from "@hooks";
 import { memo, useEffect, useState } from "react";
 import { ClockIcon, AlertFillIcon, ImageIcon } from "@primer/octicons-react";
 import "./library-game-card.scss";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 
 interface LibraryGameCardProps {
   game: LibraryGame;

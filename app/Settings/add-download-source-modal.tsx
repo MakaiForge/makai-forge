@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button, Modal, TextField } from "@components";
 import { settingsContext } from "@context";
 import { useForm } from "react-hook-form";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";

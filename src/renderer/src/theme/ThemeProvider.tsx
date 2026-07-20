@@ -1,5 +1,5 @@
 import { useEffect, createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { injectCustomCss, removeCustomCss, applyThemeVars, removeThemeVars } from '../helpers';
+import { injectCustomCss, removeCustomCss, applyThemeVars, removeThemeVars } from '@shared-helpers';
 import { storeService } from '@shared-services/store.service';
 import { ThemeBackground } from './ThemeBackground';
 import type { Theme } from '@types';

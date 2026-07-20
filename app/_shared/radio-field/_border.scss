@@ -1,7 +1,0 @@
-@use "../../scss/tokens/border";
-
-.radio-field {
-  &__control {
-    border: solid 1px border.$border-color;
-  }
-}

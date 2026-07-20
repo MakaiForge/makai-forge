@@ -1,9 +1,0 @@
-@use "../../scss/tokens/border";
-
-.sidebar {
-  border-right: 1px solid var(--el-sidebar-border, var(--border-color, border.$border-color));
-
-  &__bottom-buttons {
-    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.04));
-  }
-}

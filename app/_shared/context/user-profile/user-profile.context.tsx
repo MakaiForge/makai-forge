@@ -1,4 +1,4 @@
-import { darkenColor } from "@renderer/helpers";
+import { darkenColor } from "@shared-helpers";
 import { useAppSelector, useToast } from "@hooks";
 import type { Badge, UserProfile, UserGame } from "@types";
 import { average } from "color.js";

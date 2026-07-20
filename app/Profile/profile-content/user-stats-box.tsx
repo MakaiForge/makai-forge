@@ -2,7 +2,7 @@ import { useCallback, useContext, useState } from "react";
 import { userProfileContext } from "@context";
 import { useTranslation } from "react-i18next";
 import { useFormat, useUserDetails } from "@hooks";
-import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
+import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@shared-constants";
 import { ClockIcon } from "@primer/octicons-react";
 import { Award } from "lucide-react";
 import { WrappedFullscreenModal } from "./wrapped-tab";

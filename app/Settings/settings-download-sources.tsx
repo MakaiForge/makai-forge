@@ -25,7 +25,7 @@ import { setFilters, clearFilters } from "@features";
 import { storeService } from "@shared-services/store.service";
 import { orderBy } from "lodash-es";
 import "./settings-download-sources.scss";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 
 export function SettingsDownloadSources() {
   const [

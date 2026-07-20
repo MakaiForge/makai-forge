@@ -29,9 +29,9 @@ import {
 import { GameAssetsSettings } from "./game-assets-settings";
 import { debounce } from "lodash-es";
 import { storeService } from "@shared-services/store.service";
-import { getGameKey } from "@renderer/helpers";
+import { getGameKey } from "@shared-helpers";
 import "./game-options-modal.scss";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 import { GameOptionsSidebar } from "./game-options-modal/sidebar";
 import { GeneralSettingsSection } from "./game-options-modal/general-section";
 

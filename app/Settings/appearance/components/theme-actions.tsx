@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useToast, useUserDetails } from "@hooks";
 import "./theme-actions.scss";
 import { useRef, useCallback } from "react";
-import { THEME_WEB_STORE_URL } from "@renderer/constants";
-import { generateUUID, injectCustomCss, removeCustomCss } from "@renderer/helpers";
+import { THEME_WEB_STORE_URL } from "@shared-constants";
+import { generateUUID, injectCustomCss, removeCustomCss } from "@shared-helpers";
 import { storeService } from "@shared-services/store.service";
 import type { Theme } from "@types";
 

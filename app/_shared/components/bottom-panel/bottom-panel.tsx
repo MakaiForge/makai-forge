@@ -12,7 +12,7 @@ import {
 import "./bottom-panel.scss";
 
 import { useNavigate } from "react-router-dom";
-import { VERSION_CODENAME } from "@renderer/constants";
+import { VERSION_CODENAME } from "@shared-constants";
 
 export function BottomPanel() {
   const { t } = useTranslation("bottom_panel");

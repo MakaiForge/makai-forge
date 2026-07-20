@@ -1,7 +1,0 @@
-@use "../../scss/tokens/accent";
-
-.sidebar-profile {
-  &__notification-button-badge {
-    background: accent.$brand-gradient;
-  }
-}

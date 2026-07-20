@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { buildGameDetailsPath } from "@renderer/helpers";
+import { buildGameDetailsPath } from "@shared-helpers";
 import { PlayIcon, XCircleIcon, DownloadIcon, TrashIcon, PackageIcon } from "@primer/octicons-react";
 import type { GameShop, LibraryGame } from "@types";
 import "./download-card.scss";

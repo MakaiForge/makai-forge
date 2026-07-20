@@ -1,4 +1,4 @@
-import { buildGameDetailsPath } from "@renderer/helpers";
+import { buildGameDetailsPath } from "@shared-helpers";
 import { Link } from "@components";
 import { useCallback, useContext } from "react";
 import { userProfileContext } from "@context";
@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ClockIcon } from "@primer/octicons-react";
 import { useFormat } from "@hooks";
 import type { UserGame } from "@types";
-import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
+import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@shared-constants";
 import "./recent-games-box.scss";
 
 export function RecentGamesBox() {

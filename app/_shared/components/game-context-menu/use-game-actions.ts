@@ -8,8 +8,8 @@ import {
   useToast,
 } from "@hooks";
 import { useNavigate, useLocation } from "react-router-dom";
-import { buildGameDetailsPath } from "@renderer/helpers";
-import { logger } from "@renderer/logger";
+import { buildGameDetailsPath } from "@shared-helpers";
+import { logger } from "@shared-logger";
 
 export function useGameActions(game: LibraryGame) {
   const { t } = useTranslation("game_details");

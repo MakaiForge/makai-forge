@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { formatDownloadProgress } from "@renderer/helpers";
+import { formatDownloadProgress } from "@shared-helpers";
 import {
   useAppSelector,
   useDate,
@@ -9,7 +9,7 @@ import {
 } from "@hooks";
 import { Link } from "@components";
 import { gameDetailsContext } from "@context";
-import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
+import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@shared-constants";
 import { AlertFillIcon } from "@primer/octicons-react";
 import { Tooltip } from "react-tooltip";
 import "./hero-panel-playtime.scss";

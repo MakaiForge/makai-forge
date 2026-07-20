@@ -2,8 +2,8 @@ import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFormat } from "./use-format";
 import { useTranslation } from "react-i18next";
-import { buildGameDetailsPath } from "@renderer/helpers";
-import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
+import { buildGameDetailsPath } from "@shared-helpers";
+import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@shared-constants";
 import { LibraryGame } from "@types";
 
 export function useGameCard(

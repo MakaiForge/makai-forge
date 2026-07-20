@@ -37,6 +37,10 @@
     "../app/_shared/utils/**/*",
     "../app/_shared/features/**/*",
     "../app/_shared/store.ts",
+    "../app/_shared/logger/*",
+    "../app/_shared/helpers.ts",
+    "../app/_shared/constants.ts",
+    "../app/_shared/cookies.ts",
     "../src/renderer/src/theme/**/*",
   "../.storybook/**/*"
   ],
@@ -75,10 +79,19 @@
       "@components/*": ["app/_shared/components/*"],
       "@hooks/*": ["app/_shared/hooks/*"],
       "@context/*": ["app/_shared/context/*"],
-      "@shared-services/*": ["app/_shared/services/*"],
-      "@shared-utils/*": ["app/_shared/utils/*"],
+      "@features": ["app/_shared/features/index.ts"],
       "@features/*": ["app/_shared/features/*"],
-      "@shared-store/*": ["app/_shared/*"],
+"@shared-services/*": ["app/_shared/services/*"],
+      "@shared-utils/*": ["app/_shared/utils/*"],
+      "@shared-store": ["app/_shared/store.ts"],
+      "@shared-logger": ["app/_shared/logger/index.ts"],
+      "@shared-logger/*": ["app/_shared/logger/*"],
+      "@shared-helpers": ["app/_shared/helpers.ts"],
+      "@shared-helpers/*": ["app/_shared/*"],
+      "@shared-constants": ["app/_shared/constants.ts"],
+      "@shared-constants/*": ["app/_shared/*"],
+      "@shared-cookies": ["app/_shared/cookies.ts"],
+      "@shared-cookies/*": ["app/_shared/*"],
       "@theme/*": ["src/renderer/src/theme/*"]
     }
   }

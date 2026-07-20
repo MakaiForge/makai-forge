@@ -1,7 +1,0 @@
-@use "../../scss/tokens/border";
-
-.sidebar-adding-custom-game-modal {
-  &__image-preview {
-    border: 1px solid border.$border-color;
-  }
-}

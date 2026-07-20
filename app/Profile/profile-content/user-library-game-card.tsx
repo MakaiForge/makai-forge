@@ -2,7 +2,7 @@ import { UserGame } from "@types";
 import { useFormat, useToast } from "@hooks";
 import { useNavigate } from "react-router-dom";
 import { useCallback, useContext, useEffect, useState } from "react";
-import { buildGameDetailsPath } from "@renderer/helpers";
+import { buildGameDetailsPath } from "@shared-helpers";
 import { userProfileContext } from "@context";
 import {
   ClockIcon,
@@ -11,7 +11,7 @@ import {
   PinSlashIcon,
   ImageIcon,
 } from "@primer/octicons-react";
-import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@renderer/constants";
+import { MAX_MINUTES_TO_SHOW_IN_PLAYTIME } from "@shared-constants";
 import { Tooltip } from "react-tooltip";
 import { useTranslation } from "react-i18next";
 import "./user-library-game-card.scss";

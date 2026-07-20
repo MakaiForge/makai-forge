@@ -1,6 +1,6 @@
 import { addMilliseconds } from "date-fns";
 
-import { formatDownloadProgress } from "@renderer/helpers";
+import { formatDownloadProgress } from "@shared-helpers";
 import { useLibrary } from "@hooks/use-library";
 import { useAppDispatch, useAppSelector } from "@hooks/redux";
 import {

@@ -1,5 +1,5 @@
 import { useToast } from "@hooks";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 import type { LudusaviBackup, GameArtifact, GameShop } from "@types";
 import React, {
   createContext,

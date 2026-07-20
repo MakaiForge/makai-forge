@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { GameArtifact } from "@types";
 import { cloudSyncContext } from "@context";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { InferType } from "yup";

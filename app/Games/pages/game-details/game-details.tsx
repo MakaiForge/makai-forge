@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { GameRepack, GameShop, Steam250Game } from "@types";
 
 import { Button, ConfirmationModal } from "@components";
-import { buildGameDetailsPath } from "@renderer/helpers";
+import { buildGameDetailsPath } from "@shared-helpers";
 
 import starsIconAnimated from "@renderer/assets/icons/stars-animated.gif";
 

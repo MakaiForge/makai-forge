@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@components";
 import { useAppDispatch, useToast, useUserDetails } from "@hooks";
 import { setHeaderTitle } from "@features";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 
 import { NotificationItem } from "./notification-item";
 import { LocalNotificationItem } from "./local-notification-item";

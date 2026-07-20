@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Modal, Avatar, Button } from "@components";
-import { logger } from "@renderer/logger";
+import { logger } from "@shared-logger";
 import SteamLogo from "@renderer/assets/steam-logo.svg?react";
 import type { UserFriend } from "@types";
 import "./all-friends-modal.scss";

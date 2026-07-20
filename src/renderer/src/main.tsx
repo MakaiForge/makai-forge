@@ -15,12 +15,12 @@ import "react-tooltip/dist/react-tooltip.css";
 
 import { App } from "./app";
 
-import { store } from "@shared-store/store";
+import { store } from "@shared-store";
 
 import resources from "@locales";
 
-import { logger } from "./logger";
-import { addCookieInterceptor } from "./cookies";
+import { logger } from "@shared-logger";
+import { addCookieInterceptor } from "@shared-cookies";
 import * as Sentry from "@sentry/react";
 import { storeService } from "@shared-services/store.service";
 import Catalogue from "@catalogue";

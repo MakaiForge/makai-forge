@@ -1,7 +1,0 @@
-@use "../../scss/tokens/text";
-
-.button {
-  &--danger {
-    color: text.$muted-color;
-  }
-}

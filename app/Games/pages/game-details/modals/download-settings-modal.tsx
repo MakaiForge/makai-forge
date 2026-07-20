@@ -16,7 +16,7 @@ import {
   SelectField,
   TextField,
 } from "@components";
-import { DOWNLOADER_NAME } from "@renderer/constants";
+import { DOWNLOADER_NAME } from "@shared-constants";
 import {
   useAppSelector,
   useDownload,

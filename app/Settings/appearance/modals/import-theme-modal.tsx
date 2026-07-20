@@ -7,10 +7,10 @@ import {
   injectCustomCss,
   removeCustomCss,
   generateUUID,
-} from "@renderer/helpers";
+} from "@shared-helpers";
 import { useToast } from "@hooks";
-import { THEME_WEB_STORE_URL } from "@renderer/constants";
-import { logger } from "@renderer/logger";
+import { THEME_WEB_STORE_URL } from "@shared-constants";
+import { logger } from "@shared-logger";
 import { storeService } from "@shared-services/store.service";
 
 interface ImportThemeModalProps {

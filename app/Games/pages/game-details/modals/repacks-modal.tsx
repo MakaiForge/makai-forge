@@ -30,7 +30,7 @@ import {
 } from "@hooks";
 import { clearNewDownloadOptions } from "@features";
 import { storeService } from "@shared-services/store.service";
-import { getGameKey } from "@renderer/helpers";
+import { getGameKey } from "@shared-helpers";
 import "./repacks-modal.scss";
 
 export interface RepacksModalProps {
