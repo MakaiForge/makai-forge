@@ -3,34 +3,37 @@ productName: Makai forger
 directories:
   buildResources: build
 extraResources:
-  - ludusavi
+  - from: app/_resources/binaries/ludusavi
+    to: binaries/ludusavi
   - protonforge-python-rpc
-  - from: native/protonforge-native.node
+  - from: app/_resources/native/protonforge-native.node
     to: protonforge-native/protonforge-native.node
   - seeds
-  - from: resources/achievement.wav
-  - from: resources/pirate.json
-  - from: data/releases
-  - from: data/sources
-  - from: data/Bootstrap
+  - from: app/_assets/audio/achievement.wav
+  - from: app/_data/releases
+  - from: app/_data/sources
+  - from: app/_main/bootstrap
+  - from: app/_assets/backgrounds
+    to: app/_assets/backgrounds
 files:
   - "!**/.vscode/*"
   - "!src/*"
-  - "!native/protonforge-native/target"
+  - "!app/_resources/native/protonforge-native/target"
   - "!electron.vite.config.{js,ts,mjs,cjs}"
   - "!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}"
   - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
 asarUnpack:
-  - resources/**
+  - app/_resources/**
+  - app/_data/**
   - node_modules/sharp/**
   - node_modules/@img/sharp-libvips-*/**
 linux:
   extraResources:
-    - from: binaries/7zzs
-    - from: binaries/umu/umu-run
-    - from: python
-      to: python
+    - from: app/_resources/binaries/7zzs
+    - from: app/_resources/binaries/umu-run
+    - from: app/_resources/python
+      to: app/_resources/python
   target:
     - AppImage
     - snap

@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
-const CHROME_DIR = path.join(app.getAppPath(), "resources", "chrome");
+const CHROME_DIR = path.join(app.getAppPath(), "app", "_resources", "chrome");
 const CHROME_BINARY = path.join(CHROME_DIR, "chrome-linux64", "chrome");
 const API_URL = "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json";
 const EXT_ID = "mjnbclmflcpookeapghfhapeffmpodij";
@@ -135,7 +135,7 @@ async function ensureChrome(onProgress: ProgressCallback): Promise<void> {
 }
 
 async function ensureExtension(onProgress: ProgressCallback): Promise<string | null> {
-  const extTargetDir = path.join(app.getAppPath(), "resources", "extensions", EXT_ID);
+  const extTargetDir = path.join(app.getAppPath(), "app", "_resources", "extensions", EXT_ID);
 
   if (fs.existsSync(extTargetDir)) {
     onProgress({ status: "Extensão já instalada", progress: 90 });
@@ -144,7 +144,7 @@ async function ensureExtension(onProgress: ProgressCallback): Promise<string | n
 
   onProgress({ status: "Baixando extensão...", detail: "UltraSurf (0%)", progress: 75 });
 
-  const extDir = path.join(app.getAppPath(), "resources", "extensions");
+  const extDir = path.join(app.getAppPath(), "app", "_resources", "extensions");
   fs.mkdirSync(extDir, { recursive: true });
 
   const CRX_PATH = path.join(extDir, `${EXT_ID}.crx`);

@@ -23,7 +23,7 @@ import { ProtonRecommendationModal } from "@provision/proton_recommended/ui/prot
 import { AddProfileModal, ConflictsModal, DeployConfirmModal, DeployResultModal, OverwriteModal, PreviewModal, ReadmeModal } from "./components/Modals";
 import { ConflictDetailsModal } from "./components/Modals/ConflictDetailsModal";
 import { GameReadinessModal } from "./components/Modals/GameReadinessModal";
-import { PrefixSetupModal } from "@prefix/wine_prefix/PrefixSetupModal";
+import { PrefixSetupModal } from "@container/wine_prefix/PrefixSetupModal";
 import { FomodDialog } from "./components/FomodDialog";
 import { BainDialog } from "./components/BainDialog";
 

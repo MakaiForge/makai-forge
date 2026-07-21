@@ -6,13 +6,9 @@ import { logger } from "@main/services/logger";
 
 function getDbPath(): string {
   const candidates = [
-    path.join(app.getAppPath(), "resources", "fork_catalog.db"),
-    path.join(app.getAppPath(), "resources", "database", "fork_catalog.db"),
+    path.join(app.getAppPath(), "app", "_data", "fork_catalog.db"),
     path.join(app.getPath("userData"), "resources", "database", "fork_catalog.db"),
   ];
-  if (app.isPackaged) {
-    candidates.unshift(path.join(process.resourcesPath, "fork_catalog.db"));
-  }
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
   }

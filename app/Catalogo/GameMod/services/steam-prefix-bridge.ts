@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { logger } from "@main/services";
-import { findAllSteamLibraries } from "@prefix/core/steam-paths";
+import { findAllSteamLibraries } from "@container/core/steam-paths";
 import { setSteamGameProton, setSteamGameLaunchOptions } from "@main/services/steam-config-vdf";
 
 /**

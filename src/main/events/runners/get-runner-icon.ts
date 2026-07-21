@@ -4,9 +4,7 @@ import path from "node:path";
 import { app } from "electron";
 
 registerEvent("getRunnerIcon", async (_event, runnerId: string) => {
-  const iconsDir = app.isPackaged
-    ? path.join(process.resourcesPath, "emulators", "icons")
-    : path.join(app.getAppPath(), "resources", "emulators", "icons");
+  const iconsDir = path.join(app.getAppPath(), "app", "_assets", "assets", "icons", "emulators");
 
   const filePath = path.join(iconsDir, `${runnerId}.svg`);
   if (!fs.existsSync(filePath)) return null;

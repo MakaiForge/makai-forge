@@ -53,7 +53,7 @@ function detectLocale(): string {
 }
 
 function findExtensions(): string[] {
-  const extDir = path.join(app.getAppPath(), "resources", "extensions");
+  const extDir = path.join(app.getAppPath(), "app", "_resources", "extensions");
   const result: string[] = [];
   try {
     const entries = fs.readdirSync(extDir);
@@ -117,7 +117,7 @@ export class ChromeManager {
     const isVisible = process.env.CHROME_VISIBLE === "1";
 
     const profilesDir = path.join(process.resourcesPath || __dirname, "..", "..", ".chrome-profiles");
-    const fallbackDir = path.join(app.getAppPath(), "data", ".chrome-profiles");
+    const fallbackDir = path.join(app.getAppPath(), "app", "_data", ".chrome-profiles");
     const userDataDir = userConfig.profilePath
       ? path.resolve(userConfig.profilePath)
       : path.join(fs.existsSync(profilesDir) ? profilesDir : fallbackDir, `profile-${Date.now()}`);

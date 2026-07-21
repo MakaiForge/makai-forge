@@ -1,7 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import { logger } from "./logger";
-import { findSteamClientPath, parseLibraryFolders } from "@prefix/core/steam-paths";
+import { findSteamClientPath, parseLibraryFolders } from "@container/core/steam-paths";
 
 export interface SteamInstalledGame {
   appId: string;

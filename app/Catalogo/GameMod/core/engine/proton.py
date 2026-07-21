@@ -86,7 +86,7 @@ def find_umu_run() -> str | None:
         "/usr/local/bin/umu-run",
         os.path.expanduser("~/.local/bin/umu-run"),
         os.path.expanduser("~/.cargo/bin/umu-run"),
-        os.path.expanduser("~/Documentos/Makai-forge/tools/prefix/umu-run"),
+        os.path.expanduser("~/Documentos/Makai-forge/app/_resources/binaries/umu-run"),
     ]
     for c in candidates:
         path = shutil.which(c)

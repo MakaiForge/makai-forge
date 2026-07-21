@@ -1,18 +1,17 @@
 import { registerEvent } from "@main/events/register-event";
 import { ModStorageService } from "@main/services";
 import { findSteamAppIdFromGamePath, findCompatibilityToolPath } from "./helpers";
+import { ProtonfixService } from "@main/services/protonfix-service";
+import { ProtonRecommendationService } from "@provision/proton_recommended/services/proton-recommendation";
+import { getSteamLocation } from "@main/services/steam";
+import { getSteamGameProton } from "@main/services/steam-config-vdf";
+import fs from "node:fs";
+import p from "node:path";
 
 registerEvent("getGameProtonInfo", async (event, gameName: string) => {
   const sendProgress = (step: string, status: string) => {
     try { event.sender.send("proton-info-progress", { step, status }); } catch {}
   };
-
-  const { ProtonfixService } = await import("@main/services/protonfix-service");
-  const { ProtonRecommendationService } = await import("@provision/proton_recommended/services/proton-recommendation");
-  const { getSteamLocation } = await import("@main/services/steam");
-  const { getSteamGameProton } = await import("@main/services/steam-config-vdf");
-  const fs = await import("node:fs");
-  const p = await import("node:path");
 
   const result: {
     appId: string | null;

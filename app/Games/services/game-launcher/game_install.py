@@ -2,11 +2,11 @@
 tools/game-launcher/game_install.py — Instalação de jogos (portátil ou instalador).
 
 Substitui a lógica que estava em TypeScript em:
-  - data/install-api/ForgePipeline/events/open-game/download-installer.ts
-  - data/install-api/ForgePipeline/orchestrator/prefix-copier.ts
-  - data/install-api/ForgePipeline/orchestrator/prefix-scanner.ts
-  - data/install-api/ForgePipeline/orchestrator/snapshot.ts
-  - data/install-api/ForgePipeline/orchestrator/change-detector.ts
+  - app/_main/installer-api/ForgePipeline/events/open-game/download-installer.ts
+  - app/_main/installer-api/ForgePipeline/orchestrator/prefix-copier.ts
+  - app/_main/installer-api/ForgePipeline/orchestrator/prefix-scanner.ts
+  - app/_main/installer-api/ForgePipeline/orchestrator/snapshot.ts
+  - app/_main/installer-api/ForgePipeline/orchestrator/change-detector.ts
 """
 
 import hashlib

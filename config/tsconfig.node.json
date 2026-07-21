@@ -4,7 +4,7 @@
   "../app/Catalogo/GameMod/events/**/*",
   "../app/Catalogo/GameMod/services/**/*",
   "../app/ProtonTools/main/**/*",
-  "../app/Games/**/*", "../tools/prefix/**/*", "../tools/emulators/**/*"],
+  "../app/Games/**/*", "../app/_main/**/*", "../app/_main/emulators/**/*"],
   "compilerOptions": {
     "module": "ESNext",
     "composite": true,
@@ -21,13 +21,13 @@
       "@mods-manager/*": ["app/Catalogo/GameMod/*"],
       "@games/*": ["app/Catalogo/GameMod/games/*"],
       "@locales": ["src/locales/index.ts"],
-      "@resources": ["src/resources/index.ts"],
+      "@assets/*": ["app/_assets/*"],
       "@shared": ["src/shared/index.ts"],
-      "@emulators/*": ["tools/emulators/*"],
-      "@provision/*": ["data/install-api/*"],
-      "@bootstrap/*": ["data/Bootstrap/*"],
+      "@emulators/*": ["app/_main/emulators/*"],
+      "@provision/*": ["app/_main/installer-api/*"],
+      "@bootstrap/*": ["app/_main/bootstrap/*"],
 "@proton/*": ["app/ProtonTools/*"],
-      "@prefix/*": ["tools/prefix/*"],
+      "@container/*": ["app/_main/container/*"],
 "@game-launcher/*": ["app/Games/services/game-launcher/*"],
       "@games-ui/*": ["app/Games/*"]
     }

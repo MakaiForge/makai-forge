@@ -15,6 +15,8 @@ import {
 } from "@main/services";
 import { getDirSize } from "@provision/ForgePipeline/services/download/helpers";
 import { GofileApi } from "./services/hosters";
+import "./events";
+import { handleGetDownloadSources as _handleGetDownloadSources } from "./services/local-sources-handler";
 
 const hasMissingSeedFiles = async (download: Download): Promise<boolean> => {
   if (!download.folderName) return false;
@@ -41,17 +43,14 @@ const hasMissingSeedFiles = async (download: Download): Promise<boolean> => {
 export const loadState = async () => {
   await Lock.acquireLock();
 
-  await import("./events");
-
   GofileApi.initialize();
 
   Ludusavi.copyConfigFileToUserData();
   Ludusavi.copyBinaryToUserData();
 
   // Auto-sync fontes locais
-  const { handleGetDownloadSources } = await import("./services/local-sources-handler");
   const { downloadSourcesStore } = await import("@main/store");
-  const localSources = handleGetDownloadSources();
+  const localSources = _handleGetDownloadSources();
   for (const src of localSources) {
     await downloadSourcesStore.put(src.id, src as any).catch(() => {});
   }

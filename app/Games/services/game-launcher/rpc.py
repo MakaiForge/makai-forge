@@ -1,5 +1,5 @@
 def register_handlers(register):
-    from rpc_base import RpcError, write_event
+    from app._main.rpc.base import RpcError, write_event
 
 
     @register("detect_installer_type")

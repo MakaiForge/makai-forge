@@ -1,0 +1,5 @@
+#!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+VENV_DIR="$(dirname "$SCRIPT_DIR")"
+export PYTHONHOME="$VENV_DIR"
+exec "$SCRIPT_DIR/python3.10.bin" "$@"

@@ -4,6 +4,8 @@ import type { LinkMode } from "./types";
 import type { DeploymentResult, ModlistEntry } from "@types";
 import { buildFilemap, findPrefixUsername } from "./filemap";
 import { scanSymlinks, linkAll, restoreSymlinks } from "./symlink";
+import { ModStorageService } from "@mods/services/mod-storage-service";
+import { ModManagerService } from "@mods/services/mod-manager-service";
 
 const PLUGIN_EXTS = new Set([".esp", ".esm", ".esl"]);
 
@@ -62,8 +64,6 @@ export async function deployBethesda(
         PLUGIN_EXTS.has(path.extname(f).toLowerCase()),
       );
 
-      const { ModManagerService } = await import("@mods/services/mod-manager-service");
-      const { ModStorageService } = await import("@mods/services/mod-storage-service");
       const pluginsKey = `game:${gameId}:profile:${profile}:plugins`;
       const savedPlugins: any[] = ModStorageService.get(pluginsKey) || [];
       const savedMap = new Map(savedPlugins.map((p: any) => [p.name.toLowerCase(), p]));

@@ -2,6 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import type { ModlistEntry, DeploymentResult, ModInventory } from "@types";
 import { ModConflictService } from "../mod-conflict-service";
+import { ModManagerService } from "../mod-manager-service";
 import { ModStorageService } from "../mod-storage-service";
 import { expandHome } from "../path-utils";
 import { getDeployTarget, shouldWritePluginsTxt } from "./rules";
@@ -274,7 +275,6 @@ async function writePluginsTxt(
     return { name, enabled: saved ? saved.enabled : true };
   });
 
-  const { ModManagerService } = await import("../mod-manager-service");
   fs.mkdirSync(path.dirname(pluginsTxtPath), { recursive: true });
   if (ModManagerService.writePlugins(pluginsTxtPath, pluginEntries)) {
     log.push(`Wrote plugins.txt with ${pluginEntries.length} entries (${pluginEntries.filter(e => e.enabled).length} enabled)`);

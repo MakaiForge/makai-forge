@@ -4,7 +4,7 @@ import { ModStorageService } from "@main/services";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { WindowManager } from "@main/services/window-manager";
 import { gamesStore, storeKeys } from "@main/store";
-import { createPrefix } from "@prefix/core/init";
+import { createPrefix } from "@container/core/init";
 import { installGame } from "@game-launcher/install/install-game";
 import { waitForFolderSelection } from "@provision/ForgePipeline/events/folder-select-window";
 import type { SendProgress } from "./types";

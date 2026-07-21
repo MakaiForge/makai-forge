@@ -5,7 +5,7 @@ import fs from "node:fs";
 import { app } from "electron";
 import { logger } from "@main/services";
 
-export { deleteGamePrefix } from "@prefix/core/clear";
+export { deleteGamePrefix } from "@container/core/clear";
 
 export async function deleteGameFromDatabase(
   shop: GameShop,

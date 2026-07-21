@@ -3,6 +3,8 @@ import path from "node:path";
 import { resolvePrefixDir, isValidPrefix, dllOverridesMatch } from "../prefix-validator";
 import { gameDllCatalog } from "../game-dlls-service";
 import { logger } from "@main/services";
+import { ensurePrefixDir } from "@container/core/validate";
+import { applyWineDllOverrides } from "@games/_shared/prefix";
 
 export interface HealthReport {
   valid: boolean;
@@ -116,7 +118,6 @@ export async function autoFixPrefix(gameId: string, gamePath: string, prefixPath
 
   if (!report.prefixValid) {
     try {
-      const { ensurePrefixDir } = await import("@prefix/core/validate");
       ensurePrefixDir(prefixPath);
       fixed.push("Prefixo recriado");
     } catch (e) {
@@ -126,7 +127,6 @@ export async function autoFixPrefix(gameId: string, gamePath: string, prefixPath
 
   if (report.dllOverridesMissing.length > 0) {
     try {
-      const { applyWineDllOverrides } = await import("@games/_shared/prefix");
       const gameInfo = gameDllCatalog.getGame(gameId);
       if (gameInfo?.wineDllOverrides) {
         applyWineDllOverrides(prefixPath, gameInfo.wineDllOverrides);

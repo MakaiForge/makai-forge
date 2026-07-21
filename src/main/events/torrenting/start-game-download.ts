@@ -16,11 +16,9 @@ const TRACKERS = (() => {
   try {
     const possiblePaths = [
       app.isPackaged
-        ? path.join(process.resourcesPath, "torrent-tracker-list.txt")
+        ? path.join(process.resourcesPath, "app/_resources/binaries/torrent-tracker-list.txt")
         : null,
-      path.join(app.getAppPath(), "resources", "binaries", "torrent-tracker-list.txt"),
-      path.join(__dirname, "..", "..", "resources", "binaries", "torrent-tracker-list.txt"),
-      path.join(__dirname, "..", "resources", "binaries", "torrent-tracker-list.txt"),
+      path.join(app.getAppPath(), "app", "_resources", "binaries", "torrent-tracker-list.txt"),
     ].filter(Boolean) as string[];
 
     for (const file of possiblePaths) {

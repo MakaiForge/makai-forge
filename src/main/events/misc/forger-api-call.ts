@@ -2,6 +2,7 @@ import { registerEvent } from "../register-event";
 import { handleGetGameDownloadSources } from "@main/services/local-sources-handler";
 import { getGameDetails, getFeaturedGames } from "./helpers/steam-local";
 import { MakaiApi } from "@main/services/makai-api";
+import { getGameAssets } from "../catalogue/get-game-assets";
 
 interface ProtonApiCallPayload {
   method: "get" | "post" | "put" | "patch" | "delete";
@@ -91,7 +92,6 @@ const LOCAL_ROUTES: Array<{
     handler: async (_method, match) => {
       const [, , objectId] = (match[0] || "").match(/\/games\/custom\/([^/]+)\/assets/) || [];
       if (!objectId) return null;
-      const { getGameAssets } = await import("../catalogue/get-game-assets");
       return getGameAssets(objectId, "custom");
     },
   },

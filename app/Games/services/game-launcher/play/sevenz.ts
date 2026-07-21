@@ -3,8 +3,8 @@ import path from "node:path";
 import { app } from "electron";
 
 const BUNDLED_7Z_CANDIDATES = [
-  path.join(app.getAppPath(), "data", "install-api", "7z", "7zz"),
-  path.join(app.getAppPath(), "resources", "data", "install-api", "7z", "7zz"),
+  path.join(app.getAppPath(), "app", "_resources", "binaries", "7z", "7zz"),
+  path.join(app.getAppPath(), "app", "_resources", "binaries", "7zzs"),
 ];
 
 let _cached7zPath: string | null | undefined;

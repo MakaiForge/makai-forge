@@ -3,9 +3,9 @@ import path from "node:path";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
 import { getGameModule, getGameInfo } from "@games/registry";
 import { findPrefixUsername } from "@games/_shared/filemap";
-import { applyWineDllOverrides, verifyDllOverrides } from "@prefix/core/dll-overrides";
-import { verifyBethesdaRegistry } from "@prefix/core/bethesda-registry";
-import { findAllSteamLibraries } from "@prefix/core/steam-paths";
+import { applyWineDllOverrides, verifyDllOverrides } from "@container/core/dll-overrides";
+import { verifyBethesdaRegistry } from "@container/core/bethesda-registry";
+import { findAllSteamLibraries } from "@container/core/steam-paths";
 import type { SendProgress } from "../types";
 
 export interface ConfigsResult {

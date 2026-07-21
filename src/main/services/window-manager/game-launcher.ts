@@ -1,4 +1,4 @@
-import icon from "@resources/icons/icon.png?asset";
+import icon from "@assets/assets/icons/app/icon.png?asset";
 import { BrowserWindow, app, screen } from "electron";
 import { isStaging } from "@main/constants";
 import type { WindowManager } from "../window-manager";
@@ -45,7 +45,9 @@ export async function createGameLauncherWindow(
   });
 
   win.removeMenu();
-  const bgPath = path.join(app.getAppPath(), "data", "Bootstrap", "background.png");
+  const bgPath = app.isPackaged
+    ? path.join(process.resourcesPath, "app", "_assets", "backgrounds", "setup.png")
+    : path.join(app.getAppPath(), "app", "_assets", "backgrounds", "setup.png");
   await loadWindowURL(win, `game-launcher?shop=${shop}&objectId=${objectId}&bg=${encodeURIComponent(bgPath)}`);
 
   win.on("closed", () => {

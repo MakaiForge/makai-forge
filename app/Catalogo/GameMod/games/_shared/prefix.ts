@@ -6,7 +6,7 @@ export {
   MODERN_DIRECTX_DEPS,
   type DllOverridesMap,
   type VerifyDllResult,
-} from "@prefix/core/dll-overrides";
+} from "@container/core/dll-overrides";
 
 import fs from "node:fs";
 import path from "node:path";

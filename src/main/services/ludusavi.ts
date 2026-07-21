@@ -9,8 +9,8 @@ import { SystemPath } from "./system-path";
 
 export class Ludusavi {
   private static ludusaviResourcesPath = app.isPackaged
-    ? path.join(process.resourcesPath, "ludusavi")
-    : path.join(__dirname, "..", "..", "tools", "ludusavi");
+    ? path.join(process.resourcesPath, "binaries", "ludusavi")
+    : path.join(app.getAppPath(), "app", "_resources", "binaries", "ludusavi");
 
   private static configPath = path.join(
     SystemPath.getPath("userData"),

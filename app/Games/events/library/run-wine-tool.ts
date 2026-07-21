@@ -1,1 +1,1 @@
-import "@prefix/events/run-wine-tool";
+import "@container/events/run-wine-tool";

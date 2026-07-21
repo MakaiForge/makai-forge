@@ -1,1 +1,1 @@
-import "@prefix/events/select-game-wine-prefix";
+import "@container/events/select-game-wine-prefix";

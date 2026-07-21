@@ -13,7 +13,7 @@ import cp from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { app } from "electron";
-import { getVenvPythonPath } from "@prefix/core/venv";
+import { getVenvPythonPath } from "@container/core/venv";
 import { logger } from "@main/services/logger";
 
 // ─── Types ────────────────────────────────────────────────────

@@ -257,7 +257,7 @@ export function registerChromeBrowserEvents(): void {
   });
 
   // Bookmarks
-  const bookmarksPath = path.join(app.getAppPath(), "data", "bookmarks.json");
+  const bookmarksPath = path.join(app.getAppPath(), "app", "_data", "bookmarks.json");
 
   function loadBookmarks(): Array<{ url: string; title: string }> {
     try {
@@ -312,7 +312,7 @@ export function registerChromeBrowserEvents(): void {
   // Extensions
   ipcMain.handle("chrome-get-extensions", async () => {
     try {
-      const extDir = path.join(app.getAppPath(), "resources", "extensions");
+      const extDir = path.join(app.getAppPath(), "app", "_resources", "extensions");
       if (!fs.existsSync(extDir)) return [];
       const entries = fs.readdirSync(extDir);
       const exts: Array<{ id: string; name: string; icon: string }> = [];

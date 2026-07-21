@@ -1,7 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import { logger } from "@main/services";
-import { createPrefix } from "@prefix/core/init";
+import { createPrefix } from "@container/core/init";
 import type { SendProgress } from "../types";
 
 export interface PrefixResult {

@@ -9,8 +9,9 @@ import os
 import re
 import subprocess
 
-MAKAITRICKS_PATH = os.path.expanduser(
-    "~/Documentos/Makai-forge/data/install-api/Makaitricks"
+MAKAITRICKS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+    "_resources", "binaries", "Makaitricks"
 )
 
 

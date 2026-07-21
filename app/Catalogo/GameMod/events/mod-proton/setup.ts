@@ -1,1 +1,1 @@
-import "@prefix/events/setup-proton-environment";
+import "@container/events/setup-proton-environment";

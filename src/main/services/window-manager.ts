@@ -1,7 +1,7 @@
 import { BrowserWindow } from "electron";
 import path from "node:path";
 import { createSystemTray } from "./system-tray";
-import icon from "@resources/icons/icon.png?asset";
+import icon from "@assets/assets/icons/app/icon.png?asset";
 import type { AuthPage } from "@shared";
 import { createMainWindow } from "./window-manager/main-window";
 import { openAuthWindow } from "./window-manager/auth-window";

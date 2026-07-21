@@ -94,11 +94,11 @@ export async function launchGame(
     } else {
       send("launch", result.error || "Falha ao iniciar", "error");
     }
-    return { success: result.success, method: "makrun" };
+    return { success: result.success, method: "engine" };
   } catch (err) {
     const msg = `Makai Runner falhou: ${String(err).slice(0, 200)}`;
     logger.error(`[Launch] ${msg}`);
     send("launch", msg, "error");
-    return { success: false, error: msg, method: "makrun" };
+    return { success: false, error: msg, method: "engine" };
   }
 }

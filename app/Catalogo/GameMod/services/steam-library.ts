@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { findAllSteamLibraries } from "@prefix/core/steam-paths";
+import { findAllSteamLibraries } from "@container/core/steam-paths";
 
 export function defaultStagingDir(gameId: string): string {
   const slug = gameId.toLowerCase().replace(/[\s:/\\]+/g, "-").replace(/[^a-z0-9-]/g, "");

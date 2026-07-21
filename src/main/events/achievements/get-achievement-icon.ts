@@ -9,7 +9,7 @@ const getAchievementIconUrl = async (
   const filename = iconPath.split("/").pop();
   if (!filename) return null;
   const fs = await import("fs");
-  const fullPath = app.getAppPath() + "/data/assets/achievements/" + filename;
+  const fullPath = app.getAppPath() + "/app/_assets/assets/icons/achievements/" + filename;
   if (fs.existsSync(fullPath)) {
     return "local:" + fullPath;
   }

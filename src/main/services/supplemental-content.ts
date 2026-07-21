@@ -7,9 +7,7 @@ let db: any = null;
 let stmt: any = null;
 
 function getDbPath(): string {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, "resources", "supplemental.db")
-    : path.join(app.getAppPath(), "resources", "supplemental.db");
+  return path.join(app.getAppPath(), "app", "_data", "supplemental.db");
 }
 
 function ensureDb(): void {

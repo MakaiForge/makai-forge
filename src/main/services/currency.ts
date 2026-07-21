@@ -52,8 +52,7 @@ const LANGUAGE_TO_CURRENCY: Record<string, string> = {
 function getCachePath(): string {
   const dir = app.isPackaged
     ? path.join(process.resourcesPath, "data")
-    : path.join(app.getAppPath(), "data");
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    : path.join(app.getAppPath(), "app", "_data");
   return path.join(dir, "exchange-rates.json");
 }
 

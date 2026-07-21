@@ -1,7 +1,7 @@
 import { Menu, MenuItem, MenuItemConstructorOptions, Tray, app, shell } from "electron";
 import { t } from "i18next";
 import { orderBy, slice } from "lodash-es";
-import trayIcon from "@resources/icons/tray-icon.png?asset";
+import trayIcon from "@assets/assets/icons/app/tray-icon.png?asset";
 import { gamesStore } from "@main/store";
 import type { WindowManager } from "./window-manager";
 

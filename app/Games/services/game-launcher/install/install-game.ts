@@ -13,12 +13,12 @@ function resolveActualPrefix(prefixPath: string): string {
 }
 
 function getMakrunDir(): string {
-  return path.resolve(__dirname, "..", "..", "tools", "prefix", "makai_time")
+  return path.resolve(__dirname, "..", "..", "tools", "container", "makai_time")
 }
 
 function getPythonBin(): string {
   if (process.env.PYTHON_PATH) return process.env.PYTHON_PATH
-  return path.resolve(__dirname, "..", "..", "tools", "venv", "bin", "python3")
+  return path.resolve(__dirname, "..", "..", "app", "_venv", "bin", "python3")
 }
 
 function runInstallerInContainer(
@@ -33,7 +33,7 @@ function runInstallerInContainer(
     const makrunDir = getMakrunDir()
 
     const proc = spawn(getPythonBin(), [
-      "-m", "makrun",
+      "-m", "engine",
       "waitforexitandrun", installerExe,
     ], {
       cwd: makrunDir,

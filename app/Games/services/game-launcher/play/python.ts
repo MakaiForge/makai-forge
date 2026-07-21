@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
 import { app } from "electron";
-import { getVenvPythonPath } from "@prefix/core/venv";
+import { getVenvPythonPath } from "@container/core/venv";
 
 export interface PythonResult {
   success: boolean
@@ -14,7 +14,7 @@ export interface PythonResult {
 function getCliPath(): string {
   return app.isPackaged
     ? path.join(process.resourcesPath, "python", "cli.py")
-    : path.join(app.getAppPath(), "tools", "prefix", "python", "cli.py");
+    : path.join(app.getAppPath(), "tools", "container", "makai_time", "engine", "python", "cli.py");
 }
 
 export async function runPythonCommand(

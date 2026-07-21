@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { registerEvent } from "@main/events/register-event";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
-import { createPrefix } from "@prefix/core/init";
+import { createPrefix } from "@container/core/init";
 import { ModStorageService } from "@main/services";
 import { logPlay } from "@game-launcher/play/logger";
 import { gameDllCatalog } from "../services/game-dlls-service";

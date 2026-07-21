@@ -4,7 +4,8 @@ import { app } from "electron";
 
 function getLogPath(): string {
   try {
-    return path.join(app.getAppPath(), "tools", "Mods_manager", "play", "play.log");
+    const userData = app.getPath("userData");
+    return path.join(userData, "logs", "play.log");
   } catch {
     return path.resolve("play.log");
   }

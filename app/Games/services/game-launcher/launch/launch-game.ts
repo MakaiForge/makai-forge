@@ -5,7 +5,7 @@ import { spawn } from "node:child_process"
 import type { LaunchOptions, LaunchResult } from "./types"
 
 function getMakrunDir(): string {
-  return path.resolve(__dirname, "..", "..", "tools", "prefix", "makai_time")
+  return path.resolve(__dirname, "..", "..", "tools", "container", "makai_time")
 }
 
 function getPythonBin(): string {
@@ -33,9 +33,9 @@ export async function launchGame(options: LaunchOptions): Promise<LaunchResult> 
     spawnEnv.STEAM_COMPAT_INSTALL_PATH = path.resolve(gamePath)
   }
 
-  const args = ["-m", "makrun", "waitforexitandrun", resolvedExe]
+  const args = ["-m", "engine", "waitforexitandrun", resolvedExe]
 
-  onLog?.(`Iniciando Makai Runner: python3 -m makrun waitforexitandrun ${resolvedExe}`)
+  onLog?.(`Iniciando Makai Runner: python3 -m engine waitforexitandrun ${resolvedExe}`)
 
   return new Promise<LaunchResult>((resolve) => {
     const proc = spawn(getPythonBin(), args, {
@@ -66,7 +66,7 @@ export async function launchGame(options: LaunchOptions): Promise<LaunchResult> 
       resolve({
         success: code === 0,
         pid: proc.pid,
-        method: "makrun",
+        method: "engine",
         error: code !== 0 ? `Makai Runner exit code: ${code}` : undefined,
       })
     })
@@ -95,9 +95,9 @@ export function launchGameDetached(options: LaunchOptions): boolean {
     spawnEnv.STEAM_COMPAT_INSTALL_PATH = path.resolve(gamePath)
   }
 
-  const args = ["-m", "makrun", "waitforexitandrun", resolvedExe]
+  const args = ["-m", "engine", "waitforexitandrun", resolvedExe]
 
-  const logDir = path.join(os.homedir(), ".cache", "makrun")
+  const logDir = path.join(os.homedir(), ".cache", "engine")
   const logFile = path.join(logDir, `launch-${Date.now()}.log`)
   try {
     fs.mkdirSync(logDir, { recursive: true })

@@ -1,4 +1,0 @@
-# format: verb|filename|url|sha256|version
-# Managed by MakaiForge – update entries below when Microsoft releases new .NET patches
-dotnetdesktop8|windowsdesktop-runtime-8.0.28-win-x86.exe|https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.28/windowsdesktop-runtime-8.0.28-win-x86.exe|4410ccf9c51606982fb7d53cde41642cc376adb8444e413c6ba89be361ab4c08|8.0.28
-dotnetdesktop8|windowsdesktop-runtime-8.0.28-win-x64.exe|https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.28/windowsdesktop-runtime-8.0.28-win-x64.exe|8819b8680a7a7668097bb031a856a5469159c8d6a8cfb2a6b2c0be44e74cb0c1|8.0.28

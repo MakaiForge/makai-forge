@@ -8,9 +8,7 @@ import { handleGetSourceNamesForTitle } from "@main/services/local-sources-handl
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 function getCacheDir(): string {
-  const dir = app.isPackaged
-    ? path.join(app.getPath("userData"), "steam-cache")
-    : path.join(app.getAppPath(), "cache");
+  const dir = path.join(app.getPath("userData"), "steam-cache");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   return dir;
 }

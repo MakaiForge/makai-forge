@@ -67,7 +67,7 @@ function buildDealUrl(dealId: string): string {
 function getCachePath(steamAppId: string): string {
   const dir = app.isPackaged
     ? path.join(process.resourcesPath, "data", "price-cache")
-    : path.join(app.getAppPath(), "data", "price-cache");
+    : path.join(app.getAppPath(), "app", "_data", "price-cache");
 
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   return path.join(dir, `${steamAppId}.json`);

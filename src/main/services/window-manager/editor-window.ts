@@ -1,4 +1,4 @@
-import icon from "@resources/icons/icon.png?asset";
+import icon from "@assets/assets/icons/app/icon.png?asset";
 import { BrowserWindow, app } from "electron";
 import { isStaging } from "@main/constants";
 import type { WindowManager } from "../window-manager";

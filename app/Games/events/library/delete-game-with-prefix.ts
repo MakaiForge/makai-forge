@@ -1,1 +1,1 @@
-import "@prefix/events/delete-game-prefix";
+import "@container/events/delete-game-prefix";

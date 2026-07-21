@@ -3,7 +3,7 @@ import { ModStorageService } from "@main/services";
 import { getGameInfo } from "@games/registry";
 import { getStagingDir, findStagingDir } from "@games/_shared/filemap";
 import { undeployMod } from "@mods/services/mod-deploy/core";
-import { findAllSteamLibraries } from "@prefix/core/steam-paths";
+import { findAllSteamLibraries } from "@container/core/steam-paths";
 import { findGogGamePath } from "@mods/services/gog-detection";
 import { gameDllCatalog } from "@mods/services/game-dlls-service";
 import { detectGame } from "@mods/services/detection";

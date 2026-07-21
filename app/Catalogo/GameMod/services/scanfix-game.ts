@@ -1,9 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { logger } from "@main/services";
-import type { ScanFixResult } from "@prefix/types";
+import type { ScanFixResult } from "@container/types";
 import { downloadSkse } from "./skse-downloader";
 import { scanEnvironment } from "./environment-scanner";
+import { ensurePrefixDir } from "@container/core/validate";
 
 export async function scanFixGame(gameId: string): Promise<ScanFixResult> {
   // autoFix: true — scanner corrige DLL overrides, registry, nested pfx automaticamente
@@ -26,7 +27,6 @@ export async function scanFixGame(gameId: string): Promise<ScanFixResult> {
         fs.rmSync(path.join(env.prefixPath, entry), { recursive: true, force: true });
       }
     } catch {}
-    const { ensurePrefixDir } = await import("@prefix/core/validate");
     ensurePrefixDir(env.prefixPath);
   }
 

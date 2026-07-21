@@ -59,8 +59,8 @@ function ensureQbtConfig(): void {
 export async function startQBittorrent() {
   ensureQbtConfig();
   const qbtPath = app.isPackaged
-    ? path.join(process.resourcesPath, "qbittorrent/qbittorrent-nox")
-    : path.join(app.getAppPath(), "resources/binaries/qbittorrent/qbittorrent-nox");
+    ? path.join(process.resourcesPath, "app/_resources/binaries/qbittorrent/qbittorrent-nox")
+    : path.join(app.getAppPath(), "app/_resources/binaries/qbittorrent/qbittorrent-nox");
 
   killOrphanQBittorrent();
   await waitForPortFree(8080);

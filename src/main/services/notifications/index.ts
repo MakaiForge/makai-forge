@@ -1,6 +1,6 @@
 import { Notification } from "electron";
 import { t } from "i18next";
-import trayIcon from "@resources/icons/tray-icon.png?asset";
+import trayIcon from "@assets/assets/icons/app/tray-icon.png?asset";
 import fs from "node:fs";
 import axios from "axios";
 import path from "node:path";

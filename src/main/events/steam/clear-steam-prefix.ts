@@ -1,1 +1,1 @@
-import "@prefix/events/clear-steam-prefix";
+import "@container/events/clear-steam-prefix";

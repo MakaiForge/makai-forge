@@ -1,18 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { app } from "electron";
 import type { GameDllCatalog, GameDllEntry } from "../data/game-dlls";
 
 let _catalog: GameDllCatalog | null = null;
 
 function catalogPath(): string {
-  const devPath = path.join(
+  return path.join(
     path.dirname(fileURLToPath(import.meta.url)),
     "..", "data", "game-dlls.json"
   );
-  if (fs.existsSync(devPath)) return devPath;
-  return path.join(app.getAppPath(), "tools", "Mods_manager", "data", "game-dlls.json");
 }
 
 function loadCatalog(): GameDllCatalog {

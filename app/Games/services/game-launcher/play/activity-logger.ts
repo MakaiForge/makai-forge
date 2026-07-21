@@ -11,7 +11,8 @@ export interface ActivityEntry {
 
 function getLogPath(): string {
   try {
-    return path.join(app.getAppPath(), "tools", "Mods_manager", "play", "activity.log");
+    const userData = app.getPath("userData");
+    return path.join(userData, "logs", "activity.log");
   } catch {
     return path.resolve("activity.log");
   }

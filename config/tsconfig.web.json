@@ -57,7 +57,7 @@
       "@locales": ["src/locales/index.ts"],
       "@shared": ["src/shared/index.ts"],
       "@emulators/*": ["tools/emulators/*"],
-      "@provision/*": ["data/install-api/*"],
+      "@provision/*": ["app/_main/installer-api/*"],
       "@proton/*": ["app/ProtonTools/*"],
 "@game-launcher/*": ["app/Games/services/game-launcher/*"],
       "@games-ui/*": ["app/Games/*"],

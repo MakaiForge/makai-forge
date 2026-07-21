@@ -4,7 +4,7 @@ core/server.py — RPC Server Unificado (JSON-lines sobre stdin/stdout).
 
 ÚNICO servidor RPC. Substitui:
   - tools/python-rpc/protonforge-api/server.py
-  - data/install-api/proton_recommended/python/server.py
+  - app/_main/installer-api/proton_recommended/python/server.py
 
 Protocolo:
     Request:  {"id": 1, "method": "ping", "params": {}}
@@ -29,16 +29,14 @@ from datetime import datetime, timezone
 _LOG_DIR = os.path.dirname(os.path.abspath(__file__))
 _MODS_DIR = os.path.abspath(os.path.join(_LOG_DIR, ".."))
 _ROOT_DIR = os.path.abspath(os.path.join(_LOG_DIR, "..", "..", "..", ".."))
-_TOOLS_DIR = os.path.join(_ROOT_DIR, "tools")
-_PREFIX_PYTHON_DIR = os.path.join(_TOOLS_DIR, "prefix", "python")
-_PREFIX_DIR = os.path.join(_TOOLS_DIR, "prefix")
-_API_DIR = os.path.join(_ROOT_DIR, "data", "install-api", "proton_recommended", "python")
+_API_DIR = os.path.join(_ROOT_DIR, "app", "_main", "installer-api", "proton_recommended", "python")
+_GAME_LAUNCHER_DIR = os.path.join(_ROOT_DIR, "app", "Games", "services")
 
-for d in (_MODS_DIR, _TOOLS_DIR, _PREFIX_PYTHON_DIR, _PREFIX_DIR, _API_DIR):
+for d in (_MODS_DIR, _API_DIR, _ROOT_DIR, _GAME_LAUNCHER_DIR):
     if d not in sys.path:
         sys.path.insert(0, d)
 
-from rpc_base import (
+from app._main.rpc.base import (
     METHODS, register, dispatch, RpcError,
     write_event, write_response,
 )
@@ -46,9 +44,9 @@ from rpc_base import (
 LOG_FILE = os.path.join(_LOG_DIR, "server.log")
 
 # Register handlers from subsystem modules
-from rpc_base import register as _register
+from app._main.rpc.base import register as _register
 import game_launcher.rpc as _game_launcher_rpc
-import prefix_rpc as _prefix_rpc
+from app._main.container import prefix_rpc as _prefix_rpc
 
 _game_launcher_rpc.register_handlers(_register)
 _prefix_rpc.register_handlers(_register)
@@ -702,7 +700,7 @@ def handle_eslify(params: dict):
 
     script = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "..", "..", "data", "install-api", "proton_recommended",
+        "..", "..", "app", "_main", "installer-api", "proton_recommended",
         "python", "Utils", "eslifier.py",
     )
     if not os.path.exists(script):

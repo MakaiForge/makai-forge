@@ -6,7 +6,7 @@ import { pythonRpcLogger } from "./logger";
 import { Readable } from "node:stream";
 import { app, dialog } from "electron";
 import { ensureVenv } from "@bootstrap/venv";
-import { getVenvPythonPath } from "@prefix/core/venv";
+import { getVenvPythonPath } from "@container/core/venv";
 
 interface GamePayload {
   action: string;
@@ -356,12 +356,10 @@ export class PythonRPC {
     } else {
       const pythonExecutable = this.resolvePythonExecutable();
       const scriptPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "tools",
-        "python-rpc",
-        "python_rpc",
+        app.getAppPath(),
+        "app",
+        "_main",
+        "torrent-rpc",
         "main.py"
       );
 

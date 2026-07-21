@@ -1,6 +1,0 @@
-#!/bin/bash
-# Makai Shim — Standalone entry point
-# Substitui pressure-vessel-unruntime
-set -eu
-here="$(dirname "$(readlink -f "$0")")"
-PYTHONPATH="${PYTHONPATH:-}:${here}" exec python3 -m makrun.shim "$@"

@@ -2,14 +2,15 @@
 core/engine/makaitricks.py — Makaitricks wrapper.
 
 Makaitricks é o winetricks do projeto.
-Localizado em: ~/Documentos/Makai-forge/data/install-api/Makaitricks
+Localizado em: app/_resources/binaries/Makaitricks
 """
 
 import os
 import subprocess
 
-MAKAITRICKS_PATH = os.path.expanduser(
-    "~/Documentos/Makai-forge/data/install-api/Makaitricks"
+MAKAITRICKS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+    "_resources", "binaries", "Makaitricks"
 )
 
 

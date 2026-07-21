@@ -3,7 +3,7 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 import { app } from "electron";
-import { getVenvPythonPath } from "@prefix/core/venv";
+import { getVenvPythonPath } from "@container/core/venv";
 import { db, gamesStore, storeKeys } from "@main/store";
 import type { WineTool, WineToolResult } from "./types";
 import { logger } from "@main/services";
@@ -22,8 +22,8 @@ export class WineToolRunner {
 
   private getUmuBinaryPath(): string {
     return app.isPackaged
-      ? path.join(process.resourcesPath, "umu-run")
-      : path.join(__dirname, "..", "..", "resources", "binaries", "umu-run");
+      ? path.join(process.resourcesPath, "app/_resources/binaries/umu-run")
+      : path.join(app.getAppPath(), "app", "_resources", "binaries", "umu-run");
   }
 
   private spawnNativeTool(toolName: string, toolArgs: string[]): boolean {

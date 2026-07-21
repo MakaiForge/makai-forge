@@ -26,7 +26,7 @@ function getSourcesDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, "data", "sources");
   }
-  return path.join(app.getAppPath(), "data", "sources");
+  return path.join(app.getAppPath(), "app", "_data", "sources");
 }
 
 interface SourceData {
