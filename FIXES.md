@@ -24,9 +24,9 @@ python3 -c "import game_launcher.rpc"  # ✅ OK
 **Causa:** Compositor Wayland não implementa `wp_color_manager` completamente.
 
 **Correção (1 arquivo alterado):**
-- `src/main/index.ts:26` — adicionado `app.commandLine.appendSwitch("--ozone-platform-hint", "x11")`
+- `src/main/index.ts:26` — `--ozone-platform-hint=x11` → `--ozone-platform=x11`
 
-**Efeito:** Electron força X11 via XWayland. Compatível com Wayland e X11.
+**Efeito:** Electron 39 força X11 nativamente. `--ozone-platform-hint` é só dica, não impedia Wayland de carregar.
 
 ---
 
