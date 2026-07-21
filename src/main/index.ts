@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, Menu } from "electron";
 import i18n from "i18next";
 import { optimizer } from "@electron-toolkit/utils";
 import {
@@ -21,13 +21,19 @@ import { bootstrap } from "./bootstrap";
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) app.quit();
 
+Menu.setApplicationMenu(null);
+
 if (process.platform === "linux") {
   app.commandLine.appendSwitch("--no-sandbox");
-  app.commandLine.appendSwitch("--ozone-platform", "x11");
-  app.commandLine.appendSwitch("--disable-accelerated-video-decode");
 }
 
+app.commandLine.appendSwitch("--disable-accelerated-video-decode");
 app.commandLine.appendSwitch("--enable-unsafe-swiftshader");
+app.commandLine.appendSwitch("--disable-renderer-backgrounding");
+app.commandLine.appendSwitch("--disable-background-timer-throttling");
+app.commandLine.appendSwitch("--disable-backgrounding-occluded-windows");
+app.commandLine.appendSwitch("--js-flags", "--max-old-space-size=384");
+app.commandLine.appendSwitch("--disable-features", "Translate,ChromeWhatsNewUI,MediaRouter,WaylandWpColorManagerV1");
 
 i18n.init({
   resources,

@@ -7,7 +7,7 @@ from pathlib import Path
 def register_handlers(register):
     from app._main.rpc.base import RpcError
 
-    _prefix_py_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "makai_time", "makrun", "python"))
+    _prefix_py_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "makai_time", "engine", "python"))
     if _prefix_py_dir not in sys.path:
         sys.path.insert(0, _prefix_py_dir)
 
