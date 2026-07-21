@@ -15,6 +15,8 @@ extraResources:
   - from: app/_main/bootstrap
   - from: app/_assets/backgrounds
     to: app/_assets/backgrounds
+  - from: app/_resources/compact-flow
+    to: app/_resources/compact-flow
 files:
   - "!**/.vscode/*"
   - "!src/*"
@@ -43,6 +45,12 @@ linux:
   category: Game
   mimeTypes:
     - x-scheme-handler/protonforge
+    - application/vnd.microsoft.portable-executable
+    - application/x-ms-dos-executable
+    - application/x-dosexec
+    - application/x-msdownload
+    - application/x-msi
+  afterInstall: app/_resources/compact-flow/scripts/install-integration.sh --deb
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false

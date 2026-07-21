@@ -1,0 +1,90 @@
+#!/bin/bash
+# CompactFlow Wrapper
+# Chama o Makai Forger com --compact-flow para abrir a janela do CompactFlow
+# Suporta: Dev, Deb/RPM, AppImage, Flatpak, Snap
+
+TEST_MODE=false
+FILES=()
+
+for arg in "$@"; do
+  case "$arg" in
+    --test) TEST_MODE=true ;;
+    --*) ;;
+    *) FILES+=("$arg") ;;
+  esac
+done
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+
+# ── Detectar formato de execução ──────────────────────────────────
+
+run_dev() {
+  local app_dir="$1"
+  local flags="--no-sandbox --disable-gpu --compact-flow"
+  $TEST_MODE && flags="$flags --test"
+  for f in "${FILES[@]}"; do
+    flags="$flags $(printf %q "$f")"
+  done
+  cd "$app_dir" && exec node node_modules/electron/cli.js . $flags
+}
+
+run_appimage() {
+  local appimage="$1"
+  local flags="--compact-flow"
+  $TEST_MODE && flags="$flags --test"
+  for f in "${FILES[@]}"; do
+    flags="$flags $(printf %q "$f")"
+  done
+  exec "$appimage" $flags
+}
+
+run_flatpak() {
+  local flags="--compact-flow"
+  $TEST_MODE && flags="$flags --test"
+  for f in "${FILES[@]}"; do
+    flags="$flags $(printf %q "$f")"
+  done
+  exec flatpak run com.makaiforge.app $flags
+}
+
+run_snap() {
+  local flags="--compact-flow"
+  $TEST_MODE && flags="$flags --test"
+  for f in "${FILES[@]}"; do
+    flags="$flags $(printf %q "$f")"
+  done
+  exec makaiforge $flags
+}
+
+# ── Procurar o Makai Forger ───────────────────────────────────────
+
+# Modo Dev
+if [ -d "$HOME/Documentos/Makai_forge" ] && [ -f "$HOME/Documentos/Makai_forge/node_modules/electron/cli.js" ]; then
+  run_dev "$HOME/Documentos/Makai_forge"
+fi
+
+# AppImage (procurar na mesma pasta e subdiretórios)
+appimage_path=$(find /opt ~/.local/bin ~/Desktop -name "MakaiForge-*.AppImage" -o -name "makaiforge-*.AppImage" 2>/dev/null | head -1)
+if [ -n "$appimage_path" ] && [ -x "$appimage_path" ]; then
+  run_appimage "$appimage_path"
+fi
+
+# Instalação Deb/RPM (sistema)
+if [ -x "/opt/makai-forger/makaiforge" ]; then
+  exec /opt/makai-forger/makaiforge --compact-flow "$@"
+fi
+
+# Flatpak
+if command -v flatpak &>/dev/null && flatpak info com.makaiforge.app &>/dev/null 2>&1; then
+  run_flatpak
+fi
+
+# Snap
+if command -v snap &>/dev/null && snap list makaiforge &>/dev/null 2>&1; then
+  run_snap
+fi
+
+echo "Makai Forger não encontrado."
+echo "Instale o Makai Forger ou execute pelo modo Dev:"
+echo "  cd ~/Documentos/Makai_forge && npm run dev -- --compact-flow"
+exit 1

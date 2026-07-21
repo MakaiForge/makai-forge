@@ -7,6 +7,7 @@ cd "$APP_DIR"
 echo "=== Makai Forge ==="
 echo "1 - Dev (npm run dev)"
 echo "2 - Build (electron-vite build)"
+echo "3 - Instalar CompactFlow (copiar do CompactFlow original)"
 echo ""
 read -p "Escolha: " opt
 
@@ -16,6 +17,12 @@ case "$opt" in
     ;;
   2)
     exec npm run build
+    ;;
+  3)
+    echo "Instalando CompactFlow..."
+    node scripts/install-compactflow.cjs
+    echo ""
+    echo "Use a opção 1 para abrir o Makai Forge com CompactFlow."
     ;;
   *)
     echo "Opção inválida"

@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin
+MimeType=application/vnd.microsoft.portable-executable;application/x-ms-dos-executable;application/x-dosexec;application/x-msdownload;
+Actions=openCompactFlow;testCompatibility;
+
+[Desktop Action openCompactFlow]
+Name=Abrir com CompactFlow
+Name[pt_BR]=Abrir com CompactFlow
+Icon=compatflow
+Exec=__WRAPPER__ %f
+
+[Desktop Action testCompatibility]
+Name=Testar Compatibilidade
+Name[pt_BR]=Testar Compatibilidade
+Icon=compatflow
+Exec=__WRAPPER__ --test %f

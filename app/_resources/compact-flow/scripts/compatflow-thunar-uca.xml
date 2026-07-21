@@ -1,0 +1,23 @@
+<?xml encoding="UTF-8" version="1.0"?>
+<actions>
+  <action>
+    <icon>compatflow</icon>
+    <name>Open with CompactFlow</name>
+    <submenu>CompactFlow</submenu>
+    <unique-id>1700000000-cf-open</unique-id>
+    <command>compatflow %f</command>
+    <description>Open with CompactFlow</description>
+    <patterns>*.exe;*.msi;*.msu;*.com;*.bat</patterns>
+    <other-files/>
+  </action>
+  <action>
+    <icon>compatflow</icon>
+    <name>Test Compatibility</name>
+    <submenu>CompactFlow</submenu>
+    <unique-id>1700000001-cf-test</unique-id>
+    <command>compatflow --test %f</command>
+    <description>Test Windows compatibility with Linux</description>
+    <patterns>*.exe;*.msi;*.msu;*.com;*.bat</patterns>
+    <other-files/>
+  </action>
+</actions>

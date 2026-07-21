@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'">
+  <title>CompatFlow</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-mesh"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div id="app">
+    <header>
+      <div class="logo drag-region">
+        <div class="logo-icon">
+          <svg viewBox="0 0 64 64" width="22" height="22">
+            <defs>
+              <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#a855f7"/>
+                <stop offset="100%" stop-color="#06b6d4"/>
+              </linearGradient>
+            </defs>
+            <circle cx="32" cy="32" r="28" fill="url(#lg)" stroke="rgba(168,85,247,0.3)" stroke-width="2"/>
+            <g fill="#0a0015">
+              <polygon points="22,28 26,28 26,24 30,32 26,40 26,36 22,36 22,28"/>
+              <polygon points="42,28 42,36 38,36 38,40 34,32 38,24 38,28 42,28"/>
+            </g>
+          </svg>
+        </div>
+        <div class="logo-glow-wrap">
+          <span class="logo-text">CompatFlow</span>
+        </div>
+        <span class="logo-badge">v1.0</span>
+      </div>
+      <button id="closeBtn" class="btn-close">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </header>
+
+    <main id="main">
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.2">
+            <rect x="12" y="8" width="40" height="48" rx="6" stroke="url(#lg)" fill="rgba(168,85,247,0.03)"/>
+            <polyline points="28,8 28,24 40,24" stroke="url(#lg)"/>
+            <line x1="22" y1="34" x2="42" y2="34" stroke="#45475a"/>
+            <line x1="22" y1="40" x2="36" y2="40" stroke="#45475a"/>
+            <line x1="22" y1="46" x2="30" y2="46" stroke="#45475a"/>
+            <circle cx="48" cy="48" r="12" fill="rgba(168,85,247,0.08)" stroke="#a855f7" stroke-width="1.5"/>
+            <polyline points="44,48 47,51 52,45" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 class="empty-title">Pronto para analisar</h2>
+        <p class="empty-sub">Solte um arquivo <strong>.exe</strong> ou <strong>.msi</strong> aqui</p>
+        <div class="empty-actions">
+          <button id="selectBtn" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Selecionar arquivo
+          </button>
+          <span class="empty-or">ou arraste</span>
+        </div>
+      </div>
+
+      <div id="analyzing" class="analyzing hidden">
+        <div class="spinner-ring"></div>
+        <p class="analyzing-text">Analisando...</p>
+      </div>
+
+      <div id="result" class="result hidden">
+        <div class="result-top">
+          <div id="fileBadge" class="file-badge">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="file-info">
+            <span id="fileName" class="file-name"></span>
+            <span id="filePath" class="file-path"></span>
+          </div>
+        </div>
+        <div id="resultContent"></div>
+      </div>
+    </main>
+
+    <div id="protonModal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title">Selecionar Proton</div>
+          <button id="modalClose" class="btn-close-modal">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="recommendationSection" class="recommendation-section"></div>
+          <div id="protonLegend" class="proton-legend">
+            <div class="legend-title">📊 Como escolher o Proton</div>
+            <div class="legend-row"><span class="legend-tier" style="color:#ffd700;">●</span> <strong>Gold</strong> — Melhor compatibilidade. A maioria dos jogos roda perfeitamente.</div>
+            <div class="legend-row"><span class="legend-tier" style="color:#c0c0c0;">●</span> <strong>Silver</strong> — Boa compatibilidade. Alguns ajustes podem ser necessários.</div>
+            <div class="legend-row"><span class="legend-tier" style="color:#cd7f32;">●</span> <strong>Bronze</strong> — Compatível, mas pode apresentar bugs ou quedas de performance.</div>
+            <div class="legend-row"><span class="legend-tier" style="color:#a855f7;">●</span> <strong>Experimental</strong> — Testes recentes, sem garantia de funcionamento.</div>
+            <div class="legend-divider"></div>
+            <div class="legend-row">📈 A <strong>porcentagem</strong> ao lado de cada versão indica a taxa de sucesso estimada com base em testes da comunidade.</div>
+            <div class="legend-row">🎮 <strong>DW-Proton</strong> e forks derivados são recomendados para jogos <em>gacha</em> (Genshin Impact, Zenless Zone Zero, etc.) — possuem patches específicos para anti-cheat e renderização desses títulos.</div>
+          </div>
+          <div class="modal-section-title">Instalados</div>
+          <div id="installedVersions" class="proton-list"></div>
+          <div class="modal-section-title">Disponíveis para download</div>
+          <div id="availableVersions" class="proton-list"></div>
+        </div>
+        <div id="protonProgress" class="proton-progress hidden">
+          <div class="spinner-ring" style="width:24px;height:24px;"></div>
+          <span id="progressText">Baixando...</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="successModal" class="modal-overlay hidden">
+      <div class="modal-box modal-success">
+        <div class="modal-header">
+          <div class="modal-title" id="successModalTitle">Instalação concluída</div>
+          <button id="successClose" class="btn-close-modal">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding:24px;">
+          <svg id="successIcon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#22c55e" stroke-width="2" style="margin-bottom:12px;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <div style="font-size:16px;font-weight:600;margin-bottom:4px;" id="successTitle">Pronto!</div>
+          <div style="font-size:13px;color:var(--text-secondary);" id="successMessage"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="position:fixed;bottom:8px;right:12px;display:flex;gap:6px;align-items:center;z-index:100;background:rgba(10,0,21,0.7);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:4px 8px;">
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:10px;color:var(--text-secondary);user-select:none;">
+        <input type="checkbox" id="logToggle" checked style="accent-color:#a855f7;width:11px;height:11px;margin:0;">
+        Log
+      </label>
+      <button id="openLogBtn" class="btn btn-secondary" style="font-size:9px;padding:2px 6px;line-height:1.4;" title="Abrir arquivo de log">
+        <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="progressModal" class="modal-overlay hidden">
+      <div class="modal-box modal-progress">
+        <div class="modal-body" style="padding:24px;">
+          <div class="spinner-ring" style="width:32px;height:32px;margin:0 auto 12px;"></div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px;text-align:center;" id="progressTitle">Instalando...</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-bottom:12px;text-align:center;" id="progressMessage"></div>
+          <div style="background:rgba(0,0,0,0.4);border-radius:6px;padding:8px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:11px;line-height:1.5;color:#a0a0b0;text-align:left;" id="progressLog"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="candidateModal" class="modal-overlay hidden">
+      <div class="modal-box" style="max-width:520px;">
+        <div class="modal-header">
+          <div class="modal-title">Executáveis encontrados</div>
+          <button id="candidateClose" class="btn-close-modal">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">
+            O instalador criou estes executáveis. Selecione o principal para configurar o atalho:
+          </div>
+          <div id="candidateList" style="max-height:320px;overflow-y:auto;"></div>
+          <div style="display:flex;gap:8px;margin-top:16px;justify-content:space-between;align-items:center;">
+            <button id="candidateManual" class="btn btn-secondary" style="font-size:11px;padding:5px 12px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              Procure manualmente
+            </button>
+            <div style="display:flex;gap:8px;">
+              <button id="candidateSkip" class="btn btn-secondary" style="font-size:12px;padding:6px 14px;">Pular</button>
+              <button id="candidateSelectBtn" class="btn btn-primary" style="font-size:12px;padding:6px 14px;" disabled>Selecionar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="dropzone" class="dropzone-overlay hidden">
+      <div class="dropzone-box">
+        <svg viewBox="0 0 64 64" width="48" height="48" fill="none" stroke="#a855f7" stroke-width="1.5">
+          <rect x="12" y="8" width="40" height="48" rx="6" stroke="url(#lg)" fill="rgba(168,85,247,0.03)"/>
+          <polyline points="28,8 28,24 40,24" stroke="url(#lg)"/>
+          <path d="M32 34v16M24 42l8-8 8 8" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="dropzone-text">Solte para analisar</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="state.js"></script>
+  <script src="modals.js"></script>
+  <script src="flow.js"></script>
+  <script src="proton-selector.js"></script>
+  <script src="candidates.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

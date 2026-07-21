@@ -1,0 +1,1262 @@
+{
+  "firefox": [
+    "Firefox",
+    "firefox",
+    "Navegador"
+  ],
+  "chrome": [
+    "Chrome",
+    "google-chrome-stable",
+    "Navegador"
+  ],
+  "edge": [
+    "Edge",
+    "microsoft-edge-stable",
+    "Navegador"
+  ],
+  "opera": [
+    "Opera",
+    "opera",
+    "Navegador"
+  ],
+  "brave": [
+    "Brave",
+    "brave-browser",
+    "Navegador"
+  ],
+  "vivaldi": [
+    "Vivaldi",
+    "vivaldi",
+    "Navegador"
+  ],
+  "chromium": [
+    "Chromium",
+    "chromium",
+    "Navegador"
+  ],
+  "maxthon": [
+    "Maxthon",
+    "maxthon",
+    "Navegador"
+  ],
+  "palemoon": [
+    "Pale Moon",
+    "palemoon",
+    "Navegador"
+  ],
+  "falkon": [
+    "Falkon",
+    "falkon",
+    "Navegador"
+  ],
+  "epiphany": [
+    "Epiphany",
+    "epiphany",
+    "Navegador GNOME"
+  ],
+  "konqueror": [
+    "Konqueror",
+    "konqueror",
+    "Navegador KDE"
+  ],
+  "discord": [
+    "Discord",
+    "discord",
+    "Chat para gamers"
+  ],
+  "telegram": [
+    "Telegram",
+    "telegram-desktop",
+    "Mensagens"
+  ],
+  "skype": [
+    "Skype",
+    "skypeforlinux",
+    "Videochamadas"
+  ],
+  "zoom": [
+    "Zoom",
+    "zoom",
+    "Videochamadas"
+  ],
+  "slack": [
+    "Slack",
+    "slack-desktop",
+    "Trabalho"
+  ],
+  "teams": [
+    "Microsoft Teams",
+    "teams",
+    "Trabalho"
+  ],
+  "signal": [
+    "Signal",
+    "signal-desktop",
+    "Mensagens seguras"
+  ],
+  "whatsapp": [
+    "WhatsApp",
+    "whatsapp-for-linux",
+    "Mensagens"
+  ],
+  "thunderbird": [
+    "Thunderbird",
+    "thunderbird",
+    "Email"
+  ],
+  "evolution": [
+    "Evolution",
+    "evolution",
+    "Email/Calendario"
+  ],
+  "geary": [
+    "Geary",
+    "geary",
+    "Email GNOME"
+  ],
+  "mumble": [
+    "Mumble",
+    "mumble",
+    "Voz para jogos"
+  ],
+  "vesktop": [
+    "Vesktop",
+    "vesktop",
+    "Discord customizado"
+  ],
+  "spotify": [
+    "Spotify",
+    "spotify",
+    "Streaming de musica"
+  ],
+  "vlc": [
+    "VLC",
+    "vlc",
+    "Reprodutor de midia"
+  ],
+  "mpv": [
+    "MPV",
+    "mpv",
+    "Reprodutor de midia"
+  ],
+  "celluloid": [
+    "Celluloid",
+    "celluloid",
+    "Reprodutor GNOME"
+  ],
+  "smplayer": [
+    "SMPlayer",
+    "smplayer",
+    "Reprodutor"
+  ],
+  "kodi": [
+    "Kodi",
+    "kodi",
+    "Media Center"
+  ],
+  "plex": [
+    "Plex",
+    "plex-media-server",
+    "Media Server"
+  ],
+  "jellyfin": [
+    "Jellyfin",
+    "jellyfin",
+    "Media Server"
+  ],
+  "emby": [
+    "Emby",
+    "emby-server",
+    "Media Server"
+  ],
+  "strawberry": [
+    "Strawberry",
+    "strawberry",
+    "Player musica"
+  ],
+  "rhythmbox": [
+    "Rhythmbox",
+    "rhythmbox",
+    "Player musica"
+  ],
+  "audacious": [
+    "Audacious",
+    "audacious",
+    "Player musica"
+  ],
+  "clementine": [
+    "Clementine",
+    "clementine",
+    "Player musica"
+  ],
+  "deadbeef": [
+    "DeaDBeeF",
+    "deadbeef",
+    "Player musica"
+  ],
+  "steam": [
+    "Steam",
+    "steam",
+    "Plataforma de jogos"
+  ],
+  "epic": [
+    "Epic Games",
+    "heroic-games-launcher-bin",
+    "Epic Games"
+  ],
+  "gog": [
+    "GOG Galaxy",
+    "heroic-games-launcher-bin",
+    "GOG"
+  ],
+  "lutris": [
+    "Lutris",
+    "lutris",
+    "Gerenciador de jogos"
+  ],
+  "minecraft": [
+    "Minecraft",
+    "minecraft-launcher",
+    "Jogo"
+  ],
+  "minetest": [
+    "Minetest",
+    "minetest",
+    "Jogo open source"
+  ],
+  "superTuxKart": [
+    "SuperTuxKart",
+    "supertuxkart",
+    "Jogo"
+  ],
+  "xonotic": [
+    "Xonotic",
+    "xonotic",
+    "Jogo FPS"
+  ],
+  "warzone2100": [
+    "Warzone 2100",
+    "warzone2100",
+    "Jogo RTS"
+  ],
+  "openTTD": [
+    "OpenTTD",
+    "openttd",
+    "Jogo simulacao"
+  ],
+  "openttd": [
+    "OpenTTD",
+    "openttd",
+    "Jogo simulacao"
+  ],
+  "flightgear": [
+    "FlightGear",
+    "flightgear",
+    "Simulador de voo"
+  ],
+  "neverball": [
+    "Neverball",
+    "neverball",
+    "Jogo"
+  ],
+  "libreoffice": [
+    "LibreOffice",
+    "libreoffice",
+    "Escritorio completo"
+  ],
+  "onlyoffice": [
+    "OnlyOffice",
+    "onlyoffice-desktopeditors",
+    "Escritorio"
+  ],
+  "wps": [
+    "WPS Office",
+    "wps-office",
+    "Escritorio"
+  ],
+  "softmaker": [
+    "SoftMaker Office",
+    "softmaker-freeoffice",
+    "Escritorio"
+  ],
+  "calligra": [
+    "Calligra Suite",
+    "calligra",
+    "Escritorio KDE"
+  ],
+  "notion": [
+    "Notion",
+    "notion-app",
+    "Notas"
+  ],
+  "obsidian": [
+    "Obsidian",
+    "obsidian",
+    "Notas Markdown"
+  ],
+  "ticktick": [
+    "TickTick",
+    "ticktick",
+    "Tarefas"
+  ],
+  "todoist": [
+    "Todoist",
+    "todoist",
+    "Tarefas"
+  ],
+  "evernote": [
+    "Evernote",
+    "evernote",
+    "Notas"
+  ],
+  "joplin": [
+    "Joplin",
+    "joplin",
+    "Notas"
+  ],
+  "zettlr": [
+    "Zettlr",
+    "zettlr",
+    "Editor Markdown"
+  ],
+  "marktext": [
+    "MarkText",
+    "marktext",
+    "Editor Markdown"
+  ],
+  "vscode": [
+    "VS Code",
+    "code",
+    "Editor de codigo"
+  ],
+  "vscodium": [
+    "VSCodium",
+    "vscodium",
+    "Editor de codigo"
+  ],
+  "sublime": [
+    "Sublime Text",
+    "sublime-text",
+    "Editor de texto"
+  ],
+  "gedit": [
+    "gedit",
+    "gedit",
+    "Editor GNOME"
+  ],
+  "kate": [
+    "Kate",
+    "kate",
+    "Editor KDE"
+  ],
+  "atom": [
+    "Atom",
+    "atom",
+    "Editor GitHub"
+  ],
+  "brackets": [
+    "Brackets",
+    "brackets",
+    "Editor web"
+  ],
+  "geany": [
+    "Geany",
+    "geany",
+    "Editor leve"
+  ],
+  "pluma": [
+    "Pluma",
+    "pluma",
+    "Editor MATE"
+  ],
+  "mousepad": [
+    "Mousepad",
+    "mousepad",
+    "Editor XFCE"
+  ],
+  "notepadqq": [
+    "Notepadqq",
+    "notepadqq",
+    "Alternativa Notepad++"
+  ],
+  "codeblocks": [
+    "Code::Blocks",
+    "codeblocks",
+    "IDE C/C++"
+  ],
+  "eclipse": [
+    "Eclipse",
+    "eclipse",
+    "IDE Java"
+  ],
+  "intellij": [
+    "IntelliJ IDEA",
+    "intellij-idea-community",
+    "IDE Java/Kotlin"
+  ],
+  "clion": [
+    "CLion",
+    "clion",
+    "IDE C/C++"
+  ],
+  "pycharm": [
+    "PyCharm",
+    "pycharm-community",
+    "IDE Python"
+  ],
+  "rider": [
+    "Rider",
+    "rider",
+    "IDE .NET"
+  ],
+  "goland": [
+    "GoLand",
+    "goland",
+    "IDE Go"
+  ],
+  "phpstorm": [
+    "PHPStorm",
+    "phpstorm",
+    "IDE PHP"
+  ],
+  "rubymine": [
+    "RubyMine",
+    "rubymine",
+    "IDE Ruby"
+  ],
+  "webstorm": [
+    "WebStorm",
+    "webstorm",
+    "IDE JavaScript"
+  ],
+  "datagrip": [
+    "DataGrip",
+    "datagrip",
+    "IDE Database"
+  ],
+  "gimp": [
+    "GIMP",
+    "gimp",
+    "Editor de imagens"
+  ],
+  "inkscape": [
+    "Inkscape",
+    "inkscape",
+    "Editor vetorial"
+  ],
+  "blender": [
+    "Blender",
+    "blender",
+    "3D"
+  ],
+  "krita": [
+    "Krita",
+    "krita",
+    "Pintura digital"
+  ],
+  "scribus": [
+    "Scribus",
+    "scribus",
+    "Editoracao"
+  ],
+  "darktable": [
+    "Darktable",
+    "darktable",
+    "Fotografia RAW"
+  ],
+  "rawtherapee": [
+    "RawTherapee",
+    "rawtherapee",
+    "Fotografia RAW"
+  ],
+  "digikam": [
+    "DigiKam",
+    "digikam",
+    "Gerenciador fotos"
+  ],
+  "gwenview": [
+    "Gwenview",
+    "gwenview",
+    "Visualizador KDE"
+  ],
+  "eog": [
+    "Eye of GNOME",
+    "eog",
+    "Visualizador GNOME"
+  ],
+  "nomacs": [
+    "Nomacs",
+    "nomacs",
+    "Visualizador"
+  ],
+  "shotwell": [
+    "Shotwell",
+    "shotwell",
+    "Gerenciador fotos"
+  ],
+  "kolourpaint": [
+    "KolourPaint",
+    "kolourpaint",
+    "Pintura KDE"
+  ],
+  "obs": [
+    "OBS Studio",
+    "obs-studio",
+    "Gravacao/Streaming"
+  ],
+  "kdenlive": [
+    "Kdenlive",
+    "kdenlive",
+    "Editor de video"
+  ],
+  "ffmpeg": [
+    "FFmpeg",
+    "ffmpeg",
+    "Conversao de midia"
+  ],
+  "handbrake": [
+    "HandBrake",
+    "handbrake",
+    "Conversor video"
+  ],
+  "avidemux": [
+    "Avidemux",
+    "avidemux",
+    "Editor de video"
+  ],
+  "pitivi": [
+    "PiTiVi",
+    "pitivi",
+    "Editor de video GNOME"
+  ],
+  "openshot": [
+    "OpenShot",
+    "openshot",
+    "Editor de video"
+  ],
+  "shotcut": [
+    "Shotcut",
+    "shotcut",
+    "Editor de video"
+  ],
+  "kazam": [
+    "Kazam",
+    "kazam",
+    "Gravador de tela"
+  ],
+  "peek": [
+    "Peek",
+    "peek",
+    "GIF screencast"
+  ],
+  "vokoscreen": [
+    "VokoScreen",
+    "vokoscreen",
+    "Gravador de tela"
+  ],
+  "simpleScreenRecorder": [
+    "SimpleScreenRecorder",
+    "simplescreenrecorder",
+    "Gravador"
+  ],
+  "miro": [
+    "Miro",
+    "miro",
+    "Video"
+  ],
+  "daVinci": [
+    "DaVinci Resolve",
+    "davinci-resolve",
+    "Editor profissional"
+  ],
+  "davinci": [
+    "DaVinci Resolve",
+    "davinci-resolve",
+    "Editor profissional"
+  ],
+  "audacity": [
+    "Audacity",
+    "audacity",
+    "Editor de audio"
+  ],
+  "filezilla": [
+    "FileZilla",
+    "filezilla",
+    "FTP"
+  ],
+  "cyberduck": [
+    "Cyberduck",
+    "cyberduck",
+    "FTP/S3"
+  ],
+  "nautilus": [
+    "Nautilus",
+    "nautilus",
+    "Gerenciador GNOME"
+  ],
+  "dolphin": [
+    "Dolphin",
+    "dolphin",
+    "Gerenciador KDE"
+  ],
+  "thunar": [
+    "Thunar",
+    "thunar",
+    "Gerenciador XFCE"
+  ],
+  "nemo": [
+    "Nemo",
+    "nemo",
+    "Gerenciador Cinnamon"
+  ],
+  "pcmanfm": [
+    "PCManFM",
+    "pcmanfm",
+    "Gerenciador LXDE"
+  ],
+  "qbittorrent": [
+    "qBittorrent",
+    "qbittorrent",
+    "Torrent"
+  ],
+  "deluge": [
+    "Deluge",
+    "deluge",
+    "Torrent"
+  ],
+  "transmission": [
+    "Transmission",
+    "transmission-gtk",
+    "Torrent"
+  ],
+  "ktorrent": [
+    "KTorrent",
+    "ktorrent",
+    "Torrent KDE"
+  ],
+  "amule": [
+    "aMule",
+    "amule",
+    "eDonkey"
+  ],
+  "git": [
+    "Git",
+    "git",
+    "Controle de versao"
+  ],
+  "docker": [
+    "Docker",
+    "docker",
+    "Containerizacao"
+  ],
+  "postman": [
+    "Postman",
+    "postman",
+    "API Testing"
+  ],
+  "insomnia": [
+    "Insomnia",
+    "insomnia",
+    "API Testing"
+  ],
+  "curl": [
+    "cURL",
+    "curl",
+    "HTTP CLI"
+  ],
+  "wget": [
+    "Wget",
+    "wget",
+    "Download CLI"
+  ],
+  "ssh": [
+    "OpenSSH",
+    "openssh",
+    "SSH"
+  ],
+  "putty": [
+    "PuTTY",
+    "putty",
+    "SSH/Telnet"
+  ],
+  "terminator": [
+    "Terminator",
+    "terminator",
+    "Terminal"
+  ],
+  "guake": [
+    "Guake",
+    "guake",
+    "Terminal dropdown"
+  ],
+  "tilix": [
+    "Tilix",
+    "tilix",
+    "Terminal tiling"
+  ],
+  "kitty": [
+    "Kitty",
+    "kitty",
+    "Terminal GPU"
+  ],
+  "alacritty": [
+    "Alacritty",
+    "alacritty",
+    "Terminal GPU"
+  ],
+  "tmux": [
+    "Tmux",
+    "tmux",
+    "Terminal multiplexador"
+  ],
+  "screen": [
+    "Screen",
+    "screen",
+    "Terminal multiplexador"
+  ],
+  "ansible": [
+    "Ansible",
+    "ansible",
+    "Automacao"
+  ],
+  "vagrant": [
+    "Vagrant",
+    "vagrant",
+    "Dev environments"
+  ],
+  "gradle": [
+    "Gradle",
+    "gradle",
+    "Build tool"
+  ],
+  "maven": [
+    "Maven",
+    "maven",
+    "Build tool"
+  ],
+  "cmake": [
+    "CMake",
+    "cmake",
+    "Build system"
+  ],
+  "make": [
+    "Make",
+    "make",
+    "Build tool"
+  ],
+  "gcc": [
+    "GCC",
+    "gcc",
+    "Compilador"
+  ],
+  "clang": [
+    "Clang",
+    "clang",
+    "Compilador"
+  ],
+  "rustc": [
+    "Rust",
+    "rustc",
+    "Linguagem"
+  ],
+  "go": [
+    "Go",
+    "go",
+    "Linguagem"
+  ],
+  "python": [
+    "Python",
+    "python3",
+    "Linguagem"
+  ],
+  "nodejs": [
+    "Node.js",
+    "nodejs",
+    "Runtime JS"
+  ],
+  "npm": [
+    "NPM",
+    "npm",
+    "Gerenciador pacotes JS"
+  ],
+  "yarn": [
+    "Yarn",
+    "yarn",
+    "Gerenciador pacotes JS"
+  ],
+  "mysql": [
+    "MySQL",
+    "mysql",
+    "Banco de dados"
+  ],
+  "mariadb": [
+    "MariaDB",
+    "mariadb",
+    "Banco de dados"
+  ],
+  "postgresql": [
+    "PostgreSQL",
+    "postgresql",
+    "Banco de dados"
+  ],
+  "sqlite": [
+    "SQLite",
+    "sqlite3",
+    "Banco de dados"
+  ],
+  "mongodb": [
+    "MongoDB",
+    "mongodb",
+    "Banco NoSQL"
+  ],
+  "redis": [
+    "Redis",
+    "redis",
+    "Cache"
+  ],
+  "apache": [
+    "Apache",
+    "apache2",
+    "Servidor web"
+  ],
+  "nginx": [
+    "Nginx",
+    "nginx",
+    "Servidor web"
+  ],
+  "lighttpd": [
+    "Lighttpd",
+    "lighttpd",
+    "Servidor web"
+  ],
+  "virtualbox": [
+    "VirtualBox",
+    "virtualbox",
+    "Virtualizacao"
+  ],
+  "qemu": [
+    "QEMU",
+    "qemu",
+    "Virtualizacao"
+  ],
+  "gnome-boxes": [
+    "GNOME Boxes",
+    "gnome-boxes",
+    "Virtualizacao"
+  ],
+  "virt-manager": [
+    "Virt Manager",
+    "virt-manager",
+    "Virtualizacao"
+  ],
+  "keepassxc": [
+    "KeePassXC",
+    "keepassxc",
+    "Gerenciador senhas"
+  ],
+  "bitwarden": [
+    "Bitwarden",
+    "bitwarden",
+    "Senhas"
+  ],
+  "veracrypt": [
+    "VeraCrypt",
+    "veracrypt",
+    "Criptografia"
+  ],
+  "gnupg": [
+    "GPG",
+    "gnupg",
+    "Criptografia"
+  ],
+  "openssl": [
+    "OpenSSL",
+    "openssl",
+    "SSL/TLS"
+  ],
+  "timeshift": [
+    "Timeshift",
+    "timeshift",
+    "Backup sistema"
+  ],
+  "backintime": [
+    "Back In Time",
+    "backintime",
+    "Backup"
+  ],
+  "grsync": [
+    "Grsync",
+    "grsync",
+    "Rsync GUI"
+  ],
+  "stacer": [
+    "Stacer",
+    "stacer",
+    "Otimizador"
+  ],
+  "bleachbit": [
+    "BleachBit",
+    "bleachbit",
+    "Limpeza"
+  ],
+  "gparted": [
+    "GParted",
+    "gparted",
+    "Gerenciador de discos"
+  ],
+  "gnome-disks": [
+    "Disks",
+    "gnome-disks",
+    "Gerenciador de discos"
+  ],
+  "baobab": [
+    "Baobab",
+    "baobab",
+    "Uso de disco"
+  ],
+  "filelight": [
+    "Filelight",
+    "filelight",
+    "Uso de disco"
+  ],
+  "htop": [
+    "Htop",
+    "htop",
+    "Monitor de processos"
+  ],
+  "btop": [
+    "Btop",
+    "btop",
+    "Monitor de recursos"
+  ],
+  "nvtop": [
+    "NVTOP",
+    "nvtop",
+    "Monitor GPU NVIDIA"
+  ],
+  "wireshark": [
+    "Wireshark",
+    "wireshark",
+    "Sniffer de rede"
+  ],
+  "nmap": [
+    "Nmap",
+    "nmap",
+    "Scanner de rede"
+  ],
+  "7zip": [
+    "7-Zip",
+    "p7zip-full",
+    "Compactador"
+  ],
+  "peazip": [
+    "PeaZip",
+    "peazip",
+    "Compactador"
+  ],
+  "ark": [
+    "Ark",
+    "ark",
+    "Compactador KDE"
+  ],
+  "file-roller": [
+    "File Roller",
+    "file-roller",
+    "Compactador GNOME"
+  ],
+  "xarchiver": [
+    "Xarchiver",
+    "xarchiver",
+    "Compactador"
+  ],
+  "engrampa": [
+    "Engrampa",
+    "engrampa",
+    "Compactador MATE"
+  ],
+  "evince": [
+    "Evince",
+    "evince",
+    "Leitor PDF GNOME"
+  ],
+  "okular": [
+    "Okular",
+    "okular",
+    "Leitor PDF KDE"
+  ],
+  "zathura": [
+    "Zathura",
+    "zathura",
+    "Leitor PDF minimalista"
+  ],
+  "foxit": [
+    "Foxit",
+    "foxitreader",
+    "Leitor PDF"
+  ],
+  "anydesk": [
+    "AnyDesk",
+    "anydesk",
+    "Acesso remoto"
+  ],
+  "teamviewer": [
+    "TeamViewer",
+    "teamviewer",
+    "Acesso remoto"
+  ],
+  "parsec": [
+    "Parsec",
+    "parsec",
+    "Jogar remotamente"
+  ],
+  "sunshine": [
+    "Sunshine",
+    "sunshine",
+    "Game streaming"
+  ],
+  "moonlight": [
+    "Moonlight",
+    "moonlight",
+    "Game streaming"
+  ],
+  "remmina": [
+    "Remmina",
+    "remmina",
+    "Escritorio remoto"
+  ],
+  "vinagre": [
+    "Vinagre",
+    "vinagre",
+    "Escritorio remoto"
+  ],
+  "krdc": [
+    "KRDC",
+    "krdc",
+    "Escritorio remoto KDE"
+  ],
+  "nomachine": [
+    "NoMachine",
+    "nomachine",
+    "Acesso remoto"
+  ],
+  "x2go": [
+    "X2Go",
+    "x2goclient",
+    "Acesso remoto"
+  ],
+  "sshfs": [
+    "SSHFS",
+    "sshfs",
+    "Montar remote"
+  ],
+  "dropbox": [
+    "Dropbox",
+    "dropbox",
+    "Cloud storage"
+  ],
+  "google-drive": [
+    "Google Drive",
+    "google-drive-ocamlfuse",
+    "Cloud storage"
+  ],
+  "mega": [
+    "MEGA",
+    "megasync",
+    "Cloud storage"
+  ],
+  "onedrive": [
+    "OneDrive",
+    "onedrive",
+    "Cloud storage"
+  ],
+  "rclone": [
+    "Rclone",
+    "rclone",
+    "Cloud CLI"
+  ],
+  "dosbox": [
+    "DOSBox",
+    "dosbox",
+    "Emulador DOS"
+  ],
+  "dosemu": [
+    "DOSEMU",
+    "dosemu",
+    "Emulador DOS"
+  ],
+  "scummvm": [
+    "ScummVM",
+    "scummvm",
+    "Emulador jogos antigos"
+  ],
+  "retroarch": [
+    "RetroArch",
+    "retroarch",
+    "Emulador multi-sistema"
+  ],
+  "pcsx2": [
+    "PCSX2",
+    "pcsx2",
+    "Emulador PlayStation 2"
+  ],
+  "ppsspp": [
+    "PPSSPP",
+    "ppsspp",
+    "Emulador PSP"
+  ],
+  "rpcs3": [
+    "RPCS3",
+    "rpcs3",
+    "Emulador PS3"
+  ],
+  "citra": [
+    "Citra",
+    "citra",
+    "Emulador 3DS"
+  ],
+  "yuzu": [
+    "Yuzu",
+    "yuzu",
+    "Emulador Switch"
+  ],
+  "ryujinx": [
+    "Ryujinx",
+    "ryujinx",
+    "Emulador Switch"
+  ],
+  "xenia": [
+    "Xenia",
+    "xenia",
+    "Emulador Xbox"
+  ],
+  "wine": [
+    "Wine",
+    "wine",
+    "Executar Windows"
+  ],
+  "winetricks": [
+    "Winetricks",
+    "winetricks",
+    "Auxiliar Wine"
+  ],
+  "playonlinux": [
+    "PlayOnLinux",
+    "playonlinux",
+    "Jogos Windows"
+  ],
+  "bottles": [
+    "Bottles",
+    "bottles",
+    "Ambientes Windows"
+  ],
+  "crossover": [
+    "CrossOver",
+    "crossover",
+    "Windows compatibility"
+  ],
+  "spectacle": [
+    "Spectacle",
+    "spectacle",
+    "Screenshot KDE"
+  ],
+  "gnome-screenshot": [
+    "GNOME Screenshot",
+    "gnome-screenshot",
+    "Screenshot GNOME"
+  ],
+  "flameshot": [
+    "Flameshot",
+    "flameshot",
+    "Screenshot"
+  ],
+  "shutter": [
+    "Shutter",
+    "shutter",
+    "Screenshot"
+  ],
+  "krunner": [
+    "KRunner",
+    "krunner",
+    "Lancador KDE"
+  ],
+  "ulauncher": [
+    "ULauncher",
+    "ulauncher",
+    "Lancador"
+  ],
+  "albert": [
+    "Albert",
+    "albert",
+    "Lancador"
+  ],
+  "synapse": [
+    "Synapse",
+    "synapse",
+    "Lancador"
+  ],
+  "kupfer": [
+    "Kupfer",
+    "kupfer",
+    "Lancador"
+  ],
+  "wofi": [
+    "Wofi",
+    "wofi",
+    "Lancador Wayland"
+  ],
+  "dmenu": [
+    "dmenu",
+    "dmenu",
+    "Lancador"
+  ],
+  "rofi": [
+    "Rofi",
+    "rofi",
+    "Lancador/App launcher"
+  ],
+  "kvantum": [
+    "Kvantum",
+    "kvantum",
+    "Tema Qt"
+  ],
+  "materia": [
+    "Materia",
+    "materia-gtk-theme",
+    "Tema GTK"
+  ],
+  "arc": [
+    "Arc Theme",
+    "arc-theme",
+    "Tema GTK"
+  ],
+  "oomox": [
+    "Oomox",
+    "oomox",
+    "Criador de temas"
+  ],
+  "lxappearance": [
+    "LXAppearance",
+    "lxappearance",
+    "Aparencia LXDE"
+  ],
+  "fonts": [
+    "Font Manager",
+    "font-manager",
+    "Gerenciador de fontes"
+  ],
+  "clipit": [
+    "ClipIt",
+    "clipit",
+    "Clipboard"
+  ],
+  "diodon": [
+    "Diodon",
+    "diodon",
+    "Clipboard"
+  ],
+  "klipper": [
+    "Klipper",
+    "klipper",
+    "Clipboard KDE"
+  ]
+}
