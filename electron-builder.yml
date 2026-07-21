@@ -50,7 +50,35 @@ linux:
     - application/x-dosexec
     - application/x-msdownload
     - application/x-msi
-  afterInstall: app/_resources/compact-flow/scripts/install-integration.sh --deb
+  afterInstall: scripts/compactflow-postinst.sh
+flatpak:
+  runtime: org.freedesktop.Platform
+  runtimeVersion: "24.08"
+  sdk: org.freedesktop.Sdk
+  base: org.electronjs.Electron2.BaseApp
+  baseVersion: "24.08"
+  finishArgs:
+    - --socket=x11
+    - --socket=wayland
+    - --share=ipc
+    - --share=network
+    - --socket=pulseaudio
+    - --filesystem=host
+    - --env=COMPACTFLOW_IN_FLATPAK=1
+    - --talk-name=org.freedesktop.Flatpak
+snap:
+  plugs:
+    - desktop
+    - desktop-legacy
+    - home
+    - network
+    - opengl
+    - wayland
+    - x11
+    - pulseaudio
+    - removable-media
+  environment:
+    COMPACTFLOW_IN_SNAP: "1"
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
