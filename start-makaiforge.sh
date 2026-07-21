@@ -22,7 +22,14 @@ case "$opt" in
     echo "Instalando CompactFlow..."
     node scripts/install-compactflow.cjs
     echo ""
-    echo "Use a opção 1 para abrir o Makai Forge com CompactFlow."
+    echo "Deseja instalar a integração com o gerenciador de arquivos?"
+    echo "Isso permite: clique direito em .exe → Abrir com CompactFlow"
+    read -p "Instalar? (s/N): " answer
+    if [ "$answer" = "s" ] || [ "$answer" = "S" ]; then
+      bash app/_resources/compact-flow/scripts/install-integration.sh --dev
+    fi
+    echo ""
+    echo "Use a opção 1 para abrir o Makai Forger com CompactFlow."
     ;;
   *)
     echo "Opção inválida"

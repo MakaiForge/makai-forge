@@ -93,11 +93,8 @@ copyDir(
   path.join(DEST, "renderer")
 );
 
-// --- Scripts ---
-copyDir(
-  path.join(COMPACTFLOW_SRC, "scripts"),
-  path.join(DEST, "scripts")
-);
+// --- Scripts (pula: versões customizadas já estão no Makai Forger) ---
+log(CIANO + "◆", "scripts/ preservado (customizado para Makai Forger)");
 
 // --- Assets ---
 copyDir(
