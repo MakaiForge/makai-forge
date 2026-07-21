@@ -19,15 +19,18 @@ python3 -c "import game_launcher.rpc"  # ✅ OK
 
 ---
 
-### 🔴 2. Display Wayland — Erros de Color Management — ✅ COSMÉTICO (não corrigir)
+### 🔴 2. Display Wayland — Erros de Color Management — ✅ CORRIGIDO
 
-**Causa:** Compositor Wayland não implementa `wp_color_manager` completamente. Chromium loga erros no console mas não afeta o funcionamento.
+**Causa:** Chromium 141+ ativou `WaylandWpColorManagerV1` (protocolo `wp_color_management_v1` para HDR). Compositor não implementa o protocolo completamente → Chromium loga erros + texto borrado.
 
-**Tentativa de correção:**
-- `--ozone-platform-hint=x11` → não surtiu efeito (Electron 39 ainda carrega Wayland)
-- `--ozone-platform=x11` → **quebrou o app** (GPU process crasha com segfault)
+**Correção (1 arquivo alterado):**
+- `src/main/index.ts:26` — `--ozone-platform-hint=x11` → `--disable-features=WaylandWpColorManagerV1`
 
-**Decisão:** Não corrigir. Erros são puramente cosméticos. App funciona normalmente.
+**Por que funciona:**
+- Bug do Chromium confirmado: [issue 477318785](https://issues.chromium.org/issues/477318785)
+- Desabilita o gerenciamento de cor do Wayland (não necessário para SDR)
+- Elimina os erros de console E texto borrado/contraste ruim
+- Mantém Wayland nativo (sem X11) → GPU process não crasha
 
 ---
 
@@ -65,7 +68,7 @@ python3 -c "import game_launcher.rpc"  # ✅ OK
 | Erro | Tipo | Status | Arquivos alterados |
 |------|------|--------|-------------------|
 | ModuleNotFoundError: game_launcher | 🔴 Runtime | ✅ Corrigido | server.py, symlink criado |
-| Wayland color management | 🔴 Console | ✅ Corrigido | index.ts |
+| Wayland color management (WaylandWpColorManagerV1) | 🔴 Console + texto borrado | ✅ Corrigido | index.ts |
 | Vite dual imports (15/16) | 🟡 Warning | ✅ Corrigido | 9 arquivos |
 | Vite prefix-setup circular dep | 🟡 Warning | ⏸️ Inevitável | 0 |
 
