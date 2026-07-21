@@ -119,10 +119,10 @@ copyFile(
   path.join(DEST, "main", "preload.js")
 );
 
-// --- data.js (config paths) ---
+// --- data.js (config paths) — vai pra raiz do compact-flow
 copyFile(
   path.join(COMPACTFLOW_SRC, "data.js"),
-  path.join(DEST, "main", "data.js")
+  path.join(DEST, "data.js")
 );
 
 // --- extract_icon.py ---
@@ -130,6 +130,10 @@ copyFile(
   path.join(COMPACTFLOW_SRC, "extract_icon.py"),
   path.join(DEST, "main", "extract_icon.py")
 );
+
+// --- package.json (força CommonJS, pois o Makai Forger usa "type": "module") ---
+fs.writeFileSync(path.join(DEST, "package.json"), '{"type": "commonjs"}\n');
+log(VERDE + "✓", "package.json (type: commonjs)");
 
 // --- Flag ---
 fs.writeFileSync(path.join(DEST, ".compactflow-installed"), 

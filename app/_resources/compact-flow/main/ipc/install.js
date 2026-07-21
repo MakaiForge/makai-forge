@@ -1,4 +1,4 @@
-const { ipcMain, app, BrowserWindow } = require('electron');
+const { ipcMain, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -6,7 +6,7 @@ const { spawn, execFileSync } = require('child_process');
 
 function bridgePath(...segments) {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'app', '_resources', 'compact-flow', 'bridge', ...segments);
+    return path.resolve(app.getAppPath(), '../..', 'bridge', ...segments);
   }
   return path.join(__dirname, '..', '..', 'bridge', ...segments);
 }
@@ -58,16 +58,8 @@ ipcMain.handle('game-install', async (event, opts) => {
   });
 });
 
-function findMainWindow() {
-  return BrowserWindow.getAllWindows().find(w => {
-    try { return !w.isDestroyed() && w.webContents && w.webContents.getURL().includes('renderer/index.html'); }
-    catch { return false; }
-  });
-}
-
 ipcMain.handle('close-app', async () => {
-  const win = BrowserWindow.getFocusedWindow();
-  if (win && !win.isDestroyed()) win.close();
+  app.quit();
 });
 
 ipcMain.handle('open-proton-forger', async (_, gameData) => {
@@ -94,11 +86,21 @@ ipcMain.handle('open-proton-forger', async (_, gameData) => {
     console.error('Failed to write refresh flag:', e.message);
   }
 
-  const mainWin = findMainWindow();
-  if (mainWin && !mainWin.isDestroyed()) {
-    mainWin.focus();
+  const pfCandidates = [
+    path.join(os.homedir(), 'Documentos', 'Makai_forge'),
+    '/opt/makai-forger',
+  ];
+  let pfDir = null;
+  for (const c of pfCandidates) {
+    const ebin = path.join(c, 'node_modules', '.bin', 'electron');
+    if (fs.existsSync(ebin)) { pfDir = c; break; }
   }
-
-  const cfWin = BrowserWindow.getFocusedWindow();
-  if (cfWin && !cfWin.isDestroyed()) cfWin.close();
+  if (pfDir) {
+    spawn(path.join(pfDir, 'node_modules', '.bin', 'electron'), [pfDir, '--no-sandbox', '--disable-gpu'], {
+      cwd: pfDir,
+      stdio: 'ignore',
+      detached: true,
+    }).unref();
+  }
+  app.quit();
 });
