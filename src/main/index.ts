@@ -23,7 +23,7 @@ if (!gotTheLock) app.quit();
 
 if (process.platform === "linux") {
   app.commandLine.appendSwitch("--no-sandbox");
-  app.commandLine.appendSwitch("--ozone-platform", "x11");
+  app.commandLine.appendSwitch("--ozone-platform-hint", "x11");
 }
 
 app.commandLine.appendSwitch("--enable-unsafe-swiftshader");

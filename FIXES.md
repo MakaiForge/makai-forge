@@ -19,14 +19,15 @@ python3 -c "import game_launcher.rpc"  # ✅ OK
 
 ---
 
-### 🔴 2. Display Wayland — Erros de Color Management — ✅ CORRIGIDO
+### 🔴 2. Display Wayland — Erros de Color Management — ✅ COSMÉTICO (não corrigir)
 
-**Causa:** Compositor Wayland não implementa `wp_color_manager` completamente.
+**Causa:** Compositor Wayland não implementa `wp_color_manager` completamente. Chromium loga erros no console mas não afeta o funcionamento.
 
-**Correção (1 arquivo alterado):**
-- `src/main/index.ts:26` — `--ozone-platform-hint=x11` → `--ozone-platform=x11`
+**Tentativa de correção:**
+- `--ozone-platform-hint=x11` → não surtiu efeito (Electron 39 ainda carrega Wayland)
+- `--ozone-platform=x11` → **quebrou o app** (GPU process crasha com segfault)
 
-**Efeito:** Electron 39 força X11 nativamente. `--ozone-platform-hint` é só dica, não impedia Wayland de carregar.
+**Decisão:** Não corrigir. Erros são puramente cosméticos. App funciona normalmente.
 
 ---
 
