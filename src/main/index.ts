@@ -23,7 +23,8 @@ if (!gotTheLock) app.quit();
 
 if (process.platform === "linux") {
   app.commandLine.appendSwitch("--no-sandbox");
-  app.commandLine.appendSwitch("--disable-features", "WaylandWpColorManagerV1");
+  app.commandLine.appendSwitch("--ozone-platform", "x11");
+  app.commandLine.appendSwitch("--disable-accelerated-video-decode");
 }
 
 app.commandLine.appendSwitch("--enable-unsafe-swiftshader");

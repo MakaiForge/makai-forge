@@ -24,13 +24,21 @@ python3 -c "import game_launcher.rpc"  # ✅ OK
 **Causa:** Chromium 141+ ativou `WaylandWpColorManagerV1` (protocolo `wp_color_management_v1` para HDR). Compositor não implementa o protocolo completamente → Chromium loga erros + texto borrado.
 
 **Correção (1 arquivo alterado):**
-- `src/main/index.ts:26` — `--ozone-platform-hint=x11` → `--disable-features=WaylandWpColorManagerV1`
+- `src/main/index.ts:26` — combinação de 3 flags:
+  - `--ozone-platform=x11` → força X11/XWayland (compatibilidade)
+  - `--disable-accelerated-video-decode` → previne GPU crash `exit_code=139`
+  - (já tinha `--no-sandbox`)
 
-**Por que funciona:**
-- Bug do Chromium confirmado: [issue 477318785](https://issues.chromium.org/issues/477318785)
-- Desabilita o gerenciamento de cor do Wayland (não necessário para SDR)
-- Elimina os erros de console E texto borrado/contraste ruim
-- Mantém Wayland nativo (sem X11) → GPU process não crasha
+**Histórico:**
+- `--ozone-platform-hint=x11` → não impedia Wayland de carregar
+- `--ozone-platform=x11` sozinho → GPU crash `exit_code=139` (SIGSEGV)
+- `--disable-features=WaylandWpColorManagerV1` → funciona, mas app fica no Wayland
+
+**Solução final:** `--ozone-platform=x11` + `--disable-accelerated-video-decode`
+- X11/XWayland forçado (compatibilidade máxima)
+- GPU process não crasha (aceleração de vídeo desabilitada)
+- Zero Wayland errors (nem carrega o backend Wayland)
+- Confirmado em: [VS Code #204798](https://github.com/microsoft/vscode/issues/204798), [Cypress #30527](https://github.com/cypress-io/cypress/discussions/30527)
 
 ---
 
@@ -68,7 +76,7 @@ python3 -c "import game_launcher.rpc"  # ✅ OK
 | Erro | Tipo | Status | Arquivos alterados |
 |------|------|--------|-------------------|
 | ModuleNotFoundError: game_launcher | 🔴 Runtime | ✅ Corrigido | server.py, symlink criado |
-| Wayland color management (WaylandWpColorManagerV1) | 🔴 Console + texto borrado | ✅ Corrigido | index.ts |
+| Wayland color management + GPU crash exit_code=139 | 🔴 Console + app quebrado | ✅ Corrigido | index.ts |
 | Vite dual imports (15/16) | 🟡 Warning | ✅ Corrigido | 9 arquivos |
 | Vite prefix-setup circular dep | 🟡 Warning | ⏸️ Inevitável | 0 |
 
