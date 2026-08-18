@@ -119,6 +119,7 @@ Relatório completo do mapeamento de Downloads — fluxo inteiro de download at�
   - [`auditoria-gamebar-wine.md`](Relatorio-Downloads/auditoria-gamebar-wine.md) — Auditoria GameBar e funções Wine/Proton
   - [`auditoria-notifications.md`](Relatorio-Downloads/auditoria-notifications.md) — Auditoria do sistema de notificações
   - [`auditoria-games-completa.md`](Relatorio-Downloads/auditoria-games-completa.md) — Auditoria completa do módulo Games
+  - [`auditoria-proton-tools.md`](Relatorio-Downloads/auditoria-proton-tools.md) — Auditoria do ProtonTools (download, extração, armazenamento)
 
 Página de downloads — gerenciamento de torrents, fila de instalação.
 

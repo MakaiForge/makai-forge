@@ -34,6 +34,7 @@
 | [`auditoria-gamebar-wine.md`](Relatorio-Downloads/auditoria-gamebar-wine.md) | **Auditoria GameBar & Wine** | Mapeamento completo GameBar, WineToolRunner, ferramentas Wine |
 | [`auditoria-notifications.md`](Relatorio-Downloads/auditoria-notifications.md) | **Auditoria Notifications** | Sistema completo de notificações (API + Local) |
 | [`auditoria-games-completa.md`](Relatorio-Downloads/auditoria-games-completa.md) | **Auditoria Games Completa** | Detecção, instalação, execução, GameBar, process watcher, ~60 arquivos |
+| [`auditoria-proton-tools.md`](Relatorio-Downloads/auditoria-proton-tools.md) | **Auditoria ProtonTools** | Download, extração, armazenamento de Protons, 17 bugs |
 
 #### O que o Relatório de Downloads cobre:
 - ✅ Início do download (startGameDownload)
@@ -59,6 +60,7 @@
 - ✅ Auditoria do GameBar e ferramentas Wine
 - ✅ Auditoria do sistema de Notificações
 - ✅ Auditoria completa do módulo Games (detecção, instalação, play, GameBar)
+- ✅ Auditoria do ProtonTools (download, extração, armazenamento)
 
 ---
 
