@@ -16,14 +16,15 @@ interface Props {
 }
 
 export function LocalGridCard({ game, isSelected, isLaunching, hasError, onPlay, onSelect, onContextMenu, onImageError }: Props) {
+  const coverUrl = localGameCoverUrl(game);
   return (
     <div
       className={`games__steam-card ${isSelected ? "games__steam-card--selected" : ""} ${isLaunching ? "games__steam-card--launching" : ""}`}
       onClick={onSelect} onDoubleClick={onPlay} onContextMenu={onContextMenu}
     >
       <div className="games__steam-card-img-wrap">
-        {localGameCoverUrl(game) && !hasError ? (
-          <img src={localGameCoverUrl(game)!} alt={game.title} className="games__steam-card-img" loading="lazy" onError={onImageError} />
+        {coverUrl && !hasError ? (
+          <img src={coverUrl} alt={game.title} className="games__steam-card-img" loading="lazy" onError={onImageError} />
         ) : (
           <div className="games__steam-card-placeholder">{game.title.charAt(0).toUpperCase()}</div>
         )}

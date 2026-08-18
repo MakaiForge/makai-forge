@@ -6,7 +6,7 @@ import { DownloadsContent } from "./components/downloads-content";
 import { DownloadsModals } from "./components/downloads-modals";
 import { RemoveGameModal } from "./components/remove-game-modal";
 import { useDownload } from "@provision/ForgePipeline/ui/use-download";
-import { useInstallFlow } from "@provision/proton_recommended/ui/use-install-flow";
+import { useInstallFlow } from "@provision/ForgePipeline/ui/install-flow/use-install-flow";
 import type { GameShop, SeedingStatus } from "@types";
 
 export default function Downloads() {
@@ -30,8 +30,6 @@ export default function Downloads() {
     setShowRecommendationModal,
     showCandidateModal,
     setShowCandidateModal,
-    showScanningModal,
-    setShowScanningModal,
     showCopyingModal,
     setShowCopyingModal,
     showInstallSuccessModal,
@@ -132,7 +130,6 @@ export default function Downloads() {
         gameTitle={pendingGameTitleRef.current}
         installProgress={installProgress}
         onCloseInstallProgress={() => setInstallProgress(null)}
-        showScanningModal={showScanningModal}
         showCopyingModal={showCopyingModal}
         showCandidateModal={showCandidateModal}
         candidates={candidates}
@@ -178,9 +175,8 @@ export default function Downloads() {
       {activeSubTab === "qbittorrent" && (
         <div className="downloads__qbittorrent">
           <webview
-            src="http://localhost:8080"
+            src="http://localhost:8081"
             style={{ width: "100%", height: "100%" }}
-            webpreferences="disablewebsecurity"
           />
         </div>
       )}

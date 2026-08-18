@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { DatabaseIcon, FileZipIcon } from "@primer/octicons-react";
 import { formatBytes } from "@shared";
+import { CompatibilityBadge } from "@games-ui/components/compatibility-badge/compatibility-badge";
+import { getSteamDetailsCache, setSteamDetailsCache } from "./GameCompactRow";
 
 interface LargeCardProps {
   thumbnail: string | null;
@@ -26,9 +28,19 @@ export function GameLargeCard({
 
   useEffect(() => {
     if (!isSteam || !appId) return;
+    const cached = getSteamDetailsCache(appId);
+    if (cached) {
+      setDetails(cached);
+      return;
+    }
     let cancelled = false;
     window.electron.getGameShopDetails(appId, "steam", "en")
-      .then((data: any) => { if (!cancelled && data) setDetails(data); })
+      .then((data: any) => {
+        if (!cancelled && data) {
+          setSteamDetailsCache(appId, data);
+          setDetails(data);
+        }
+      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [isSteam, appId]);
@@ -42,6 +54,7 @@ export function GameLargeCard({
   const platformStr = [platforms.windows && "Win", platforms.mac && "Mac", platforms.linux && "Linux"].filter(Boolean).join("/");
   const hours = playTimeMs ? (playTimeMs / 3600000).toFixed(1) : null;
   const imgSrc = portraitUrl || thumbnail;
+  const pcRequirements = details?.pc_requirements;
 
   return (
     <div
@@ -68,10 +81,21 @@ export function GameLargeCard({
             <span className="game-large-card__size"><DatabaseIcon size={14} />{formatBytes(installedSize)}</span>
           )}
           {hours && <span className="game-large-card__hours">{hours}h jogadas</span>}
+          {isSteam && pcRequirements?.minimum && (
+            <CompatibilityBadge
+              minimum={pcRequirements.minimum}
+              recommended={pcRequirements.recommended}
+              compact
+            />
+          )}
         </div>
         {isSteam && developer && <div className="game-large-card__developer">{developer}</div>}
         {isSteam && description && <p className="game-large-card__desc">{description}</p>}
-        <button className="game-large-card__play" onClick={onPlay}>▶ Jogar</button>
+        <button
+          className="game-large-card__play"
+          onClick={onPlay}
+          title="Aba Games: inicializa apenas o jogo (SEM mods). Para jogar com mods habilitados, use o botão ▶ Iniciar Jogo do Mod Manager."
+        >▶ Jogar</button>
       </div>
     </div>
   );

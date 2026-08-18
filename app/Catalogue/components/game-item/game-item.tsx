@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next";
 import { CatalogueSearchResult } from "@types";
 import { QuestionIcon, PlusIcon, CheckIcon } from "@primer/octicons-react";
 import cn from "classnames";
+import { CompatibilityBadge } from "@games-ui/components/compatibility-badge/compatibility-badge";
+import { logger } from "@shared-logger";
 
 const ProtonDBBadge = lazy(async () => {
   const mod = await import("@proton/renderer/components/protondb-badge/protondb-badge");
@@ -69,7 +71,7 @@ export function GameItem({ game }: GameItemProps) {
       );
       updateLibrary();
     } catch (error) {
-      console.error(error);
+      logger.error("Erro ao adicionar jogo ao library:", error);
     } finally {
       setIsAddingToLibrary(false);
     }
@@ -161,6 +163,14 @@ export function GameItem({ game }: GameItemProps) {
             <span className={`game-item__proton-badge game-item__proton-badge--${game.protonConfidence || "low"}`}>
               {game.protonSource === "GE-Proton" ? "GE" : "Valve"} Proton{game.protonConfidence !== "low" ? `: ${game.recommendedProton}` : ""}
             </span>
+          )}
+
+          {game.pcRequirements?.minimum && (
+            <CompatibilityBadge
+              minimum={game.pcRequirements.minimum}
+              recommended={game.pcRequirements.recommended}
+              compact
+            />
           )}
 
           {compatible && (

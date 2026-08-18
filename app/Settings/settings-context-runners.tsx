@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useState } from "react";
 import { ProgressBar, Button } from "@components";
 import type { RunnerDefinition, RunnerStatus } from "@emulators/types";
+import { logger } from "@shared-logger";
 import "./settings-runners.scss";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -58,11 +59,10 @@ export function SettingsContextRunners() {
     setRunners(runnersData);
     setStatuses(statusesData);
 
-    const iconMap: Record<string, string | null> = {};
-    for (const r of runnersData) {
-      iconMap[r.id] = await window.electron.getRunnerIcon(r.id);
-    }
-    setIcons(iconMap);
+    const iconEntries = await Promise.all(
+      runnersData.map(async (r) => [r.id, await window.electron.getRunnerIcon(r.id)] as const)
+    );
+    setIcons(Object.fromEntries(iconEntries));
     setLoading(false);
   }, []);
 
@@ -145,7 +145,7 @@ export function SettingsContextRunners() {
         await window.electron.launchGame(runnerId, result.filePaths[0]);
       }
     } catch (err) {
-      console.error("Erro ao lançar:", err);
+      logger.error("Erro ao lançar runner:", err);
     }
   };
 

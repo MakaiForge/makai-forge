@@ -2,12 +2,13 @@ import "./downloads-modals.scss";
 import { Modal } from "@components";
 import { DeleteGameModal } from "./delete-game-modal";
 import { ProtonRecommendationModal } from "@provision/proton_recommended/ui/proton-recommendation-modal";
-import { InstallProgressModal } from "@provision/ForgePipeline/ui/install-progress-modal";
+import { InstallProgressModal } from "@provision/ForgePipeline/ui/install-progress/InstallProgressModal";
 import { ExecutableCandidateModal } from "@provision/ForgePipeline/ui/executable-candidate-modal";
-import { ScanningPrefixModal } from "@provision/ForgePipeline/ui/scanning-prefix-modal";
 import { CopyingGameModal } from "@provision/ForgePipeline/ui/copying-game-modal";
 import { useTranslation } from "react-i18next";
-import type { ProtonVersion } from "@types";
+import type { ProtonVersion, ProtonFork } from "@types";
+import type { CandidateExe } from "@provision/ForgePipeline/ui/install-flow/use-install-flow";
+import type { InstallProgress } from "@provision/ForgePipeline/ui/install-progress/types";
 
 interface DownloadsModalsProps {
   showDeleteModal: boolean;
@@ -16,17 +17,16 @@ interface DownloadsModalsProps {
   installedProtons: ProtonVersion[];
   showRecommendationModal: boolean;
   onCloseRecommendation: () => void;
-  onSelectProton: (proton: string) => void;
-  onDownloadAndSelect: (proton: string) => void;
-  gameId: string | null;
-  gameTitle: string | null;
-  installProgress: number | null;
+  onSelectProton: (protonPath: string) => void;
+  onDownloadAndSelect: (fork: ProtonFork) => Promise<void>;
+  gameId: string;
+  gameTitle: string;
+  installProgress: InstallProgress | null;
   onCloseInstallProgress: () => void;
-  showScanningModal: boolean;
   showCopyingModal: boolean;
   showCandidateModal: boolean;
-  candidates: unknown[];
-  prefixDriveCPath: string | null;
+  candidates: CandidateExe[];
+  prefixDriveCPath: string;
   onExePicked: (exe: string) => void;
   onBrowseExe: () => void;
   onCloseCandidate: () => void;
@@ -48,7 +48,6 @@ export function DownloadsModals({
   gameTitle,
   installProgress,
   onCloseInstallProgress,
-  showScanningModal,
   showCopyingModal,
   showCandidateModal,
   candidates,
@@ -85,8 +84,6 @@ export function DownloadsModals({
         progress={installProgress}
         onClose={onCloseInstallProgress}
       />
-
-      <ScanningPrefixModal visible={showScanningModal} />
 
       <CopyingGameModal visible={showCopyingModal} />
 

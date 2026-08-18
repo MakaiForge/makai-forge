@@ -109,7 +109,6 @@ export function DownloadGroup({
                 progress={progress}
                 isPaused={!isCompletedGroup}
                 isCompleted={false}
-                isActive={false}
                 onResume={(shop, objectId) =>
                   resumeDownload(shop, objectId)
                 }

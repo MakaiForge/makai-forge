@@ -43,7 +43,6 @@ export function InstallScript() {
   const [installing, setInstalling] = useState(false);
   const [installResult, setInstallResult] = useState<InstallResult | null>(null);
 
-  const [autoInstall, setAutoInstall] = useState(false);
   const [installProgress, setInstallProgress] = useState<{
     status: string;
     detail?: string;
@@ -84,18 +83,7 @@ export function InstallScript() {
     })();
   }, [scriptId]);
 
-  // Auto-install when opened via deep link
-  useEffect(() => {
-    if (!script || installing) return;
-    const timer = setTimeout(() => setAutoInstall(true), 800);
-    return () => clearTimeout(timer);
-  }, [script, installing]);
-
-  useEffect(() => {
-    if (autoInstall && script && !installing) {
-      handleInstall();
-    }
-  }, [autoInstall]);
+  // Não auto-instala — espera confirmação do usuário via botão
 
   const handleExePicked = useCallback(async (path: string) => {
     setShowCandidateModal(false);
@@ -160,7 +148,8 @@ export function InstallScript() {
         setInstalling(false);
         navigate(`/game/steam/${script.game_id}`);
       }
-    } catch {
+    } catch (err) {
+      console.error("Erro ao instalar script:", err);
       setInstalling(false);
     }
   };

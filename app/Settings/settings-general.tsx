@@ -57,7 +57,7 @@ export function SettingsGeneral() {
       window.electron.canInstallCommonRedist().then((canInstall) => {
         setCanInstallCommonRedist(canInstall);
       });
-    }, 1000 * 5);
+    }, 1000 * 10);
 
     setLanguageOptions(
       orderBy(

@@ -5,6 +5,7 @@ import { Button } from "@components";
 import { useRunners } from "@hooks/use-runners";
 import type { RunnerDefinition, RomSite } from "@emulators/types";
 import { Play, Square, Plus, ExternalLink } from "lucide-react";
+import { logger } from "@shared-logger";
 import "./emulators.scss";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -125,7 +126,7 @@ export default function Emulators() {
         await window.electron.launchGame(runnerId, selectedRom);
         setRunning((prev) => new Set(prev).add(runnerId));
       } catch (err) {
-        console.error("Erro ao lançar:", err);
+        logger.error("Erro ao lançar emulador:", err);
       }
       setLaunching(null);
     },
