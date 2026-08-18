@@ -8,16 +8,17 @@ import { StepList } from "./StepList";
 import { LogTerminal } from "./LogTerminal";
 import "./install-progress-modal.scss";
 
+// Etapas do fluxo de instalação (alinhado com installGame onProgress)
+// Portátil: copying → scanning → complete
+// Instalador: analyzing → preparing → snapshot → installing → scanning → complete
 const STATUS_ORDER = [
+  "analyzing",
   "preparing",
+  "snapshot",
   "download",
-  "extraindo",
-  "instalando",
-  "finalizando",
-  "extract",
-  "prefix",
-  "dlls",
-  "launch",
+  "copying",
+  "installing",
+  "scanning",
 ];
 
 interface InstallProgressModalProps {
@@ -72,10 +73,13 @@ export function InstallProgressModal({
     if (key === "download" && progress.status === "download") {
       return `Baixando Proton — ${progress.gameTitle || ""}`;
     }
-    if (key === "extraindo") return "Extraindo Proton...";
-    if (key === "instalando") return "Instalando Proton...";
-    if (key === "finalizando") return "Finalizando...";
-    if (key === "ready") return "Proton pronto!";
+    if (key === "analyzing") return "Analisando instalador...";
+    if (key === "snapshot") return "Registrando estado do prefixo...";
+    if (key === "copying") return "Copiando jogo para o prefixo...";
+    if (key === "installing") return "Executando instalador...";
+    if (key === "scanning") return "Procurando executáveis...";
+    if (key === "complete") return "Instalação concluída!";
+    if (key === "error") return "Erro na instalação";
     return t(`step_${key}`);
   };
 
@@ -107,9 +111,9 @@ export function InstallProgressModal({
           stepLabel={stepLabel}
         />
 
-        {installing && progress?.status === "launch" && (
+        {installing && progress?.status === "installing" && (
           <p className="install-progress-modal__hint-text">
-            {t("hint_close_launcher")}
+            O instalador pode abrir em uma janela separada. Aguarde a conclusão.
           </p>
         )}
 

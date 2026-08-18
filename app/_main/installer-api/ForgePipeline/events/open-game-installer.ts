@@ -6,13 +6,27 @@ import { getDownloadsPath } from "@main/events/helpers/get-downloads-path";
 import { registerEvent } from "@main/events/register-event";
 import { downloadsStore, gamesStore, storeKeys } from "@main/store";
 import { GameShop } from "@types";
-import { Wine, WindowManager } from "@main/services";
+import { Wine, WindowManager, logger } from "@main/services";
 import { setupPrefix, resolveActualPrefix } from "../orchestrator/prefix-setup";
 import { ProtonRecommendationService } from "@provision/proton_recommended/services/proton-recommendation";
 import { ensureWinetricks } from "@provision/ensure-Makaitricks";
 import { debugLog } from "@provision/debug-log";
 import type { InstallResult } from "../orchestrator/types";
 import { installGame } from "@game-launcher/install/install-game";
+
+/**
+ * Envia progresso da instalação para o renderer (Downloads tab).
+ * Usa o canal "mod-install-progress" que o InstallProgressModal escuta.
+ */
+function sendInstallProgress(status: string, percent: number, gameTitle?: string) {
+  if (WindowManager.mainWindow) {
+    WindowManager.mainWindow.webContents.send("mod-install-progress", {
+      status,
+      percent,
+      gameTitle,
+    });
+  }
+}
 
 async function findGameFolder(gameTitle: string | null): Promise<string | null> {
   const dlPath = await getDownloadsPath();
@@ -142,6 +156,10 @@ export const openGameInstaller = async (
         protonPath: effectiveProtonPath!,
         gameId: objectId,
         existingExePath,
+        onProgress: (step, percent, message) => {
+          sendInstallProgress(step, percent, effectiveGameTitle || gameTitle || undefined);
+          logger.info(`[openGameInstaller] progress: ${step} ${percent}% ${message}`);
+        },
       });
       return returnOrSelect(shop, objectId, result.candidates, result.suggested_dir,
         effectiveGameTitle || "", downloadKey, prefixDriveCPath, existingExePath);
@@ -166,6 +184,10 @@ export const openGameInstaller = async (
     protonPath: effectiveProtonPath!,
     gameId: objectId,
     existingExePath,
+    onProgress: (step, percent, message) => {
+      sendInstallProgress(step, percent, effectiveGameTitle || gameTitle || undefined);
+      logger.info(`[openGameInstaller] progress: ${step} ${percent}% ${message}`);
+    },
   });
 
   if (result.candidates.length > 0) {

@@ -118,11 +118,8 @@ export function useInstallFlow() {
 
       pendingInstallRef.current = null;
 
-      setInstallProgress({
-        status: "prefix",
-        percent: 85,
-        gameTitle: game?.title,
-      });
+      // O progresso agora é guiado pelo backend via onProgress callback
+      // em openGameInstaller → installGame. Não设置 progresso fake.
 
       const result = await window.electron.openGameInstaller(shop, objectId, protonPath, game?.title);
 
@@ -158,19 +155,15 @@ export function useInstallFlow() {
       (g) => g.shop === shop && g.objectId === objectId
     );
 
-    setInstallProgress({
-      status: "prefix",
-      percent: 80,
-      gameTitle: game?.title,
-    });
-
     pendingInstallRef.current = null;
 
     try {
       const result = await window.electron.openGameInstaller(shop, objectId, protonPath, game?.title);
       setShowCopyingModal(false);
-      setInstallProgress(null);
       suggestedDirRef.current = result.suggestedDir || null;
+
+      // Fechar modal de progresso antes de mostrar próximo passo
+      setInstallProgress(null);
 
       if (result.executableSelectWindowOpened) {
         // executável será selecionado na janela separada
