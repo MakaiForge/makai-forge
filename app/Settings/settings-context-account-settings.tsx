@@ -16,8 +16,8 @@ export function SettingsContextAccountSettings() {
   );
 
   const [form, setForm] = useState({
-    downloadNotificationsEnabled: false,
-    repackUpdatesNotificationsEnabled: false,
+    likeNotificationsEnabled: false,
+    replyNotificationsEnabled: false,
     achievementNotificationsEnabled: true,
   });
 
@@ -26,12 +26,12 @@ export function SettingsContextAccountSettings() {
 
     setForm((prev) => ({
       ...prev,
-      downloadNotificationsEnabled:
-        userPreferences.downloadNotificationsEnabled ?? false,
-      repackUpdatesNotificationsEnabled:
-        userPreferences.repackUpdatesNotificationsEnabled ?? false,
+      likeNotificationsEnabled:
+        (userPreferences as any).likeNotificationsEnabled ?? false,
+      replyNotificationsEnabled:
+        (userPreferences as any).replyNotificationsEnabled ?? false,
       achievementNotificationsEnabled:
-        userPreferences.achievementNotificationsEnabled ?? true,
+        (userPreferences as any).achievementNotificationsEnabled ?? true,
     }));
   }, [userPreferences]);
 
@@ -68,21 +68,21 @@ export function SettingsContextAccountSettings() {
 
         <CheckboxField
           label="Alguém deu like no meu comentário"
-          checked={form.downloadNotificationsEnabled}
+          checked={form.likeNotificationsEnabled}
           onChange={() =>
             handleChange({
-              downloadNotificationsEnabled: !form.downloadNotificationsEnabled,
+              likeNotificationsEnabled: !form.likeNotificationsEnabled,
             })
           }
         />
 
         <CheckboxField
           label="Alguém respondeu meu comentário"
-          checked={form.repackUpdatesNotificationsEnabled}
+          checked={form.replyNotificationsEnabled}
           onChange={() =>
             handleChange({
-              repackUpdatesNotificationsEnabled:
-                !form.repackUpdatesNotificationsEnabled,
+              replyNotificationsEnabled:
+                !form.replyNotificationsEnabled,
             })
           }
         />

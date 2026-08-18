@@ -130,7 +130,7 @@ export function InstallScript() {
     try {
       const result = await (window as any).electron.installScript(scriptId);
       if (result?.error) {
-        alert(result.error);
+        setError(result.error);
         setInstalling(false);
         return;
       }

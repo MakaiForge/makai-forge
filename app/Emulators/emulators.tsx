@@ -56,20 +56,28 @@ export default function Emulators() {
     [extraSites]
   );
 
+  const [addSiteRunnerId, setAddSiteRunnerId] = useState<string | null>(null);
+  const [addSiteName, setAddSiteName] = useState("");
+  const [addSiteUrl, setAddSiteUrl] = useState("");
+
   const handleAddSite = useCallback(
     (runnerId: string) => {
-      const name = prompt("Nome do site:");
-      if (!name) return;
-      const url = prompt("URL do site:");
-      if (!url) return;
-      const updated = { ...extraSites };
-      if (!updated[runnerId]) updated[runnerId] = [];
-      updated[runnerId] = [...updated[runnerId], { name, url }];
-      setExtraSites(updated);
-      saveExtraSites(updated);
+      setAddSiteRunnerId(runnerId);
+      setAddSiteName("");
+      setAddSiteUrl("");
     },
-    [extraSites]
+    []
   );
+
+  const handleConfirmAddSite = useCallback(() => {
+    if (!addSiteRunnerId || !addSiteName.trim() || !addSiteUrl.trim()) return;
+    const updated = { ...extraSites };
+    if (!updated[addSiteRunnerId]) updated[addSiteRunnerId] = [];
+    updated[addSiteRunnerId] = [...updated[addSiteRunnerId], { name: addSiteName.trim(), url: addSiteUrl.trim() }];
+    setExtraSites(updated);
+    saveExtraSites(updated);
+    setAddSiteRunnerId(null);
+  }, [addSiteRunnerId, addSiteName, addSiteUrl, extraSites]);
 
   const handleRemoveSite = useCallback(
     (runnerId: string, index: number) => {
@@ -143,6 +151,52 @@ export default function Emulators() {
 
   return (
     <div className="emulators">
+      {/* Modal de adicionar site */}
+      {addSiteRunnerId && (
+        <div className="emulators__modal-overlay" onClick={() => setAddSiteRunnerId(null)}>
+          <div className="emulators__modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Adicionar site de ROM</h3>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: "0.3rem" }}>Nome</label>
+              <input
+                type="text"
+                value={addSiteName}
+                onChange={(e) => setAddSiteName(e.target.value)}
+                placeholder="Nome do site"
+                style={{ width: "100%", padding: "0.5rem 0.75rem", borderRadius: 6, border: "1px solid rgba(168,85,247,0.2)", background: "rgba(0,0,0,0.3)", color: "var(--text)", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: "0.3rem" }}>URL</label>
+              <input
+                type="url"
+                value={addSiteUrl}
+                onChange={(e) => setAddSiteUrl(e.target.value)}
+                placeholder="https://..."
+                onKeyDown={(e) => e.key === "Enter" && handleConfirmAddSite()}
+                style={{ width: "100%", padding: "0.5rem 0.75rem", borderRadius: 6, border: "1px solid rgba(168,85,247,0.2)", background: "rgba(0,0,0,0.3)", color: "var(--text)", fontSize: "0.85rem", outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                type="button"
+                onClick={handleConfirmAddSite}
+                disabled={!addSiteName.trim() || !addSiteUrl.trim()}
+                style={{ flex: 1, padding: "0.5rem", borderRadius: 6, border: "none", background: "var(--accent)", color: "#fff", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}
+              >
+                Adicionar
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddSiteRunnerId(null)}
+                style={{ padding: "0.5rem 1rem", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "var(--text-dim)", fontSize: "0.85rem", cursor: "pointer" }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="emulators__header">
         <h1>{t("emulators", "Emuladores")}</h1>
         <p className="emulators__subtitle">
@@ -273,7 +327,7 @@ export default function Emulators() {
                             <webview
                               src={activeSiteTab}
                               style={{ width: "100%", height: "100%" }}
-                              webpreferences="disablewebsecurity"
+                              partition="emulator-webview"
                             />
                           </div>
                         )}
