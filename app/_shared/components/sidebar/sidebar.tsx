@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CpuIcon, PlusIcon, SidebarCollapseIcon } from "@primer/octicons-react";
 import { Play, Square } from "lucide-react";
+import { logger } from "@shared-logger";
 
 import { ConfirmationModal } from "@components";
 import {
@@ -110,7 +111,7 @@ export function Sidebar() {
       });
       setHomebrewFolderExists(folderExists);
     } catch (error) {
-      console.error("Failed to load Decky plugin info:", error);
+      logger.error("Failed to load Decky plugin info:", error);
     }
   };
 
@@ -284,7 +285,7 @@ export function Sidebar() {
     try {
       await window.electron.launchGame(runnerId, result.filePaths[0]);
     } catch (err) {
-      console.error("Erro ao lançar:", err);
+      logger.error("Erro ao lançar emulador:", err);
     }
   };
 

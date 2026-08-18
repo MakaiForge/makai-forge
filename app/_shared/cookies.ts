@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 export function addCookieInterceptor(isStaging: boolean) {
   const cookieKey = isStaging ? "cookies-staging" : "cookies";
 
@@ -24,7 +26,7 @@ export function addCookieInterceptor(isStaging: boolean) {
 
         localStorage.setItem(cookieKey, newString);
       } catch (err) {
-        console.error(err);
+        logger.error("Cookie interceptor error:", err);
       }
     },
   });

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FileDirectoryIcon, FileIcon, CheckCircleIcon } from "@primer/octicons-react";
 import { Button } from "@components";
+import { logger } from "@shared-logger";
 import "./folder-select.scss";
 
 interface FolderItem {
@@ -71,7 +72,7 @@ export default function FolderSelect() {
       await window.electron.confirmFileSelection(shop, objectId, selected);
       setSuccess(true);
     } catch (err) {
-      console.error("Failed to copy files:", err);
+      logger.error("Failed to copy files:", err);
     }
   }, [checked, shop, objectId]);
 

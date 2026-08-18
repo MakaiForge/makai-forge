@@ -3,6 +3,7 @@ import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { setHeaderTitle } from "@features";
 import { storeService } from "@shared-services/store.service";
 import { orderBy } from "lodash-es";
+import { logger } from "@shared-logger";
 import { getSteamLanguage } from "@shared-helpers";
 import { useAppDispatch, useAppSelector, useDownload } from "@hooks";
 
@@ -216,7 +217,7 @@ export function GameDetailsContextProvider({
       try {
         window.history.replaceState({}, document.title, location.pathname);
       } catch (e) {
-        console.error(e);
+        logger.error("Game details context error:", e);
       }
     }
   }, [location]);
@@ -341,7 +342,7 @@ export function GameDetailsContextProvider({
 
       try {
         const pirate = await window.electron.getGameData(shop, objectId);
-        console.log("[game-details] pirate data:", shop, objectId, pirate ? { hasSources: pirate.downloadSources?.length, hasDownloads: pirate.downloads?.length } : null);
+        logger.log("[game-details] pirate data:", shop, objectId, pirate ? { hasSources: pirate.downloadSources?.length, hasDownloads: pirate.downloads?.length } : null);
         if (pirate && pirate.downloads?.length > 0) {
           const repacks: GameRepack[] = pirate.downloads.map((d: any, i: number) => ({
             id: `pirate-${shop}-${objectId}-${i}`,
@@ -363,7 +364,7 @@ export function GameDetailsContextProvider({
 
       setRepacks(merged);
     } catch (error) {
-      console.error("Failed to fetch download sources:", error);
+      logger.error("Failed to fetch download sources:", error);
     }
   }, [shop, objectId, gameTitle]);
 

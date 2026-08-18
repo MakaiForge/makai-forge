@@ -4,6 +4,7 @@ import Color from "color";
 import i18next from "i18next";
 import { v4 as uuidv4 } from "uuid";
 import { THEME_WEB_STORE_URL } from "./constants";
+import { logger } from "./logger";
 
 export const formatDownloadProgress = (
   progress?: number,
@@ -92,7 +93,7 @@ export const injectCustomCss = (
     style.textContent = cleanCss;
     target.appendChild(style);
   } catch (error) {
-    console.error("failed to inject custom css:", error);
+    logger.error("failed to inject custom css:", error);
   }
 };
 

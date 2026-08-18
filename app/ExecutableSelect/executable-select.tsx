@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FileDirectoryIcon, SearchIcon, CheckCircleIcon } from "@primer/octicons-react";
 import { Button } from "@components";
+import { logger } from "@shared-logger";
 import "./executable-select.scss";
 
 interface Candidate {
@@ -50,7 +51,7 @@ export default function ExecutableSelect() {
       await window.electron.confirmExecutableSelection(shop, objectId, path);
       setSuccess(true);
     } catch (err) {
-      console.error("Failed to save executable path:", err);
+      logger.error("Failed to save executable path:", err);
     }
   }, [selectedIndex, candidates, shop, objectId]);
 
@@ -62,14 +63,14 @@ export default function ExecutableSelect() {
     const downloadsPath = await window.electron.getDefaultDownloadsPath();
     const result = await window.electron.showOpenDialog({
       properties: ["openFile"],
-      defaultPath: downloadsPath || prefixDriveCPath || undefined,
+      defaultPath: prefixDriveCPath || downloadsPath || undefined,
       filters: [{ name: "Game executable", extensions: ["exe", "lnk"] }],
     });
     if (result.filePaths && result.filePaths.length > 0) {
       try {
         await window.electron.confirmExecutableSelection(shop, objectId, result.filePaths[0]);
       } catch (err) {
-        console.error("Failed to save executable path:", err);
+        logger.error("Failed to save executable path:", err);
       }
     }
   }, [prefixDriveCPath, shop, objectId]);

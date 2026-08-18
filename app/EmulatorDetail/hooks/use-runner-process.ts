@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useRunnersRunning } from "@hooks";
+import { logger } from "@shared-logger";
 
 const PREFS_KEY = "runner-preferences";
 
@@ -31,7 +32,7 @@ export function useRunnerProcess(runnerId: string | undefined) {
       try {
         await window.electron.launchGame(runnerId, "");
       } catch (e) {
-        console.error(e);
+        logger.error("Erro ao lançar emulador:", e);
       }
       setLaunching(false);
       return;
