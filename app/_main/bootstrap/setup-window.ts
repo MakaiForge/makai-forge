@@ -3,7 +3,50 @@ import path from "node:path";
 import fs from "node:fs";
 import type { BrowserWindow } from "electron";
 
-function setupHtml(bgPath: string): string { return `<!DOCTYPE html>
+const SETUP_SCRIPT = `
+const terminal = document.getElementById('terminal');
+const statusText = document.getElementById('status-text');
+const progressBar = document.getElementById('progress-bar');
+const detailText = document.getElementById('detail-text');
+function addLog(msg, type) {
+  const div = document.createElement('div');
+  div.className = 'log-line ' + (type || 'info');
+  div.textContent = msg;
+  terminal.appendChild(div);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+if (window.setupAPI) {
+  window.setupAPI.onVenvProgress((data) => {
+    const s = data.status;
+    const pct = data.percent || 0;
+    progressBar.style.width = pct + '%';
+    if (s==='checking') { statusText.textContent='Verificando Python portátil...'; addLog('Verificando venv...','info'); }
+    else if (s==='downloading') { statusText.textContent='Baixando Python portátil...'; addLog('Baixando venv ('+pct+'%)...','download'); }
+    else if (s==='restoring') { statusText.textContent='Extraindo Python portátil...'; addLog('Extraindo venv...','extract'); }
+    else if (s==='verifying') { statusText.textContent='Verificando Python...'; addLog('Verificando instalação do venv...','info'); }
+    else if (s==='ready') { statusText.textContent='Python pronto ✓'; addLog('Venv pronto ✓','success'); }
+    else if (s==='error') { statusText.textContent='Erro no Python'; addLog('Falha no venv','error'); }
+  });
+  window.setupAPI.onResourceProgress((data) => {
+    const s = data.status;
+    const pct = data.percent || 0;
+    const det = data.detail || '';
+    progressBar.style.width = pct + '%';
+    detailText.textContent = det;
+    if (s==='checking') { statusText.textContent='Verificando recursos...'; addLog('Verificando recursos necessários...','info'); }
+    else if (s==='downloading') { statusText.textContent='Baixando recursos...'; addLog('Baixando: '+det,'download'); }
+    else if (s==='extracting') { statusText.textContent='Extraindo recursos...'; addLog('Extraindo: '+det,'extract'); }
+    else if (s==='ready') { addLog(det,'success'); }
+    else if (s==='error') { addLog('Erro: '+det,'error'); }
+  });
+  window.setupAPI.onSetupComplete(() => {
+    statusText.textContent='Pronto! Iniciando...';
+    progressBar.style.width='100%';
+    addLog('Makai Forge pronto!','success');
+  });
+}`;
+
+function setupHtml(bgPath: string, scriptPath: string): string { return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -98,53 +141,7 @@ body {
   </div>
   <div class="terminal-area" id="terminal"></div>
 </div>
-<script>
-const terminal = document.getElementById('terminal');
-const statusText = document.getElementById('status-text');
-const progressBar = document.getElementById('progress-bar');
-const detailText = document.getElementById('detail-text');
-
-function addLog(msg, type) {
-  const div = document.createElement('div');
-  div.className = 'log-line ' + (type || 'info');
-  div.textContent = msg;
-  terminal.appendChild(div);
-  terminal.scrollTop = terminal.scrollHeight;
-}
-
-if (window.setupAPI) {
-  window.setupAPI.onVenvProgress((data) => {
-    const s = data.status;
-    const pct = data.percent || 0;
-    progressBar.style.width = pct + '%';
-    if (s==='checking') { statusText.textContent='Verificando Python portátil...'; addLog('Verificando venv...','info'); }
-    else if (s==='downloading') { statusText.textContent='Baixando Python portátil...'; addLog('Baixando venv ('+pct+'%)...','download'); }
-    else if (s==='restoring') { statusText.textContent='Extraindo Python portátil...'; addLog('Extraindo venv...','extract'); }
-    else if (s==='verifying') { statusText.textContent='Verificando Python...'; addLog('Verificando instalação do venv...','info'); }
-    else if (s==='ready') { statusText.textContent='Python pronto ✓'; addLog('Venv pronto ✓','success'); }
-    else if (s==='error') { statusText.textContent='Erro no Python'; addLog('Falha no venv','error'); }
-  });
-
-  window.setupAPI.onResourceProgress((data) => {
-    const s = data.status;
-    const pct = data.percent || 0;
-    const det = data.detail || '';
-    progressBar.style.width = pct + '%';
-    detailText.textContent = det;
-    if (s==='checking') { statusText.textContent='Verificando recursos...'; addLog('Verificando recursos necessários...','info'); }
-    else if (s==='downloading') { statusText.textContent='Baixando recursos...'; addLog('Baixando: '+det,'download'); }
-    else if (s==='extracting') { statusText.textContent='Extraindo recursos...'; addLog('Extraindo: '+det,'extract'); }
-    else if (s==='ready') { addLog(det,'success'); }
-    else if (s==='error') { addLog('Erro: '+det,'error'); }
-  });
-
-  window.setupAPI.onSetupComplete(() => {
-    statusText.textContent='Pronto! Iniciando...';
-    progressBar.style.width='100%';
-    addLog('Makai Forge pronto!','success');
-  });
-}
-</script>
+<script src="${scriptPath}"></script>
 </body>
 </html>`; }
 
@@ -152,9 +149,13 @@ export function createSetupWindow(win: BrowserWindow) {
   const bgPath = app.isPackaged
     ? `file://${path.join(process.resourcesPath, "app", "_assets", "backgrounds", "setup.png")}`
     : `file://${path.join(app.getAppPath(), "app", "_assets", "backgrounds", "setup.png")}`;
-  const html = setupHtml(bgPath);
-  const htmlPath = path.join(app.getPath("userData"), ".cache", "setup.html");
-  fs.mkdirSync(path.dirname(htmlPath), { recursive: true });
+  const cacheDir = path.join(app.getPath("userData"), ".cache");
+  fs.mkdirSync(cacheDir, { recursive: true });
+  // Salvar script como arquivo separado (CSP: script-src 'self')
+  const scriptPath = path.join(cacheDir, "setup.js");
+  fs.writeFileSync(scriptPath, SETUP_SCRIPT, "utf-8");
+  const html = setupHtml(bgPath, scriptPath);
+  const htmlPath = path.join(cacheDir, "setup.html");
   fs.writeFileSync(htmlPath, html, "utf-8");
   win.loadFile(htmlPath);
   win.once("ready-to-show", () => win.show());

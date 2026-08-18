@@ -64,15 +64,42 @@ function prewarmAndRefreshLibrary() {
   });
 }
 
+/**
+ * CSP restritivo para o app. Permite apenas fontes conhecidas.
+ * - script-src 'self': sem scripts inline (setup window usa preload)
+ * - style-src 'unsafe-inline': necessário para dynamic styles do React
+ * - img-src: Steam CDNs para capas de jogos
+ * - connect-src: APIs do app (GitHub, Steam, download hosts, etc.)
+ */
+const APP_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://shared.akamai.steamstatic.com https://shared.steamstatic.com https://steamcdn-a.akamaihd.net https://cdn.pixeldrain.eu.cc",
+  "font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com",
+  "connect-src 'self' http://localhost:* https://api.github.com https://api.gofile.io https://api.gg.deals https://api.box.com https://api.dropboxapi.com https://dawn.wine https://cdn.jsdelivr.net https://translate.googleapis.com https://fuckingfast.co https://fuckingfast.net https://buzzheavier.com https://bzzhr.co https://datanodes.to https://fafda.to",
+  "frame-src 'self' http://localhost:*",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
 export async function bootstrap() {
+  // Aplicar CSP restritivo em vez de removê-lo
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const headers = details.responseHeaders;
     if (headers) {
+      // Remover CSP original do servidor e substituir pelo nosso
       delete headers["content-security-policy"];
+      delete headers["content-security-policy-report-only"];
+      // Permitir webview do app (qBittorrent)
       delete headers["x-frame-options"];
+      // Aplicar CSP restritivo
+      headers["Content-Security-Policy"] = [APP_CSP];
       callback({ responseHeaders: headers });
     } else {
-      callback({});
+      callback({ responseHeaders: { "Content-Security-Policy": [APP_CSP] } });
     }
   });
 
