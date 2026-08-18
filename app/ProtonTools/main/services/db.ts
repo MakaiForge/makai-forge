@@ -15,6 +15,100 @@ function getDbPath(): string {
   return "";
 }
 
+export interface ForkCatalogEntry {
+  id: string
+  name: string
+  category: string
+  ranking: string
+  tierScore: number
+  versionCount: number
+  versions: string[]
+  description: string
+  source: string
+  features: string[]
+}
+
+/**
+ * Lê o catálogo completo de forks/versões direto do fork_catalog.db
+ * (mesma forma que o RPC list_available_forks, sem depender do server Python).
+ */
+export function getForkCatalogFromDb(): ForkCatalogEntry[] {
+  const dbPath = getDbPath();
+  if (!dbPath) {
+    logger.warn(`[fork_catalog] DB não encontrado`);
+    return [];
+  }
+
+  let db: any = null;
+  try {
+    const Database = require("better-sqlite3");
+    db = new Database(dbPath, { readonly: true });
+
+    const forks = db
+      .prepare(
+        `SELECT id, name, category, description, repo_url, features FROM forks`
+      )
+      .all() as {
+      id: string
+      name: string | null
+      category: string | null
+      description: string | null
+      repo_url: string | null
+      features: string | null
+    }[];
+
+    const releases = db
+      .prepare(`SELECT fork_id, tag FROM releases ORDER BY id ASC`)
+      .all() as { fork_id: string; tag: string }[];
+
+    const versionsByFork: Record<string, string[]> = {};
+    for (const r of releases) {
+      if (!versionsByFork[r.fork_id]) versionsByFork[r.fork_id] = [];
+      versionsByFork[r.fork_id].push(r.tag);
+    }
+
+    const maxV = Math.max(1, ...Object.values(versionsByFork).map((v) => v.length));
+
+    return forks
+      .map((f) => {
+        const versions = versionsByFork[f.id] || [];
+        const vcount = versions.length;
+        const tierScore = vcount > 0 ? Math.round((30 + (vcount / maxV) * 70) * 10) / 10 : 30;
+        const ranking =
+          tierScore >= 80 ? "gold" : tierScore >= 50 ? "silver" : tierScore >= 20 ? "bronze" : "experimental";
+
+        let features: string[] = [];
+        if (f.features) {
+          try {
+            const parsed = JSON.parse(f.features);
+            if (Array.isArray(parsed)) features = parsed.map(String);
+          } catch {
+            features = [];
+          }
+        }
+
+        return {
+          id: String(f.id),
+          name: f.name || String(f.id),
+          category: f.category || "Proton",
+          ranking,
+          tierScore,
+          versionCount: vcount,
+          versions: vcount > 0 ? versions : ["latest"],
+          description: f.description || "",
+          source: f.repo_url || "",
+          features: features.slice(0, 8),
+        };
+      })
+      .sort((a, b) => b.tierScore - a.tierScore || a.name.localeCompare(b.name));
+  } catch (err) {
+    logger.error(`[fork_catalog] Erro ao ler catálogo:`, err);
+    return [];
+  } finally {
+    try { db?.close(); } catch {}
+  }
+}
+
 export function getReleasesByForkId(forkId: string): ProtonRelease[] {
   const dbPath = getDbPath();
   if (!dbPath) {
@@ -22,9 +116,10 @@ export function getReleasesByForkId(forkId: string): ProtonRelease[] {
     return [];
   }
 
+  let db: any = null;
   try {
     const Database = require("better-sqlite3");
-    const db = new Database(dbPath, { readonly: true });
+    db = new Database(dbPath, { readonly: true });
 
     const rows = db
       .prepare(
@@ -36,7 +131,6 @@ export function getReleasesByForkId(forkId: string): ProtonRelease[] {
       .all(forkId) as { id: number; tag: string; published_at: string; release_url: string }[];
 
     if (rows.length === 0) {
-      db.close();
       return [];
     }
 
@@ -52,7 +146,6 @@ export function getReleasesByForkId(forkId: string): ProtonRelease[] {
       )
       .all(...ids) as { release_id: number; name: string; download_url: string }[];
 
-    db.close();
 
     const assetsByRelease: Record<number, { name: string; browser_download_url: string }[]> = {};
     for (const a of assetRows) {
@@ -68,9 +161,10 @@ export function getReleasesByForkId(forkId: string): ProtonRelease[] {
       assets: assetsByRelease[r.id] || [],
       html_url: r.release_url || "",
       published_at: r.published_at || "",
-    }));
-  } catch (err) {
+    }));    } catch (err) {
     logger.error(`[fork_catalog] Erro ao consultar releases para "${forkId}":`, err);
     return [];
+  } finally {
+    try { db?.close(); } catch {}
   }
 }

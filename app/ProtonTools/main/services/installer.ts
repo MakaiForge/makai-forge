@@ -16,29 +16,14 @@ const CATEGORY_DIRS: Record<string, string> = {
   vkd3d: "runtime/vkd3d",
 };
 
-const IGNORE_PATTERNS = [
-  "lib",
-  "dist",
-  "files",
-  "share",
-  "bin",
-  "usr",
-  "wine",
-  "drive_c",
-  "client",
-  "server",
-  "bin64",
-  "lib64",
-  "resources",
-  "data",
-  "fonts",
-  "themes",
-  "icons",
-  "locales",
-  "plugins",
-  "modules",
-  "node_modules",
-];
+// Pastas que NÃO são Protons válidos (nomes exatos ou prefixos de lixo)
+const IGNORE_NAMES = new Set([
+  "dist", "files", "usr", "client", "server",
+  "bin64", "lib64", "resources", "data",
+  "fonts", "themes", "icons", "locales",
+  "plugins", "modules", "node_modules",
+  "__pycache__", ".git", ".github",
+]);
 
 export function getInstallDir(): string {
   return BASE_DIR;
@@ -50,7 +35,11 @@ export function getCategoryDir(category: string): string {
 
 function isInternalFolder(entry: string): boolean {
   const lower = entry.toLowerCase();
-  return IGNORE_PATTERNS.some((p) => lower === p || lower.includes(p));
+  // Match exato contra nomes de lixo
+  if (IGNORE_NAMES.has(lower)) return true;
+  // Pastas que começam com ponto são ocultas
+  if (lower.startsWith(".")) return true;
+  return false;
 }
 
 export function getInstalledTools(): InstalledTool[] {

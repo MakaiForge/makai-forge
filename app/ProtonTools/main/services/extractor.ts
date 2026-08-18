@@ -4,6 +4,9 @@ import { exec } from "node:child_process";
 import { logger } from "@main/services/logger";
 import { WindowManager } from "@main/services/window-manager";
 
+/** Timeout de 10 minutos para extração (Protons grandes chegam a 5GB) */
+const EXTRACT_TIMEOUT_MS = 10 * 60 * 1000;
+
 function log(line: string) {
   logger.info(line);
   WindowManager.mainWindow?.webContents.send("on-install-log", line);
@@ -61,38 +64,44 @@ async function extractTar(
     log(`[extrator] Extraindo ${path.basename(filePath)} para ${destinationDir}`);
     log(`[extrator] Antes da extração: ${before.length} entradas em ${destinationDir}`);
 
-    exec(`tar -x${flag}f "${filePath}" -C "${destinationDir}"`, (error) => {
-      if (error) {
-        logger.error(`Failed to extract tar:`, error);
-        log(`[extrator] ERRO: ${error.message}`);
-        resolve({ success: false, error: String(error) });
-        return;
+    const child = exec(
+      `tar -x${flag}f "${filePath}" -C "${destinationDir}"`,
+      { timeout: EXTRACT_TIMEOUT_MS },
+      (error) => {
+        if (error) {
+          logger.error(`Failed to extract tar:`, error);
+          log(`[extrator] ERRO: ${error.message}`);
+          resolve({ success: false, error: String(error) });
+          return;
+        }
+
+        const after = fs.readdirSync(destinationDir);
+        const newEntries = after.filter((e) => !before.includes(e));
+        log(`[extrator] Depois da extração: ${after.length} entradas`);
+        log(`[extrator] Novas entradas: ${newEntries.join(", ") || "(nenhuma)"}`);
+
+        const actualDir = findNewDirectory(destinationDir, before);
+        let extractPath: string;
+        if (actualDir) {
+          extractPath = path.join(destinationDir, actualDir);
+          log(`[extrator] Nova pasta detectada: "${actualDir}"`);
+        } else {
+          extractPath = path.join(destinationDir, expectedFolderName);
+          log(`[extrator] Nenhuma nova pasta detectada, usando expectedFolderName: "${expectedFolderName}"`);
+        }
+
+        const hasProton = fs.existsSync(path.join(extractPath, "proton"));
+        log(`[extrator] Caminho final: ${extractPath} | proton binário: ${hasProton ? "ENCONTRADO" : "NÃO ENCONTRADO"}`);
+
+        resolve({ success: true, extractPath });
       }
+    );
 
-      const after = fs.readdirSync(destinationDir);
-      const newEntries = after.filter((e) => !before.includes(e));
-      log(`[extrator] Depois da extração: ${after.length} entradas`);
-      log(`[extrator] Novas entradas: ${newEntries.join(", ") || "(nenhuma)"}`);
-
-      const actualDir = findNewDirectory(destinationDir, before);
-      let extractPath: string;
-      if (actualDir) {
-        extractPath = path.join(destinationDir, actualDir);
-        log(`[extrator] Nova pasta detectada: "${actualDir}"`);
-      } else {
-        extractPath = path.join(destinationDir, expectedFolderName);
-        log(`[extrator] Nenhuma nova pasta detectada, usando expectedFolderName: "${expectedFolderName}"`);
-      }
-
-      const hasProton = fs.existsSync(path.join(extractPath, "proton"));
-      log(`[extrator] Caminho final: ${extractPath} | proton binário: ${hasProton ? "ENCONTRADO" : "NÃO ENCONTRADO"}`);
-
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-
-      resolve({ success: true, extractPath });
-    });
+    // Kill se ultrapassar timeout
+    const timer = setTimeout(() => {
+      try { child.kill(); } catch {}
+    }, EXTRACT_TIMEOUT_MS + 5000);
+    child.on("exit", () => clearTimeout(timer));
   });
 }
 
@@ -111,37 +120,42 @@ async function extractZip(
     log(`[extrator] Extraindo ZIP ${path.basename(filePath)} para ${destinationDir}`);
     log(`[extrator] Antes da extração: ${before.length} entradas`);
 
-    exec(`unzip -o "${filePath}" -d "${destinationDir}"`, (error) => {
-      if (error) {
-        logger.error(`Failed to extract zip:`, error);
-        log(`[extrator] ERRO: ${error.message}`);
-        resolve({ success: false, error: String(error) });
-        return;
+    const child = exec(
+      `unzip -o "${filePath}" -d "${destinationDir}"`,
+      { timeout: EXTRACT_TIMEOUT_MS },
+      (error) => {
+        if (error) {
+          logger.error(`Failed to extract zip:`, error);
+          log(`[extrator] ERRO: ${error.message}`);
+          resolve({ success: false, error: String(error) });
+          return;
+        }
+
+        const after = fs.readdirSync(destinationDir);
+        const newEntries = after.filter((e) => !before.includes(e));
+        log(`[extrator] Novas entradas: ${newEntries.join(", ") || "(nenhuma)"}`);
+
+        const actualDir = findNewDirectory(destinationDir, before);
+        let extractPath: string;
+        if (actualDir) {
+          extractPath = path.join(destinationDir, actualDir);
+          log(`[extrator] Nova pasta detectada: "${actualDir}"`);
+        } else {
+          extractPath = path.join(destinationDir, expectedFolderName);
+          log(`[extrator] Nenhuma nova pasta, usando expectedFolderName: "${expectedFolderName}"`);
+        }
+
+        const hasProton = fs.existsSync(path.join(extractPath, "proton"));
+        log(`[extrator] proton binário: ${hasProton ? "ENCONTRADO" : "NÃO ENCONTRADO"} em ${extractPath}`);
+
+        resolve({ success: true, extractPath });
       }
+    );
 
-      const after = fs.readdirSync(destinationDir);
-      const newEntries = after.filter((e) => !before.includes(e));
-      log(`[extrator] Novas entradas: ${newEntries.join(", ") || "(nenhuma)"}`);
-
-      const actualDir = findNewDirectory(destinationDir, before);
-      let extractPath: string;
-      if (actualDir) {
-        extractPath = path.join(destinationDir, actualDir);
-        log(`[extrator] Nova pasta detectada: "${actualDir}"`);
-      } else {
-        extractPath = path.join(destinationDir, expectedFolderName);
-        log(`[extrator] Nenhuma nova pasta, usando expectedFolderName: "${expectedFolderName}"`);
-      }
-
-      const hasProton = fs.existsSync(path.join(extractPath, "proton"));
-      log(`[extrator] proton binário: ${hasProton ? "ENCONTRADO" : "NÃO ENCONTRADO"} em ${extractPath}`);
-
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-
-      resolve({ success: true, extractPath });
-    });
+    const timer = setTimeout(() => {
+      try { child.kill(); } catch {}
+    }, EXTRACT_TIMEOUT_MS + 5000);
+    child.on("exit", () => clearTimeout(timer));
   });
 }
 

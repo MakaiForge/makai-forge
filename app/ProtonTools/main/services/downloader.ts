@@ -11,12 +11,11 @@ const ARCH_PATTERN = arch === "arm64" ? "arm64" : "x86_64";
 
 function archMatch(name: string): boolean {
   const lower = name.toLowerCase();
-  if (lower.includes("arm64")) return ARCH_PATTERN === "arm64";
-  if (lower.includes("aarch64")) return ARCH_PATTERN === "arm64";
-  if (lower.includes("x86_64")) return ARCH_PATTERN === "x86_64";
-  if (lower.includes("amd64")) return ARCH_PATTERN === "x86_64";
-  if (lower.includes("i686")) return ARCH_PATTERN === "x86_64";
-  if (lower.includes("x64")) return ARCH_PATTERN === "x86_64";
+  if (lower.includes("arm64") || lower.includes("aarch64")) return ARCH_PATTERN === "arm64";
+  // i686 é 32-bit — NÃO match com x86_64 (64-bit)
+  if (lower.includes("i686") || lower.includes("i386") || lower.includes("x86")) return ARCH_PATTERN === "x86_64";
+  if (lower.includes("x86_64") || lower.includes("amd64") || lower.includes("x64")) return ARCH_PATTERN === "x86_64";
+  // Sem keyword de arch → genérico, aceita qualquer um
   return true;
 }
 
@@ -24,6 +23,7 @@ export interface DownloadResult {
   success: boolean;
   filePath?: string;
   error?: string;
+  statusCode?: number;
 }
 
 export async function downloadFile(
@@ -32,6 +32,17 @@ export async function downloadFile(
   destinationDir: string,
   onProgress?: (percent: number, speed: string) => void
 ): Promise<DownloadResult> {
+  // Validar espaço em disco antes de baixar
+  try {
+    const stats = fs.statfsSync(destinationDir);
+    const freeBytes = stats.bavail * stats.bsize;
+    if (freeBytes < 500 * 1024 * 1024) {
+      return { success: false, error: `Espaço insuficiente: ${(freeBytes / 1024 / 1024).toFixed(0)}MB livres (mínimo 500MB)` };
+    }
+  } catch {
+    // statfsSync pode falhar em alguns sistemas — continuar
+  }
+
   const url = await getDownloadUrl(tool, release);
   if (!url) {
     return { success: false, error: "No download URL available" };
@@ -57,38 +68,52 @@ export async function downloadFile(
     fs.mkdirSync(destinationDir, { recursive: true });
   }
 
-  try {
-    const response = await axios.get(url, {
-      responseType: "stream",
-      timeout: 300000,
-      maxRedirects: 5,
-    });
+  const tryDownload = async (downloadUrl: string): Promise<DownloadResult> => {
+    try {
+      const response = await axios.get(downloadUrl, {
+        responseType: "stream",
+        timeout: 300000,
+        maxRedirects: 5,
+      });
 
-    const totalSize = parseInt(String(response.headers["content-length"] || "0"), 10);
-    let downloaded = 0;
-    const startTime = Date.now();
+      const totalSize = parseInt(String(response.headers["content-length"] || "0"), 10);
+      let downloaded = 0;
+      const startTime = Date.now();
 
-    response.data.on("data", (chunk: Buffer) => {
-      downloaded += chunk.length;
-      if (totalSize > 0 && onProgress) {
-        const percent = Math.round((downloaded / totalSize) * 100);
-        const elapsed = (Date.now() - startTime) / 1000;
-        const speed =
-          elapsed > 0 ? (downloaded / elapsed / 1024 / 1024).toFixed(1) : "0";
-        onProgress(percent, speed);
+      response.data.on("data", (chunk: Buffer) => {
+        downloaded += chunk.length;
+        if (totalSize > 0 && onProgress) {
+          const percent = Math.round((downloaded / totalSize) * 100);
+          const elapsed = (Date.now() - startTime) / 1000;
+          const speed =
+            elapsed > 0 ? (downloaded / elapsed / 1024 / 1024).toFixed(1) : "0";
+          onProgress(percent, speed);
+        }
+      });
+
+      const writer = createWriteStream(tempPath);
+      await pipeline(response.data, writer);
+
+      return { success: true, filePath: tempPath };
+    } catch (error) {
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
       }
-    });
-
-    const writer = createWriteStream(tempPath);
-    await pipeline(response.data, writer);
-
-    return { success: true, filePath: tempPath };
-  } catch (error) {
-    if (fs.existsSync(tempPath)) {
-      fs.unlinkSync(tempPath);
+      return { success: false, error: String(error), statusCode: axios.isAxiosError(error) ? error.response?.status : undefined };
     }
-    return { success: false, error: String(error) };
+  };
+
+  let result = await tryDownload(url);
+
+  if (!result.success && result.statusCode === 404) {
+    const fallbackUrl = constructGithubTarballUrl(tool, release.tag_name);
+    if (fallbackUrl && fallbackUrl !== url) {
+      logger.info(`[downloadFile] Tentei asset URL (404), caindo para tarball: ${fallbackUrl}`);
+      result = await tryDownload(fallbackUrl);
+    }
   }
+
+  return result;
 }
 
 async function getDownloadUrl(
