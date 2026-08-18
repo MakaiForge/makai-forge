@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FileDirectoryIcon, FileIcon, CheckCircleIcon } from "@primer/octicons-react";
 import { Button } from "@components";
 import { logger } from "@shared-logger";
+import { formatBytes } from "@shared";
 import "./folder-select.scss";
 
 interface FolderItem {
@@ -9,12 +10,6 @@ interface FolderItem {
   path: string;
   isDirectory: boolean;
   size: number;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function FolderSelect() {
@@ -157,7 +152,7 @@ export default function FolderSelect() {
             <div className="folder-select__item-info">
               <span className="folder-select__item-name">{item.name}</span>
               {!item.isDirectory && (
-                <span className="folder-select__item-size">{formatFileSize(item.size)}</span>
+                <span className="folder-select__item-size">{formatBytes(item.size)}</span>
               )}
             </div>
           </label>

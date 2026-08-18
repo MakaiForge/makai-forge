@@ -2,18 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { FileDirectoryIcon, SearchIcon, CheckCircleIcon } from "@primer/octicons-react";
 import { Button } from "@components";
 import { logger } from "@shared-logger";
+import { formatBytes } from "@shared";
 import "./executable-select.scss";
 
 interface Candidate {
   path: string;
   name: string;
   size: number;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function ExecutableSelect() {
@@ -148,7 +143,7 @@ export default function ExecutableSelect() {
                     <span className="executable-select__option-name">{exe.name}</span>
                     <span className="executable-select__option-path">{getRelativePath(exe.path)}</span>
                   </div>
-                  <span className="executable-select__option-size">{formatFileSize(exe.size)}</span>
+                  <span className="executable-select__option-size">{formatBytes(exe.size)}</span>
                 </button>
               ))}
             </div>

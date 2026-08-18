@@ -150,13 +150,7 @@ export default function Library() {
     };
   }, [dispatch, t, updateLibrary, loadCollections, hasLoadedCollections]);
 
-  const handleOnMouseEnterGameCard = useCallback(() => {
-    // Optional: pause animations if needed
-  }, []);
-
-  const handleOnMouseLeaveGameCard = useCallback(() => {
-    // Optional: resume animations if needed
-  }, []);
+  // callbacks de hover removidos — não tinham efeito
 
   const handleOpenContextMenu = useCallback(
     (game: LibraryGame, position: { x: number; y: number }) => {
@@ -623,8 +617,6 @@ export default function Library() {
                   >
                     <LibraryGameCard
                       game={game}
-                      onMouseEnter={handleOnMouseEnterGameCard}
-                      onMouseLeave={handleOnMouseLeaveGameCard}
                       onContextMenu={handleOpenContextMenu}
                     />
                   </li>

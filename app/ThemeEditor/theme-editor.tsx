@@ -7,6 +7,30 @@ import { Button } from "@components";
 import { CheckIcon } from "@primer/octicons-react";
 import { useTranslation } from "react-i18next";
 import { storeService } from "@shared-services/store.service";
+import { logger } from "@shared-logger";
+
+/** Padrões CSS perigosos que podem quebrar o app ou executar código */
+const DANGEROUS_CSS_PATTERNS = [
+  /expression\s*\(/i,
+  /javascript\s*:/i,
+  /@import\s+[^;]*(?!url).*$/m,
+  /behavior\s*:/i,
+  /-moz-binding\s*:/i,
+  /url\s*\(\s*['"]?\s*data\s*:/i,
+];
+
+function validateCss(css: string): string[] {
+  const warnings: string[] = [];
+  for (const pattern of DANGEROUS_CSS_PATTERNS) {
+    if (pattern.test(css)) {
+      warnings.push(`Padrão potencialmente perigoso detectado: ${pattern.source}`);
+    }
+  }
+  if (css.length > 100_000) {
+    warnings.push(`CSS muito longo (${(css.length / 1024).toFixed(0)}KB) — pode causar lentidão`);
+  }
+  return warnings;
+}
 
 export default function ThemeEditor() {
   const [searchParams] = useSearchParams();
@@ -34,12 +58,30 @@ export default function ThemeEditor() {
     }
   }, [themeId]);
 
+  const [cssWarnings, setCssWarnings] = useState<string[]>([]);
+
   const handleSave = useCallback(async () => {
-    if (theme) {
-      await window.electron.updateCustomTheme(theme.id, code);
-      setHasUnsavedChanges(false);
+    if (!theme) return;
+    const warnings = validateCss(code);
+    if (warnings.length > 0) {
+      setCssWarnings(warnings);
+      logger.warn("[ThemeEditor] CSS warnings:", warnings);
+      // Ainda permite salvar, mas loga os warnings
     }
+    await window.electron.updateCustomTheme(theme.id, code);
+    setHasUnsavedChanges(false);
+    setCssWarnings([]);
   }, [code, theme]);
+
+  // Validar CSS enquanto digita (debounce via useEffect)
+  useEffect(() => {
+    if (!code) { setCssWarnings([]); return; }
+    const timer = setTimeout(() => {
+      const warnings = validateCss(code);
+      setCssWarnings(warnings);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [code]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -99,6 +141,13 @@ export default function ThemeEditor() {
       </div>
 
       <div className="theme-editor__footer">
+        {cssWarnings.length > 0 && (
+          <div className="theme-editor__warnings">
+            {cssWarnings.map((w, i) => (
+              <span key={i} className="theme-editor__warning">⚠️ {w}</span>
+            ))}
+          </div>
+        )}
         <div className="theme-editor__footer-actions">
           <Button onClick={handleSave}>
             <CheckIcon />

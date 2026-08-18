@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import type { ExtInfo, TabInfo } from "./types";
+import { logger } from "@shared-logger";
 
 interface ContextMenuItem {
   label: string;
@@ -93,8 +94,8 @@ export function BrowserViewport({
         alt=""
         draggable={false}
         tabIndex={0}
-        onError={() => console.error("[BrowserMirror] img onError")}
-        onLoad={() => console.log("[BrowserMirror] img loaded OK")}
+        onError={() => logger.error("[BrowserMirror] img onError")}
+        onLoad={() => logger.log("[BrowserMirror] img loaded OK")}
         onMouseDown={(e) => {
           (e.target as HTMLImageElement).focus();
           onSendMouseEvent("mousedown", e);

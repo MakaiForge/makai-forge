@@ -125,7 +125,7 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
     setCurrentUserId(null);
     (async () => {
       try {
-        const data = await (window as any).electron.getScriptById(scriptId);
+        const data = await window.electron.getScriptById(scriptId);
         if (data?.error) {
           setError(data.error);
         } else {
@@ -137,8 +137,8 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
 
           try {
             const [userData, commentsData] = await Promise.all([
-              (window as any).electron.getMe(),
-              (window as any).electron.getScriptComments(scriptId),
+              window.electron.getMe(),
+              window.electron.getScriptComments(scriptId),
             ]);
             if (userData?.id) setCurrentUserId(parseInt(userData.id, 10));
             if (Array.isArray(commentsData)) setComments(commentsData);
@@ -151,12 +151,12 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
   }, [scriptId, visible]);
 
   useEffect(() => {
-    const cleanupProgress = (window as any).electron.onInstallProgress?.(
+    const cleanupProgress = window.electron.onInstallProgress?.(
       (data: { status: string; detail?: string; percent?: number }) => {
         setInstallProgress(data);
       }
     );
-    const cleanupLog = (window as any).electron.onInstallLog?.(
+    const cleanupLog = window.electron.onInstallLog?.(
       (line: string) => {
         const type: LogEntry["type"] =
           line.includes("ERRO") || line.includes("Error") ? "error" :
@@ -188,7 +188,7 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
     addLog("Iniciando instalação do script...", "info");
 
     try {
-      const res = await (window as any).electron.installScript(scriptId);
+      const res = await window.electron.installScript(scriptId);
       if (res?.error) {
         addLog(`Erro: ${res.error}`, "error");
         setShowErrorPopup(true);
@@ -206,7 +206,7 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
       if (res.autoSetExe) {
         addLog(`Executável configurado: ${(res.autoSetExe.split(/[/\\]/).pop() || res.autoSetExe)}`, "success");
         if (res.shop && res.objectId) {
-          await (window as any).electron.setGameExecutablePath(res.shop, res.objectId, res.autoSetExe);
+          await window.electron.setGameExecutablePath(res.shop, res.objectId, res.autoSetExe);
         }
         onClose();
         navigate(`/game/${res.shop}/${res.objectId}`);
@@ -219,9 +219,9 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
         return;
       }
 
-      const filePath = await (window as any).electron.openExeFilePicker(res.suggestedDir ?? undefined);
+      const filePath = await window.electron.openExeFilePicker(res.suggestedDir ?? undefined);
       if (filePath && res.shop && res.objectId) {
-        await (window as any).electron.setGameExecutablePath(res.shop, res.objectId, filePath);
+        await window.electron.setGameExecutablePath(res.shop, res.objectId, filePath);
         onClose();
         navigate(`/game/${res.shop}/${res.objectId}`);
       }
@@ -234,7 +234,7 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
   const handleExePicked = useCallback(async (path: string) => {
     setShowCandidateModal(false);
     if (result?.shop && result?.objectId) {
-      await (window as any).electron.setGameExecutablePath(
+      await window.electron.setGameExecutablePath(
         result.shop,
         result.objectId,
         path
@@ -246,9 +246,9 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
 
   const handleOpenExePicker = useCallback(async () => {
     if (!result?.shop || !result?.objectId) return;
-    const path = await (window as any).electron.openExeFilePicker();
+    const path = await window.electron.openExeFilePicker();
     if (path) {
-      await (window as any).electron.setGameExecutablePath(
+      await window.electron.setGameExecutablePath(
         result.shop,
         result.objectId,
         path
@@ -262,7 +262,7 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
     if (!script || togglingVote) return;
     setTogglingVote(true);
     try {
-      const res = await (window as any).electron.toggleScriptLike(script.id);
+      const res = await window.electron.toggleScriptLike(script.id);
       if (res?.error) return;
       if (liked) {
         setLiked(false);
@@ -283,7 +283,7 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
     if (!script || togglingVote) return;
     setTogglingVote(true);
     try {
-      const res = await (window as any).electron.toggleScriptDislike(script.id);
+      const res = await window.electron.toggleScriptDislike(script.id);
       if (res?.error) return;
       if (disliked) {
         setDisliked(false);
@@ -304,10 +304,10 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
     if (!script || !newComment.trim() || postingComment) return;
     setPostingComment(true);
     try {
-      const res = await (window as any).electron.postScriptComment(script.id, newComment.trim());
+      const res = await window.electron.postScriptComment(script.id, newComment.trim());
       if (res?.error) return;
       setNewComment("");
-      const fresh = await (window as any).electron.getScriptComments(script.id);
+      const fresh = await window.electron.getScriptComments(script.id);
       if (Array.isArray(fresh)) setComments(fresh);
     } catch { /* ignore */ }
     setPostingComment(false);
@@ -316,7 +316,7 @@ export function InstallScriptModal({ scriptId, visible, onClose }: Props) {
   const handleDeleteComment = useCallback(async (commentId: number) => {
     if (!script) return;
     try {
-      await (window as any).electron.deleteScriptComment(script.id, commentId);
+      await window.electron.deleteScriptComment(script.id, commentId);
       setComments(prev => prev.filter(c => c.id !== commentId));
     } catch { /* ignore */ }
   }, [script]);

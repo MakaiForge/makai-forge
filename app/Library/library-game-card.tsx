@@ -7,8 +7,8 @@ import { logger } from "@shared-logger";
 
 interface LibraryGameCardProps {
   game: LibraryGame;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   onContextMenu: (
     game: LibraryGame,
     position: { x: number; y: number }
