@@ -6,7 +6,7 @@ import { useRunners } from "@hooks/use-runners";
 import type { RunnerDefinition, RomSite } from "@emulators/types";
 import { Play, Square, Plus, ExternalLink } from "lucide-react";
 import { logger } from "@shared-logger";
-import { CATEGORY_LABELS } from "@shared/constants/categories";
+import { CATEGORY_LABELS } from "@shared-constants";
 import "./emulators.scss";
 
 const STORAGE_KEY = "emulator-extra-sites";

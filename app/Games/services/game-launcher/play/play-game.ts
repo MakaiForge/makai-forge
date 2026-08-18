@@ -65,7 +65,7 @@ export async function playGame(
     if (env.errors.length > 0) {
       logStep(gameId, "scan", `Problemas detectados: ${env.errors.join("; ")}`, "error");
       send("warning", `Problemas detectados: ${env.errors.join("; ")}. Tentando corrigir automaticamente...`, "warning");
-    }    }
+    }
 
     const gamePath = env.gamePath;
     const steamAppId = env.steamAppId;

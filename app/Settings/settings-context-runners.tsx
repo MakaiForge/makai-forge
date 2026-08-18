@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ProgressBar, Button } from "@components";
 import type { RunnerDefinition, RunnerStatus } from "@emulators/types";
 import { logger } from "@shared-logger";
-import { CATEGORY_LABELS } from "@shared/constants/categories";
+import { CATEGORY_LABELS } from "@shared-constants";
 import "./settings-runners.scss";
 
 const STORAGE_KEY = "runner-preferences";

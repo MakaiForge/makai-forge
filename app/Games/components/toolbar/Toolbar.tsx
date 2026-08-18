@@ -61,4 +61,4 @@ export const GamesToolbar = memo(function GamesToolbar({
       </div>
     </div>
   );
-}
+});

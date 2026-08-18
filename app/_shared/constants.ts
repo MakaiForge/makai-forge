@@ -19,3 +19,15 @@ export const DOWNLOADER_NAME = {
 export const MAX_MINUTES_TO_SHOW_IN_PLAYTIME = 120;
 
 export const THEME_WEB_STORE_URL = "https://github.com/lucasgertke11-bot/Makai-forger";
+
+/** Labels de categorias de runners/emuladores — compartilhado entre módulos */
+export const CATEGORY_LABELS: Record<string, string> = {
+  nintendo: "Nintendo",
+  sony: "Sony",
+  sega: "Sega",
+  arcade: "Arcade",
+  computers: "Computadores",
+  microsoft: "Microsoft",
+  multi: "Multiplataforma",
+  obscure: "Obscuro",
+};
