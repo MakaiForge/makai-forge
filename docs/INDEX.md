@@ -37,6 +37,7 @@
 | [`auditoria-proton-tools.md`](Relatorio-Downloads/auditoria-proton-tools.md) | **Auditoria ProtonTools** | Download, extração, armazenamento de Protons, 17 bugs |
 | [`auditoria-settings-profile.md`](Relatorio-Downloads/auditoria-settings-profile.md) | **Auditoria Settings & Profile** | Configurações, login, runners, perfil, 17 bugs |
 | [`auditoria-catalogue-emulators.md`](Relatorio-Downloads/auditoria-catalogue-emulators.md) | **Auditoria Catalogue & Emulators** | Catálogo de jogos, emuladores, webview, 13 bugs |
+| [`auditoria-home-scripts.md`](Relatorio-Downloads/auditoria-home-scripts.md) | **Auditoria Home, Scripts & ThemeEditor** | Página inicial, scripts, temas, 10 bugs |
 
 #### O que o Relatório de Downloads cobre:
 - ✅ Início do download (startGameDownload)
@@ -65,6 +66,7 @@
 - ✅ Auditoria do ProtonTools (download, extração, armazenamento)
 - ✅ Auditoria de Settings e Profile
 - ✅ Auditoria de Catalogue e Emulators
+- ✅ Auditoria de Home, Scripts e ThemeEditor
 
 ---
 
