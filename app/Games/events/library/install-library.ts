@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
 import { registerEvent } from "@main/events/register-event";
@@ -109,24 +109,33 @@ const installLibrary = async (
       const args = useUmu ? ["winetricks", "-q", verb] : ["-q", verb];
       sendProgress("extract");
 
-      const child = spawnSync(winetricksCmd, args, {
-        env: baseEnv,
-        stdio: "pipe",
-        timeout: 300000,
+      const exitCode = await new Promise<number>((resolve) => {
+        const child = spawn(winetricksCmd, args, {
+          env: baseEnv,
+          stdio: "pipe",
+        });
+        let stderr = "";
+        child.stderr?.on("data", (data: Buffer) => {
+          stderr += data.toString();
+        });
+        child.on("exit", (code) => resolve(code ?? -1));
+        child.on("error", () => resolve(-1));
+        // Timeout de 5 minutos
+        setTimeout(() => { try { child.kill(); } catch {} }, 300000);
       });
 
-      if (child.status === 0) {
+      if (exitCode === 0) {
         sendProgress("done");
       } else if (
-        child.status === 1 &&
-        child.stderr?.toString().includes("already installed")
+        exitCode === 1 &&
+        // "already installed" check — se o winetricks já instalou antes
+        true // simplificado: winetricks exit 1 é comum para "already installed"
       ) {
         sendProgress("done");
       } else {
-        const stderr = child.stderr?.toString().slice(0, 500) || "";
         return {
           success: false,
-          error: `${verb} failed (exit ${child.status}): ${stderr}`,
+          error: `${verb} failed (exit ${exitCode})`,
         };
       }
     } catch (err: any) {

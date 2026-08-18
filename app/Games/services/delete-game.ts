@@ -4,6 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { app } from "electron";
 import { logger } from "@main/services";
+import { gamesPlaytime } from "@games-ui/services/process-watcher";
 
 export { deleteGamePrefix } from "@container/core/clear";
 
@@ -12,6 +13,13 @@ export async function deleteGameFromDatabase(
   objectId: string
 ): Promise<void> {
   const gameKey = storeKeys.game(shop, objectId);
+
+  // Limpar do tracking de playtime se estiver rodando
+  if (gamesPlaytime.has(gameKey)) {
+    gamesPlaytime.delete(gameKey);
+    logger.info(`Removed game from playtime tracking: ${gameKey}`);
+  }
+
   let game: any = null;
   try { game = await gamesStore.get(gameKey); } catch {}
 

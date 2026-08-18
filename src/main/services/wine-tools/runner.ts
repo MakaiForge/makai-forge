@@ -4,6 +4,7 @@ import os from "node:os";
 import fs from "node:fs";
 import { app } from "electron";
 import { getVenvPythonPath } from "@container/core/venv";
+import { findUsableProton } from "@container/core/init";
 import { db, gamesStore, storeKeys } from "@main/store";
 import type { WineTool, WineToolResult } from "./types";
 import { logger } from "@main/services";
@@ -60,11 +61,9 @@ export class WineToolRunner {
       return;
     }
 
-    const pythonPath = getVenvPythonPath();
-    const executableToSpawn = pythonPath ?? umuBinary;
-    const executableArgs = pythonPath
-      ? [umuBinary, ...args]
-      : args;
+    // umu-run é um zipapp auto-contido (python embutido) — executar DIRETO.
+    const executableToSpawn = umuBinary;
+    const executableArgs = args;
 
     const env: Record<string, string | undefined> = {
       ...process.env,
@@ -72,6 +71,11 @@ export class WineToolRunner {
       GAMEID: `umu-${this.objectId}`,
       STORE: "none",
     };
+    // PYTHONHOME/PYTHONPATH do host quebram o python dentro do Steam Runtime.
+    delete env.PYTHONHOME;
+    delete env.PYTHONPATH;
+    delete env.PYTHONSTARTUP;
+    delete env.PYTHONOPTIMIZE;
 
     if (this.protonPath) {
       env.PROTONPATH = this.protonPath;
@@ -346,7 +350,9 @@ export async function createWineToolRunner(options: {
     }
 
     // Use protonPath from steam_config if available, otherwise from gamesStore
-    const protonPath = config?.protonPath || gameFromStore?.protonVersion;
+    // Fallback: se o Proton configurado não está compilado, usa um que funcione.
+    let protonPath = config?.protonPath || gameFromStore?.protonVersion;
+    if (protonPath) protonPath = findUsableProton(protonPath) || protonPath;
     return new WineToolRunner(prefix, objectId, protonPath);
   }
 
@@ -363,5 +369,7 @@ export async function createWineToolRunner(options: {
     throw new Error(`No wine prefix configured for game: ${objectId}`);
   }
 
-  return new WineToolRunner(prefix, objectId, game.protonPath);
+  let protonPath = game.protonPath;
+  if (protonPath) protonPath = findUsableProton(protonPath) || protonPath;
+  return new WineToolRunner(prefix, objectId, protonPath);
 }

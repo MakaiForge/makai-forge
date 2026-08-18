@@ -48,7 +48,6 @@ export function AddGameModal({
     try {
       const protons =
         (await window.electron.getInstalledProtonTools()) as any[];
-      console.log("Loaded protons:", protons);
 
       const names: string[] = [];
       const paths: Record<string, string> = {};
@@ -114,7 +113,6 @@ export function AddGameModal({
     setSaving(true);
 
     const coverResult = await searchGameCover(name);
-    console.log("Cover search result:", coverResult);
 
     const game: GameConfig = {
       objectId: "",
@@ -133,7 +131,6 @@ export function AddGameModal({
       lastTimePlayed: null,
     };
 
-    console.log("Saving game:", game);
     await gamesService.save(game);
     setSaving(false);
 

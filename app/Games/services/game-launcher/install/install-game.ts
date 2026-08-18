@@ -1,6 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { spawn } from "node:child_process"
+import { app } from "electron"
 import { MakaiRPC } from "@mods-manager/services/makai-rpc"
 import type { InstallResult, ProgressCallback } from "./types"
 
@@ -12,40 +13,67 @@ function resolveActualPrefix(prefixPath: string): string {
   return prefixPath
 }
 
-function getMakrunDir(): string {
-  return path.resolve(__dirname, "..", "..", "tools", "container", "makai_time")
+function getUmuBinaryPath(): string {
+  // __dirname no bundle (out/main) NÃO resolve para o repo — usar app.getAppPath()
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "app", "_resources", "binaries", "umu-run")
+    : path.join(app.getAppPath(), "app", "_resources", "binaries", "umu-run")
 }
 
-function getPythonBin(): string {
-  if (process.env.PYTHON_PATH) return process.env.PYTHON_PATH
-  return path.resolve(__dirname, "..", "..", "app", "_venv", "bin", "python3")
+/**
+ * Modo "instalação limpa": desativa as funções extras do Proton (DXVK, ESYNC,
+ * FSYNC, NVAPI) DURANTE o instalador — vídeos/previews de instaladores podem
+ * quebrar sob DXVK e syncs. O env do launch do jogo (launch-game.ts) não é
+ * tocado: o Proton volta ao normal automaticamente no próximo spawn.
+ */
+const INSTALL_CLEAN_ENV: Record<string, string> = {
+  PROTON_NO_ESYNC: "1",
+  PROTON_NO_FSYNC: "1",
+  WINEESYNC: "0",
+  WINEFSYNC: "0",
+  PROTON_USE_WINED3D: "1",
+  PROTON_DISABLE_DXVK: "1",
+  PROTON_DISABLE_NVAPI: "1",
+  PROTON_ENABLE_NVAPI: "0",
 }
 
 function runInstallerInContainer(
   installerExe: string,
   protonPath: string,
   prefixPath: string,
-  gamePath: string
+  _gamePath: string
 ): Promise<{ exitCode: number; error?: string }> {
   return new Promise((resolve) => {
     const expandedProton = path.resolve(protonPath)
     const expandedPrefix = path.resolve(prefixPath)
-    const makrunDir = getMakrunDir()
+    const umuBinary = getUmuBinaryPath()
+    // umu-run é um zipapp auto-contido (python embutido) — executar DIRETO.
+    if (!fs.existsSync(umuBinary)) {
+      resolve({ exitCode: -1, error: "umu-run não encontrado" })
+      return
+    }
+    const args = [installerExe]
+    const env: Record<string, string> = {
+      ...process.env as Record<string, string>,
+      PROTON_LOG: "1",
+      WINEPREFIX: expandedPrefix,
+      PROTONPATH: expandedProton,
+      // Desativa as funções do Proton durante a instalação (DXVK/ESYNC/FSYNC/NVAPI)
+      ...INSTALL_CLEAN_ENV,
+    }
+    delete env.PYTHONHOME
+    delete env.PYTHONPATH
+    delete env.PYTHONSTARTUP
+    delete env.PYTHONOPTIMIZE
 
-    const proc = spawn(getPythonBin(), [
-      "-m", "engine",
-      "waitforexitandrun", installerExe,
-    ], {
-      cwd: makrunDir,
+    const proc = spawn(umuBinary, args, {
       stdio: "ignore",
-      env: {
-        ...process.env as Record<string, string>,
-        WINEPREFIX: expandedPrefix,
-        PROTONPATH: expandedProton,
-      },
+      detached: true,
+      env,
     })
 
     proc.on("exit", (code) => {
+      proc.unref()
       resolve({ exitCode: code ?? -1 })
     })
 
@@ -65,7 +93,7 @@ export async function installGame(
     onProgress?: ProgressCallback
   }
 ): Promise<InstallResult> {
-  const { prefixPath, protonPath, gameId, existingExePath, onProgress } = options
+  const { prefixPath, protonPath, existingExePath, onProgress } = options
   const absSource = path.resolve(sourcePath)
   const absPrefix = path.resolve(prefixPath)
   const actual = resolveActualPrefix(absPrefix)
@@ -94,11 +122,33 @@ export async function installGame(
       ? absSource
       : path.dirname(absSource)
     if (fs.statSync(folder, { throwIfNoEntry: false })?.isDirectory()) {
-      await MakaiRPC.call("copy_to_prefix", {
+      const copyResult = await MakaiRPC.call<any>("copy_to_prefix", {
         source_path: folder,
         prefix_path: absPrefix,
       })
-      progress("copying", 80, "Cópia concluída")
+      // Validação: a cópia só conta se os SHA256 conferiram (hashes_ok)
+      if (!copyResult?.success) {
+        progress("error", 45, copyResult?.error || "Falha ao copiar pasta")
+        return {
+          success: false,
+          candidates: [],
+          suggested_dir: driveC,
+          method: "restore",
+          error: copyResult?.error || "Falha ao copiar pasta",
+        }
+      }
+      const mismatches = copyResult?.mismatches?.length || 0
+      if (copyResult?.hashes_ok === false || mismatches > 0) {
+        progress("error", 45, `${mismatches} arquivo(s) com hash divergente após a cópia`)
+        return {
+          success: false,
+          candidates: [],
+          suggested_dir: driveC,
+          method: "restore",
+          error: `${mismatches} arquivo(s) com hash divergente após a cópia`,
+        }
+      }
+      progress("copying", 80, `Cópia concluída e verificada (${copyResult.files_count ?? "?"} arquivos)`)
     }
     progress("scanning", 85, "Procurando executáveis...")
     const scan = await MakaiRPC.call<any>("scan_prefix_for_exes", {
@@ -109,7 +159,9 @@ export async function installGame(
     return {
       success: true,
       candidates: scan.candidates,
-      suggested_dir: path.dirname(existingExePath),
+      // A janela de seleção deve apontar para os exes COPIADOS no prefixo
+      // (drive_c), nunca para o diretório original de download.
+      suggested_dir: scan.suggested_dir || path.dirname(existingExePath),
       method: "restore",
     }
   }
@@ -141,8 +193,21 @@ export async function installGame(
       gameDir
     )
 
-    if (result.exitCode !== 0 && result.exitCode !== -1) {
-      progress("error", 50, `Instalador encerrou com código ${result.exitCode}`)
+    // Falha no spawn = instalador nem abriu → para aqui (não copia lixo).
+    if (result.exitCode === -1) {
+      progress("error", 50, result.error || "Não foi possível abrir o instalador")
+      return {
+        success: false,
+        candidates: [],
+        suggested_dir: driveC,
+        method: "installer",
+        error: result.error || "Não foi possível abrir o instalador (spawn falhou)",
+      }
+    }
+    // Exit != 0: o instalador pode ter instalado mesmo assim — o checker
+    // (snapshot antes/depois) decide; aqui só avisa.
+    if (result.exitCode !== 0) {
+      progress("installing", 55, `Instalador encerrou com código ${result.exitCode} — verificando o que foi instalado...`)
     }
 
     // Snapshot AFTER via Python RPC
@@ -222,15 +287,29 @@ export async function installGame(
     prefix_path: absPrefix,
   })
 
-  if (!copyResult.success) {
+  if (!copyResult?.success) {
     return {
       success: false,
       candidates: [],
       suggested_dir: driveC,
       method: "portable",
-      error: copyResult.error ?? "Falha ao copiar pasta",
+      error: copyResult?.error ?? "Falha ao copiar pasta",
     }
   }
+
+  // Validação: confirma que a pasta foi REALMENTE copiada (SHA256 pré/pós)
+  const mismatches = copyResult?.mismatches?.length || 0
+  if (copyResult?.hashes_ok === false || mismatches > 0) {
+    progress("error", 90, `${mismatches} arquivo(s) com hash divergente após a cópia`)
+    return {
+      success: false,
+      candidates: [],
+      suggested_dir: driveC,
+      method: "portable",
+      error: `${mismatches} arquivo(s) com hash divergente após a cópia`,
+    }
+  }
+  progress("copying", 90, `Cópia concluída e verificada (${copyResult.files_count ?? "?"} arquivos)`)
 
   progress("scanning", 97, "Procurando executáveis...")
   const scan = await MakaiRPC.call<any>("scan_prefix_for_exes", {
