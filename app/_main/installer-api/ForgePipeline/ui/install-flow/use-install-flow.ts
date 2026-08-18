@@ -118,10 +118,15 @@ export function useInstallFlow() {
 
       pendingInstallRef.current = null;
 
+      setInstallProgress({
+        status: "prefix",
+        percent: 85,
+        gameTitle: game?.title,
+      });
+
       const result = await window.electron.openGameInstaller(shop, objectId, protonPath, game?.title);
 
       setShowCopyingModal(false);
-      setInstallProgress(null);
       suggestedDirRef.current = result.suggestedDir || null;
 
       if (result.executableSelectWindowOpened) {
@@ -136,6 +141,7 @@ export function useInstallFlow() {
         suggestedDirRef.current = result.suggestedDir;
         await handleOpenExePicker();
       }
+      setInstallProgress(null);
       updateLibrary();
     } catch {
       setInstallProgress({ status: "error", percent: 0, gameTitle: game?.title });
