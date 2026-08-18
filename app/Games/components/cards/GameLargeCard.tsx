@@ -41,7 +41,11 @@ export function GameLargeCard({
           setDetails(data);
         }
       })
-      .catch(() => {});
+      .catch((err: any) => {
+        if (err?.message && !err.message.includes("404")) {
+          console.warn("[GameLargeCard] Failed to fetch Steam details:", err.message);
+        }
+      });
     return () => { cancelled = true; };
   }, [isSteam, appId]);
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { GamesToolbar } from "./Toolbar";
 import type { ViewMode, SortOption } from "../../types";
 import "./toolbar.scss";
@@ -27,6 +28,18 @@ export function GamesTopBar({
   showModCompatible, onToggleModCompatible, onAddGame, onBackupClick,
   handleSyncSteam, syncing, syncLabel,
 }: Props) {
+  const [backupLoading, setBackupLoading] = useState(false);
+
+  const handleBackup = async () => {
+    if (backupLoading) return;
+    setBackupLoading(true);
+    try {
+      await onBackupClick();
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
   return (
     <div className="games__topbar">
       <div className="games__topbar-left">
@@ -41,8 +54,9 @@ export function GamesTopBar({
           showModCompatible={showModCompatible} onToggleModCompatible={onToggleModCompatible}
         />
       </div>
-      <button className="games__backup-btn" onClick={onBackupClick}>
-        <span className="games__backup-icon">☁</span>Backup e Sincronizar
+      <button className="games__backup-btn" onClick={handleBackup} disabled={backupLoading}>
+        <span className={`games__backup-icon ${backupLoading ? "games__backup-icon--spin" : ""}`}>☁</span>
+        {backupLoading ? "Sincronizando..." : "Backup e Sincronizar"}
       </button>
       <button className="games__sync-btn" onClick={handleSyncSteam} disabled={syncing}>
         <span className={`games__sync-icon ${syncing ? "games__sync-icon--spin" : ""}`}>↻</span>

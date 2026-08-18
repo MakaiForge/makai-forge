@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { TextField } from "@components";
 import type { ViewMode, SortOption } from "../../types";
 
@@ -16,7 +17,9 @@ interface GamesToolbarProps {
   onToggleModCompatible?: () => void;
 }
 
-export function GamesToolbar({
+const VALID_SORT_OPTIONS: SortOption[] = ["title_asc", "title_desc", "recently_played", "most_played", "installed_first"];
+
+export const GamesToolbar = memo(function GamesToolbar({
   searchQuery, onSearchChange, viewMode, onViewModeChange,
   sortBy, onSortChange, showHiddenGames, onToggleHidden, hasHiddenGames,
   onAddGame, showModCompatible, onToggleModCompatible,
@@ -26,7 +29,7 @@ export function GamesToolbar({
       <TextField placeholder="Buscar jogos..." value={searchQuery} onChange={(e) => onSearchChange(e.target.value)} />
 
       <div className="games__toolbar-group">
-        <select value={sortBy} onChange={(e) => onSortChange(e.target.value as SortOption)} className="games__toolbar-select">
+        <select value={sortBy} onChange={(e) => { const v = e.target.value as string; if (VALID_SORT_OPTIONS.includes(v as SortOption)) onSortChange(v as SortOption); }} className="games__toolbar-select">
           <option value="title_asc">A-Z</option>
           <option value="title_desc">Z-A</option>
           <option value="recently_played">Recentes</option>

@@ -23,7 +23,7 @@ export interface JsHttpDownloaderOptions {
 const MAX_RETRY_ATTEMPTS = 10;
 const INITIAL_RETRY_DELAY_MS = 1000;
 const MAX_RETRY_DELAY_MS = 15000;
-const STALL_TIMEOUT_MS = 8000;
+const STALL_TIMEOUT_MS = 20000;
 const STALL_CHECK_INTERVAL_MS = 2000;
 const DEFAULT_DOWNLOAD_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0";

@@ -3,18 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ProgressBar, Button } from "@components";
 import type { RunnerDefinition, RunnerStatus } from "@emulators/types";
 import { logger } from "@shared-logger";
+import { CATEGORY_LABELS } from "@shared/constants/categories";
 import "./settings-runners.scss";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  nintendo: "Nintendo",
-  sony: "Sony",
-  sega: "Sega",
-  arcade: "Arcade",
-  computers: "Computadores",
-  microsoft: "Microsoft",
-  multi: "Multiplataforma",
-  obscure: "Obscuro",
-};
 
 const STORAGE_KEY = "runner-preferences";
 

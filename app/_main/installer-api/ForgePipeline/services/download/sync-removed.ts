@@ -25,6 +25,14 @@ export async function syncRemovedDownloads(
     }
   }
 
+  // Limpar cache de chaves antigas para evitar memory leak
+  if (removedCache.size > 500) {
+    const entries = Array.from(removedCache);
+    removedCache.clear();
+    // Re-adicionar apenas as últimas 100
+    entries.slice(-100).forEach((k) => removedCache.add(k));
+  }
+
   if (toRemove.length === 0) return;
 
   const keys = toRemove.join(", ");

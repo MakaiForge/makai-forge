@@ -88,7 +88,7 @@ export function SettingsDownloadSources() {
       } catch (error) {
         logger.error("Failed to fetch download sources:", error);
       }
-    }, 5000);
+    }, 10000);
 
     return () => clearInterval(intervalId);
   }, [downloadSources]);

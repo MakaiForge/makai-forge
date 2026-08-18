@@ -6,18 +6,8 @@ import { useRunners } from "@hooks/use-runners";
 import type { RunnerDefinition, RomSite } from "@emulators/types";
 import { Play, Square, Plus, ExternalLink } from "lucide-react";
 import { logger } from "@shared-logger";
+import { CATEGORY_LABELS } from "@shared/constants/categories";
 import "./emulators.scss";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  nintendo: "Nintendo",
-  sony: "Sony",
-  sega: "Sega",
-  arcade: "Arcade",
-  computers: "Computadores",
-  microsoft: "Microsoft",
-  multi: "Multiplataforma",
-  obscure: "Obscuro",
-};
 
 const STORAGE_KEY = "emulator-extra-sites";
 

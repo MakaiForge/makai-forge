@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DatabaseIcon, FileZipIcon } from "@primer/octicons-react";
 import { formatBytes } from "@shared";
 import { CompatibilityBadge } from "@games-ui/components/compatibility-badge/compatibility-badge";
@@ -54,6 +54,8 @@ export function GameCompactRow({
 }: CompactRowProps) {
   const [details, setDetails] = useState<Record<string, any> | null>(null);
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!isSteam || !appId || pcRequirements) return;
     const cached = cacheGet(appId);
@@ -62,15 +64,26 @@ export function GameCompactRow({
       return;
     }
     let cancelled = false;
-    window.electron.getGameShopDetails(appId, "steam", "en")
-      .then((data: any) => {
-        if (!cancelled && data) {
-          cacheSet(appId, data);
-          setDetails(data);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
+    // Debounce de 300ms para evitar requests redundantes em scroll rápido
+    debounceRef.current = setTimeout(() => {
+      window.electron.getGameShopDetails(appId, "steam", "en")
+        .then((data: any) => {
+          if (!cancelled && data) {
+            cacheSet(appId, data);
+            setDetails(data);
+          }
+        })
+        .catch((err: any) => {
+          // Log apenas erros reais (não 404s de jogos sem dados)
+          if (err?.message && !err.message.includes("404")) {
+            console.warn("[GameCompactRow] Failed to fetch Steam details:", err.message);
+          }
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [isSteam, appId, pcRequirements]);
 
   const hours = playTimeMs ? (playTimeMs / 3600000).toFixed(1) : null;

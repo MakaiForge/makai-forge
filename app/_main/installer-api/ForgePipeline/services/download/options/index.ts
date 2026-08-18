@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { Download } from "@types";
 import { Downloader } from "@shared";
+import { logger } from "@main/services/logger";
 import type { DownloadOptions } from "../url";
 import { getGofileDownloadOptions } from "./gofile";
 import { getPixelDrainDownloadOptions } from "./pixel-drain";
@@ -43,6 +44,7 @@ export async function getJsDownloadOptions(
         filename: undefined,
       };
     default:
+      logger.warn(`[getJsDownloadOptions] Unknown downloader type: ${download.downloader}`);
       return null;
   }
 }
