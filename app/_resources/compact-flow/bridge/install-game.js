@@ -9,5 +9,8 @@ module.exports = {
 };
 
 if (require.main === module) {
-  main();
+  main().catch((err) => {
+    console.error(`Fatal: ${err.message}`);
+    process.exit(1);
+  });
 }

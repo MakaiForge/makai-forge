@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 // install-compactflow.cjs
-// Copia o CompactFlow original para app/_resources/compact-flow/
+// Sincroniza o CompactFlow standalone → app/_resources/compact-flow/
+// (a cópia embutida que a janela interna do Makai Forge usa).
 // Uso: node scripts/install-compactflow.cjs
 // Ou via start-makaiforge.sh → opção 3
+//
+// A fonte é a pasta standalone do CompactFlow. Defina COMPACTFLOW_SRC
+// para apontar para outra localização.
 
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 
 const APP_DIR = path.resolve(__dirname, "..");
-const COMPACTFLOW_SRC = "/home/cas/Documentos/CompactFlow";
 const DEST = path.join(APP_DIR, "app", "_resources", "compact-flow");
 
 const RESET = "\x1b[0m";
@@ -20,122 +24,71 @@ function log(tag, msg) {
   console.log(`  ${tag} ${msg}`);
 }
 
-function copyDir(src, dest, filterFn) {
-  if (!fs.existsSync(src)) {
-    log(AMARELO + "⚠", `Diretório não encontrado: ${src}`);
-    return;
+function findSource() {
+  if (process.env.COMPACTFLOW_SRC && fs.existsSync(process.env.COMPACTFLOW_SRC)) {
+    return process.env.COMPACTFLOW_SRC;
   }
-  fs.mkdirSync(dest, { recursive: true });
-
-  let count = 0;
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-
-    if (filterFn && !filterFn(entry.name, srcPath)) continue;
-
-    if (entry.isDirectory()) {
-      copyDir(srcPath, destPath, filterFn);
-      count++;
-    } else {
-      fs.cpSync(srcPath, destPath, { force: true, recursive: true });
-      count++;
-    }
+  const candidates = [
+    "/mnt/926f111f-fdf6-4067-ac31-32f732441bac/MAKAI/compact-flow",
+    path.join(os.homedir(), "MAKAI", "compact-flow"),
+    path.join(os.homedir(), "Documentos", "CompactFlow"),
+    path.join(os.homedir(), "Documents", "CompactFlow"),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c) && fs.existsSync(path.join(c, "renderer", "index.html"))) return c;
   }
-  log(VERDE + "✓", `${path.relative(COMPACTFLOW_SRC, src)} → ${path.relative(APP_DIR, dest)} (${count} items)`);
+  return null;
 }
 
-function copyFile(src, dest) {
-  if (!fs.existsSync(src)) {
-    log(AMARELO + "⚠", `Arquivo não encontrado: ${src}`);
-    return false;
-  }
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.cpSync(src, dest, { force: true });
-  log(VERDE + "✓", `${path.basename(src)} → ${path.relative(APP_DIR, dest)}`);
-  return true;
-}
+const COMPACTFLOW_SRC = findSource();
 
 console.log(`\n${CIANO}════════════════════════════════════════════${RESET}`);
 console.log(`${CIANO}  Instalação do CompactFlow${RESET}`);
-console.log(`${CIANO}  Origem: ${COMPACTFLOW_SRC}${RESET}`);
+console.log(`${CIANO}  Origem:  ${COMPACTFLOW_SRC || "não encontrada"}${RESET}`);
 console.log(`${CIANO}  Destino: ${DEST}${RESET}`);
 console.log(`${CIANO}════════════════════════════════════════════${RESET}\n`);
 
-// Verificar se CompactFlow existe
-if (!fs.existsSync(COMPACTFLOW_SRC)) {
-  console.error(`\n  ${AMARELO}CompactFlow não encontrado em: ${COMPACTFLOW_SRC}${RESET}`);
-  console.error(`  Ajuste o caminho em scripts/install-compactflow.cjs se necessário.\n`);
+if (!COMPACTFLOW_SRC) {
+  console.error(`\n  ${AMARELO}CompactFlow não encontrado.${RESET}`);
+  console.error(`  Defina COMPACTFLOW_SRC apontando para a pasta do app standalone.\n`);
   process.exit(1);
 }
 
-// --- Bridge ---
-copyDir(
-  path.join(COMPACTFLOW_SRC, "bridge"),
-  path.join(DEST, "bridge")
-);
+// Sincroniza tudo (incluindo main/index.js, scripts, run.sh), preservando
+// apenas o package.json como CommonJS (obrigatório dentro do Makai Forge).
+fs.mkdirSync(DEST, { recursive: true });
 
-// --- Core ---
-copyDir(
-  path.join(COMPACTFLOW_SRC, "core"),
-  path.join(DEST, "core")
-);
+let copied = 0;
+function syncDir(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (entry.name === ".compactflow-installed") continue;
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      syncDir(srcPath, destPath);
+    } else {
+      fs.cpSync(srcPath, destPath, { force: true });
+      copied++;
+    }
+  }
+}
 
-// --- Data ---
-copyDir(
-  path.join(COMPACTFLOW_SRC, "data"),
-  path.join(DEST, "data")
-);
+syncDir(COMPACTFLOW_SRC, DEST);
 
-// --- Renderer ---
-copyDir(
-  path.join(COMPACTFLOW_SRC, "renderer"),
-  path.join(DEST, "renderer")
-);
+// package.json: preserva o original (com build config, electron-builder, scripts)
+// mas força "type": "commonjs" porque o Makai Forge usa "type": "module"
+const srcPkg = JSON.parse(fs.readFileSync(path.join(COMPACTFLOW_SRC, "package.json"), "utf-8"));
+srcPkg.type = "commonjs";
+fs.writeFileSync(path.join(DEST, "package.json"), JSON.stringify(srcPkg, null, 2) + "\n");
+log(VERDE + "✓", `package.json (preservado, type: commonjs, ${Object.keys(srcPkg).length} campos)`);
 
-// --- Scripts (pula: versões customizadas já estão no Makai Forger) ---
-log(CIANO + "◆", "scripts/ preservado (customizado para Makai Forger)");
-
-// --- Assets ---
-copyDir(
-  path.join(COMPACTFLOW_SRC, "assets"),
-  path.join(DEST, "assets")
-);
-
-// --- Main (IPC handlers + utilitários) ---
-// Pula: index.js, state.js, window.js (substituídos pelo TypeScript)
-copyDir(
-  path.join(COMPACTFLOW_SRC, "main"),
-  path.join(DEST, "main"),
-  (name) => !["index.js", "state.js", "window.js"].includes(name)
-);
-
-// --- Preload ---
-copyFile(
-  path.join(COMPACTFLOW_SRC, "preload.js"),
-  path.join(DEST, "main", "preload.js")
-);
-
-// --- data.js (config paths) — vai pra raiz do compact-flow
-copyFile(
-  path.join(COMPACTFLOW_SRC, "data.js"),
-  path.join(DEST, "data.js")
-);
-
-// --- extract_icon.py ---
-copyFile(
-  path.join(COMPACTFLOW_SRC, "extract_icon.py"),
-  path.join(DEST, "main", "extract_icon.py")
-);
-
-// --- package.json (força CommonJS, pois o Makai Forger usa "type": "module") ---
-fs.writeFileSync(path.join(DEST, "package.json"), '{"type": "commonjs"}\n');
-log(VERDE + "✓", "package.json (type: commonjs)");
-
-// --- Flag ---
-fs.writeFileSync(path.join(DEST, ".compactflow-installed"), 
+// Flag
+fs.writeFileSync(
+  path.join(DEST, ".compactflow-installed"),
   `Installed at ${new Date().toISOString()}\nSource: ${COMPACTFLOW_SRC}\n`
 );
 
-console.log(`\n${VERDE}✅ CompactFlow instalado em app/_resources/compact-flow/${RESET}`);
-console.log(`  Use start-makaiforge.sh → opção 1 para testar.\n`);
+console.log(`\n${VERDE}✅ CompactFlow sincronizado (${copied} arquivos) em app/_resources/compact-flow/${RESET}`);
+console.log(`  A janela interna do Makai Forge usa esta cópia.`);
+console.log(`  O app standalone continua em: ${COMPACTFLOW_SRC}\n`);

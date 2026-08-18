@@ -1,90 +1,112 @@
 #!/bin/bash
-# CompactFlow Wrapper
-# Chama o Makai Forger com --compact-flow para abrir a janela do CompactFlow
-# Suporta: Dev, Deb/RPM, AppImage, Flatpak, Snap
+# CompactFlow wrapper — abre o CompactFlow standalone (independente do Makai Forge)
+# O .exe/.msi clicado é passado como argumento direto.
+#
+# Fluxo:
+#   1. Usuário clica num .exe no file manager
+#   2. O .desktop chama: compatflow %f
+#   3. Este script encontra o diretório do CompactFlow
+#   4. Executa: electron . <arquivo.exe>
+#
+# O CompactFlow é um app Electron independente que:
+#   - Verifica compatibilidade de .exe/.msi com Linux
+#   - Não requer o Makai Forge aberto
+#   - Consome dados do Makai Forge em ~/.config/makai-forger/resources
 
-TEST_MODE=false
-FILES=()
+set -euo pipefail
 
-for arg in "$@"; do
-  case "$arg" in
-    --test) TEST_MODE=true ;;
-    --*) ;;
-    *) FILES+=("$arg") ;;
-  esac
-done
+EXTRA_ARGS=("$@")
 
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+# ── 1. Encontrar o diretório do CompactFlow ───────────────────
+find_compactflow() {
+    # a) Variável de ambiente
+    if [ -n "${COMPACTFLOW_DIR:-}" ] && [ -d "$COMPACTFLOW_DIR" ]; then
+        echo "$COMPACTFLOW_DIR"
+        return
+    fi
 
-# ── Detectar formato de execução ──────────────────────────────────
+    # b) Standalone: fonte do projeto
+    local standalone_dirs=(
+        "/mnt/926f111f-fdf6-4067-ac31-32f732441bac/MAKAI/compact-flow"
+        "$HOME/Documentos/compact-flow"
+        "$HOME/Documents/compact-flow"
+        "$HOME/MAKAI/compact-flow"
+    )
+    for dir in "${standalone_dirs[@]}"; do
+        [ -z "$dir" ] && continue
+        [ ! -d "$dir" ] && continue
+        if [ -f "$dir/main/index.js" ] && [ -f "$dir/package.json" ]; then
+            echo "$dir"
+            return
+        fi
+    done
 
-run_dev() {
-  local app_dir="$1"
-  local flags="--no-sandbox --disable-gpu --compact-flow"
-  $TEST_MODE && flags="$flags --test"
-  for f in "${FILES[@]}"; do
-    flags="$flags $(printf %q "$f")"
-  done
-  cd "$app_dir" && exec node node_modules/electron/cli.js . $flags
+    # c) Cópia embutida no Makai Forge (app/_resources/compact-flow/)
+    local makai_dirs=(
+        "${MAKAI_FORGE_DIR:-}"
+        "$HOME/Documentos/Makai_forge"
+        "$HOME/Documents/Makai_forge"
+        "/mnt/926f111f-fdf6-4067-ac31-32f732441bac/MAKAI/Makai_forge"
+    )
+    for dir in "${makai_dirs[@]}"; do
+        [ -z "$dir" ] && continue
+        [ ! -d "$dir" ] && continue
+        local cf="$dir/app/_resources/compact-flow"
+        if [ -f "$cf/main/index.js" ] && [ -f "$cf/package.json" ]; then
+            echo "$cf"
+            return
+        fi
+    done
+
+    return 1
 }
 
-run_appimage() {
-  local appimage="$1"
-  local flags="--compact-flow"
-  $TEST_MODE && flags="$flags --test"
-  for f in "${FILES[@]}"; do
-    flags="$flags $(printf %q "$f")"
-  done
-  exec "$appimage" $flags
+# ── 2. Encontrar o binário do Electron ───────────────────────
+find_electron() {
+    local cf_dir="$1"
+
+    # a) Electron local do CompactFlow standalone
+    if [ -x "$cf_dir/node_modules/.bin/electron" ]; then
+        echo "$cf_dir/node_modules/.bin/electron"
+        return
+    fi
+
+    # b) Electron do Makai Forge (fallback)
+    local makai_dirs=(
+        "${MAKAI_FORGE_DIR:-}"
+        "$HOME/Documentos/Makai_forge"
+        "$HOME/Documents/Makai_forge"
+        "/mnt/926f111f-fdf6-4067-ac31-32f732441bac/MAKAI/Makai_forge"
+    )
+    for dir in "${makai_dirs[@]}"; do
+        [ -z "$dir" ] && continue
+        if [ -x "$dir/node_modules/.bin/electron" ]; then
+            echo "$dir/node_modules/.bin/electron"
+            return
+        fi
+    done
+
+    # c) Electron no PATH (flatpak, snap, etc.)
+    if command -v electron &>/dev/null; then
+        echo "electron"
+        return
+    fi
+
+    return 1
 }
 
-run_flatpak() {
-  local flags="--compact-flow"
-  $TEST_MODE && flags="$flags --test"
-  for f in "${FILES[@]}"; do
-    flags="$flags $(printf %q "$f")"
-  done
-  exec flatpak run com.makaiforge.app $flags
+CF_DIR="$(find_compactflow)" || {
+    echo "CompactFlow não encontrado." >&2
+    echo "Instale o CompactFlow ou defina COMPACTFLOW_DIR." >&2
+    exit 1
 }
 
-run_snap() {
-  local flags="--compact-flow"
-  $TEST_MODE && flags="$flags --test"
-  for f in "${FILES[@]}"; do
-    flags="$flags $(printf %q "$f")"
-  done
-  exec makaiforge $flags
+ELECTRON_BIN="$(find_electron "$CF_DIR")" || {
+    echo "Electron não encontrado." >&2
+    echo "Rode 'npm install' na pasta do CompactFlow ou instale electron globalmente." >&2
+    exit 1
 }
 
-# ── Procurar o Makai Forger ───────────────────────────────────────
-
-# Modo Dev
-if [ -d "$HOME/Documentos/Makai_forge" ] && [ -f "$HOME/Documentos/Makai_forge/node_modules/electron/cli.js" ]; then
-  run_dev "$HOME/Documentos/Makai_forge"
-fi
-
-# AppImage (procurar na mesma pasta e subdiretórios)
-appimage_path=$(find /opt ~/.local/bin ~/Desktop -name "MakaiForge-*.AppImage" -o -name "makaiforge-*.AppImage" 2>/dev/null | head -1)
-if [ -n "$appimage_path" ] && [ -x "$appimage_path" ]; then
-  run_appimage "$appimage_path"
-fi
-
-# Instalação Deb/RPM (sistema)
-if [ -x "/opt/makai-forger/makaiforge" ]; then
-  exec /opt/makai-forger/makaiforge --compact-flow "$@"
-fi
-
-# Flatpak
-if command -v flatpak &>/dev/null && flatpak info com.makaiforge.app &>/dev/null 2>&1; then
-  run_flatpak
-fi
-
-# Snap
-if command -v snap &>/dev/null && snap list makaiforge &>/dev/null 2>&1; then
-  run_snap
-fi
-
-echo "Makai Forger não encontrado."
-echo "Instale o Makai Forger ou execute pelo modo Dev:"
-echo "  cd ~/Documentos/Makai_forge && npm run dev -- --compact-flow"
-exit 1
+# ── 3. Executar CompactFlow standalone ───────────────────────
+cd "$CF_DIR"
+exec "$ELECTRON_BIN" . --no-sandbox "${EXTRA_ARGS[@]}"

@@ -1,1 +1,50 @@
-{"type": "commonjs"}
+{
+  "name": "compactflow",
+  "productName": "CompactFlow",
+  "version": "1.0.0",
+  "description": "Verificador de compatibilidade de aplicativos Windows (.exe) com Linux — complemento do Makai Forge",
+  "main": "main/index.js",
+  "type": "commonjs",
+  "license": "MIT",
+  "author": "Makai Forge",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "check": "node --check main/index.js && node --check main/ipc/analyze.js && node --check main/ipc/catalog.js && node --check main/ipc/proton.js && node --check main/ipc/install.js && node --check main/ipc/icon.js && node --check main/ipc/logger.js",
+    "dist": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.makaiforge.compactflow",
+    "productName": "CompactFlow",
+    "files": [
+      "main/**",
+      "renderer/**",
+      "bridge/**",
+      "core/**",
+      "data/**",
+      "assets/**",
+      "data.js"
+    ],
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage",
+        "tar.gz"
+      ],
+      "category": "Utility",
+      "icon": "assets/compatflow.png",
+      "desktop": {
+        "entry": {
+          "Name": "CompactFlow",
+          "Comment": "Verificar compatibilidade de aplicativos Windows com Linux",
+          "Categories": "Utility;",
+          "MimeType": "application/x-ms-dos-executable;application/vnd.microsoft.portable-executable;application/x-msi;"
+        }
+      }
+    }
+  }
+}

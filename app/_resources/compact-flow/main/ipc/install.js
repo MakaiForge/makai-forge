@@ -87,9 +87,12 @@ ipcMain.handle('open-proton-forger', async (_, gameData) => {
   }
 
   const pfCandidates = [
+    process.env.MAKAI_FORGE_DIR,
     path.join(os.homedir(), 'Documentos', 'Makai_forge'),
+    path.join(os.homedir(), 'Documents', 'Makai_forge'),
     '/opt/makai-forger',
-  ];
+    '/usr/lib/makai-forger',
+  ].filter(Boolean);
   let pfDir = null;
   for (const c of pfCandidates) {
     const ebin = path.join(c, 'node_modules', '.bin', 'electron');

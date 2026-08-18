@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=CompactFlow
-Comment=Verificar compatibilidade de aplicativos Windows com Linux
+Comment=Abrir com CompactFlow (Makai Forger)
 Exec=compatflow %f
 Icon=compatflow
 Terminal=false

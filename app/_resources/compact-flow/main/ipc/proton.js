@@ -50,3 +50,13 @@ ipcMain.handle('proton-forks', async () => {
     return [];
   }
 });
+
+ipcMain.handle('proton-recommend', async (_, gameName) => {
+  try {
+    const { getRecommendation } = require('../../bridge/proton/recommended');
+    return getRecommendation(gameName);
+  } catch (e) {
+    console.error('proton-recommend error:', e.message);
+    return null;
+  }
+});

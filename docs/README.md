@@ -99,7 +99,27 @@ Página de catálogo de jogos — busca, filtros, grid de resultados.
 
 - [`README.md`](Catalogue/README.md) — Catálogo com busca e fontes múltiplas
 
+## Relatorio-Play/
+Relatório completo do mapeamento de Play — fluxo inteiro de clique em Play até o jogo rodando.
+
+- [`README.md`](Relatorio-Play/README.md) — **Relatório principal completo** (fluxo Play → Proton → Prefix → Configs → Launch)
+- [`arvore-genealogica.md`](Relatorio-Play/arvore-genealogica.md) — Árvore de chamadas: quem chama quem de ponta a ponta
+
 ## Downloads/
+## Relatorio-Downloads/
+Relatório completo do mapeamento de Downloads — fluxo inteiro de download até exibição na aba Games.
+
+- [`README.md`](Relatorio-Downloads/README.md) — **Relatório principal completo** (fluxo Download → Extração → Instalação → Games)
+- [`fluxo-download-completo.md`](Relatorio-Downloads/fluxo-download-completo.md) — Fluxo detalhado passo a passo com todos os pontos de decisão
+- [`arvore-genealogica.md`](Relatorio-Downloads/arvore-genealogica.md) — Árvore de chamadas: quem chama quem de ponta a ponta
+  - [`analise-bugs.md`](Relatorio-Downloads/analise-bugs.md) — Análise de bugs
+  - [`auditoria-library-games.md`](Relatorio-Downloads/auditoria-library-games.md) — Auditoria Library e Games
+  - [`auditoria-cards.md`](Relatorio-Downloads/auditoria-cards.md) — Auditoria Cards
+  - [`auditoria-toolbar.md`](Relatorio-Downloads/auditoria-toolbar.md) — Auditoria Toolbar
+  - [`auditoria-gamebar-wine.md`](Relatorio-Downloads/auditoria-gamebar-wine.md) — Auditoria GameBar e funções Wine/Proton
+  - [`auditoria-notifications.md`](Relatorio-Downloads/auditoria-notifications.md) — Auditoria do sistema de notificações
+  - [`auditoria-games-completa.md`](Relatorio-Downloads/auditoria-games-completa.md) — Auditoria completa do módulo Games
+
 Página de downloads — gerenciamento de torrents, fila de instalação.
 
 - [`README.md`](Downloads/README.md) — Infraestrutura de downloads
@@ -128,6 +148,7 @@ Modal de seleção de pasta — checkbox tree com pre-seleção.
 Funcionalidades relacionadas a jogos.
 
 - [`game-launcher.md`](Games/game-launcher.md) — Game Bar / lançamento de jogos
+- [`play-games-vs-mod-manager.md`](Games/play-games-vs-mod-manager.md) — **Play da aba Games vs Play do Mod Manager** (jogo ≠ mod; correção do bug que apagava o jogo)
 - [`game-library.md`](Games/game-library.md) — Gerenciamento da biblioteca
 - [`game-details.md`](Games/game-details.md) — Página de detalhes do jogo
 - [`download-infra.md`](Games/download-infra.md) — Infraestrutura de downloads

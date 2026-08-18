@@ -7,7 +7,7 @@ cd "$APP_DIR"
 echo "=== Makai Forge ==="
 echo "1 - Dev (npm run dev)"
 echo "2 - Build (electron-vite build)"
-echo "3 - Instalar CompactFlow (copiar do CompactFlow original)"
+echo "3 - Instalar CompactFlow (sincronizar standalone → Makai Forge + integração)"
 echo ""
 read -p "Escolha: " opt
 
@@ -19,7 +19,7 @@ case "$opt" in
     exec npm run build
     ;;
   3)
-    echo "Instalando CompactFlow..."
+    echo "Sincronizando CompactFlow (standalone → Makai Forge)..."
     node scripts/install-compactflow.cjs
     echo ""
     echo "Deseja instalar a integração com o gerenciador de arquivos?"
@@ -29,7 +29,16 @@ case "$opt" in
       bash app/_resources/compact-flow/scripts/install-integration.sh --dev
     fi
     echo ""
-    echo "Use a opção 1 para abrir o Makai Forger com CompactFlow."
+    echo "Deseja abrir o CompactFlow agora?"
+    read -p "Abrir? (s/N): " openanswer
+    if [ "$openanswer" = "s" ] || [ "$openanswer" = "S" ]; then
+      CF_SRC="/mnt/926f111f-fdf6-4067-ac31-32f732441bac/MAKAI/compact-flow"
+      if [ -f "$CF_SRC/run.sh" ]; then
+        bash "$CF_SRC/run.sh"
+      else
+        echo "CompactFlow não encontrado em $CF_SRC"
+      fi
+    fi
     ;;
   *)
     echo "Opção inválida"

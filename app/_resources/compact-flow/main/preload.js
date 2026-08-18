@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('compatflow', {
   protonAvailable: () => ipcRenderer.invoke('proton-available'),
   protonInstall: (tag, url) => ipcRenderer.invoke('proton-install', tag, url),
   protonForks: () => ipcRenderer.invoke('proton-forks'),
+  protonRecommend: (gameName) => ipcRenderer.invoke('proton-recommend', gameName),
   gameInstall: (opts) => ipcRenderer.invoke('game-install', opts),
   getReleaseRatings: (releases) => ipcRenderer.invoke('proton-release-ratings', releases),
   closeApp: () => ipcRenderer.invoke('close-app'),

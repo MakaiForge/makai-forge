@@ -6,7 +6,7 @@ const { spawn } = require('child_process');
 
 const ICON_CACHE_DIR = path.join(app.getPath('userData'), 'icon-cache');
 const ICONS_DIR = path.join(__dirname, '..', '..', 'assets', 'icons');
-const EXTRACT_ICON_PY = path.join(__dirname, '..', '..', 'extract_icon.py');
+const EXTRACT_ICON_PY = path.join(__dirname, '..', 'extract_icon.py');
 
 function knownIconSvg(appName) {
   if (!appName) return null;

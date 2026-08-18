@@ -25,7 +25,7 @@ const L = 'install-game';
 function extractToTemp(exePath) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-extract-'));
   logger.log(L, `Extraindo para temporário: ${tmpDir}`);
-  const r = execFileSync('7z', ['x', '-y', '-o' + tmpDir, exePath], { timeout: 30000, stdio: 'pipe' });
+  execFileSync('7z', ['x', '-y', '-o' + tmpDir, exePath], { timeout: 30000, stdio: 'pipe' });
   return tmpDir;
 }
 
@@ -125,7 +125,7 @@ function collectFiles(dir, base = '') {
   return result;
 }
 
-function depsOnly(args) {
+async function depsOnly(args) {
   const { exe: exePath, prefix, protonPath } = args;
   if (!exePath || !prefix || !protonPath) {
     logger.error(L, '--deps-only requer --exe <path> --prefix <path> --proton-path <path>');
@@ -183,7 +183,7 @@ function depsOnly(args) {
   console.log(JSON.stringify(result));
 }
 
-function main() {
+async function main() {
   const args = {};
   for (let i = 2; i < process.argv.length; i++) {
     const key = process.argv[i].replace(/^--/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -215,7 +215,7 @@ function main() {
   try {
     logger.log(L, 'Step 1: Buscando informações do jogo...');
     try {
-      result.gameInfo = callApi('get_game_info', { game_id: gameId });
+      result.gameInfo = await callApi('get_game_info', { game_id: gameId });
       result.steps.push({ step: 'get_game_info', found: !!result.gameInfo });
       logger.log(L, `Game info: ${result.gameInfo ? 'encontrado' : 'não encontrado'}`);
     } catch (e) {
@@ -232,7 +232,7 @@ function main() {
       .join('');
     const prefixBase = path.join(os.homedir(), 'Games', 'MakaiForger', prefixName);
     const pfxPath = path.join(prefixBase, 'pfx');
-    const prefixResult = callApi('create_prefix', {
+    const prefixResult = await callApi('create_prefix', {
       game_id: gameId, proton_path: protonPath, auto_dlls: true, prefix_path: pfxPath,
     });
     result.prefixPath = prefixResult.prefix_path;
@@ -247,7 +247,7 @@ function main() {
 
     logger.log(L, 'Step 3: Instalando DLLs padrão...');
     try {
-      const dllResult = callApi('install_game_dlls', {
+      const dllResult = await callApi('install_game_dlls', {
         game_id: gameId, prefix_path: result.prefixPath, proton_path: protonPath,
       });
       result.dllsInstalled = dllResult.installed || [];
@@ -343,7 +343,10 @@ function main() {
 }
 
 if (require.main === module) {
-  main();
+  main().catch((err) => {
+    console.error(`Fatal: ${err.message}`);
+    process.exit(1);
+  });
 }
 
 module.exports = {

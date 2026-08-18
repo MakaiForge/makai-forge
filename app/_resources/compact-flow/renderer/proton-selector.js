@@ -3,10 +3,12 @@ async function openProtonSelector() {
   installedContainer.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);padding:8px;">Carregando...</div>';
   availableContainer.innerHTML = '';
 
-  const [installed, available, forks] = await Promise.all([
+  const searchName = CF.currentGameName || (CF.currentCatalogData && CF.currentCatalogData.title) || '';
+  const [installed, available, forks, recFromDb] = await Promise.all([
     window.compatflow.protonList(),
     window.compatflow.protonAvailable(),
     window.compatflow.protonForks().catch((e) => { console.error('protonForks API error:', e); return []; }),
+    (searchName ? window.compatflow.protonRecommend(searchName) : Promise.resolve(null)).catch((e) => { console.error('protonRecommend API error:', e); return null; }),
   ]);
 
   const ratingsMap = {};
@@ -32,6 +34,7 @@ async function openProtonSelector() {
     }
   }
 
+  CF.protonRecommendation = recFromDb || null;
   renderRecommendation();
   renderProtonInstalled(installed, forkMap);
   renderProtonAvailable(available, forkMap, ratingsMap);
@@ -40,18 +43,40 @@ async function openProtonSelector() {
 function renderRecommendation() {
   const el = document.getElementById('recommendationSection');
   if (!el) return;
-  if (!CF.currentCatalogData) {
+
+  const recFromDb = CF.protonRecommendation;
+  const cd = CF.currentCatalogData;
+
+  if (!recFromDb && !cd) {
     el.innerHTML = '';
     return;
   }
-  const cd = CF.currentCatalogData;
-  const pct = cd.protonConfidence ? confidencePercent(cd.protonConfidence) : null;
-  const color = cd.protonConfidence ? confidenceColor(cd.protonConfidence) : '#a855f7';
-  const alts = cd.protonAlternatives || [];
 
-  let html = `<div class="rec-title">🎯 Recomendação Makai Forger</div>`;
+  let html = `<div class="rec-title">🎯 Recomendação de Proton</div>`;
 
-  if (cd.recommendedProton) {
+  if (recFromDb && recFromDb.recommended && recFromDb.recommended.length > 0) {
+    const top = recFromDb.recommended.slice(0, 3);
+    html += `
+      <div class="rec-primary">
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">Mais reportado pela comunidade (${recFromDb.totalReports || 0} relatos):</div>
+        ${top.map(v => `<div class="rec-fork">🍷 ${escapeHtml(v)}</div>`).join('')}
+      </div>`;
+
+    if (recFromDb.versions && recFromDb.versions.length > 0) {
+      const best = recFromDb.versions.slice().sort((a, b) => (b.positiveRatio || 0) - (a.positiveRatio || 0))[0];
+      if (best) {
+        const pct = Math.round((best.positiveRatio || 0) * 100);
+        const color = ratingColor(pct);
+        html += `
+          <div class="rec-confidence-bar">
+            <div class="rec-confidence-fill" style="width:${pct}%;background:${color};"></div>
+          </div>
+          <div class="rec-confidence-label" style="color:${color};">${pct}% positivo — ${escapeHtml(best.version)} (${best.positive}/${best.total})</div>`;
+      }
+    }
+  } else if (cd && cd.recommendedProton) {
+    const pct = cd.protonConfidence ? confidencePercent(cd.protonConfidence) : null;
+    const color = cd.protonConfidence ? confidenceColor(cd.protonConfidence) : '#a855f7';
     html += `
       <div class="rec-primary">
         <div class="rec-fork">${escapeHtml(cd.recommendedProton)}</div>
@@ -62,19 +87,8 @@ function renderRecommendation() {
         </div>
         <div class="rec-confidence-label" style="color:${color};">${pct}%</div>` : ''}
       </div>`;
-  }
-
-  if (alts.length > 0) {
-    for (const alt of alts.slice(0, 4)) {
-      html += `
-        <div class="rec-alt">
-          <span class="alt-fork">${escapeHtml(alt.fork)} ${escapeHtml(alt.version)}</span>
-          ${alt.notes ? `— ${escapeHtml(alt.notes)}` : ''}
-        </div>`;
-    }
-    if (alts.length > 4) {
-      html += `<div class="rec-alt" style="color:var(--text-tertiary);font-size:10px;">+${alts.length - 4} alternativas</div>`;
-    }
+  } else {
+    html += `<div style="font-size:11px;color:var(--text-tertiary);">Sem recomendação específica. Escolha um Proton abaixo ou deixe o padrão do sistema.</div>`;
   }
 
   el.innerHTML = html;
