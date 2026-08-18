@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 import { t } from "i18next";
 import { registerEvent } from "@main/events/register-event";
 import { gamesStore } from "@main/store";
@@ -10,13 +11,42 @@ import {
   WindowManager,
 } from "@main/services";
 
-const SCAN_DIRECTORIES = [
-  String.raw`C:\Games`,
-  String.raw`D:\Games`,
-  String.raw`C:\Program Files (x86)\Steam\steamapps\common`,
-  String.raw`C:\Program Files\Steam\steamapps\common`,
-  String.raw`C:\Program Files (x86)\DODI-Repacks`,
-];
+/**
+ * Retorna diretórios de scan baseados no OS.
+ * - Linux: caminhos comuns do Steam (native e flatpak)
+ * - Win32: caminhos hardcoded (compatibilidade com Proton no Linux)
+ */
+function getScanDirectories(): string[] {
+  const home = os.homedir();
+  const dirs: string[] = [];
+
+  if (process.platform === "linux") {
+    // Steam native
+    dirs.push(
+      path.join(home, ".steam", "steam", "steamapps", "common"),
+      path.join(home, ".local", "share", "Steam", "steamapps", "common"),
+    );
+    // Steam Flatpak
+    dirs.push(
+      path.join(home, ".var", "app", "com.valvesoftware.Steam", ".steam", "steam", "steamapps", "common"),
+    );
+    // Locais custom do usuário
+    dirs.push(
+      path.join(home, "Games"),
+      path.join(home, "Jogos"),
+    );
+  } else if (process.platform === "win32") {
+    dirs.push(
+      String.raw`C:\Games`,
+      String.raw`D:\Games`,
+      String.raw`C:\Program Files (x86)\Steam\steamapps\common`,
+      String.raw`C:\Program Files\Steam\steamapps\common`,
+      String.raw`C:\Program Files (x86)\DODI-Repacks`,
+    );
+  }
+
+  return dirs;
+}
 
 interface FoundGame {
   title: string;
@@ -31,7 +61,8 @@ interface ScanResult {
 async function searchInDirectories(
   executableNames: Set<string>
 ): Promise<string | null> {
-  for (const scanDir of SCAN_DIRECTORIES) {
+  const scanDirectories = getScanDirectories();
+  for (const scanDir of scanDirectories) {
     if (!fs.existsSync(scanDir)) continue;
 
     const foundPath = await findExecutableInFolder(scanDir, executableNames);

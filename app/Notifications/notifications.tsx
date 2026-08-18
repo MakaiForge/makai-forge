@@ -324,24 +324,23 @@ export default function Notifications() {
         return;
       }
 
-      // Remove items one by one with staggered delays for visual effect
-      const removalPromises = notificationsToRemove.map((notification, index) =>
-        removeNotificationWithDelay(notification, index * STAGGER_DELAY_MS)
-      );
-
-      // Wait for all items to be removed from state
-      await Promise.all(removalPromises);
-
-      // Wait for the last exit animation to complete
-      await new Promise((resolve) => setTimeout(resolve, EXIT_DURATION_MS));
-
-      // Perform actual backend deletions (state is already cleared by staggered removal)
+      // 1. Deletar do backend PRIMEIRO — se falhar, state não é alterado
       if (userDetails) {
         await window.electron.forgerApi.delete(`/profile/notifications/all`, {
           needsAuth: true,
         });
       }
       await window.electron.clearAllLocalNotifications();
+
+      // 2. Agora sim: remover do state com animação staggered
+      const removalPromises = notificationsToRemove.map((notification, index) =>
+        removeNotificationWithDelay(notification, index * STAGGER_DELAY_MS)
+      );
+      await Promise.all(removalPromises);
+
+      // Wait for the last exit animation to complete
+      await new Promise((resolve) => setTimeout(resolve, EXIT_DURATION_MS));
+
       setPagination({ total: 0, hasMore: false, skip: 0 });
       notifyCountChange();
       showSuccessToast(t("cleared_all"));

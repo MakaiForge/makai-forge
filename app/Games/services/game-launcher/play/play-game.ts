@@ -3,6 +3,7 @@ import path from "node:path";
 import { ModStorageService, logger } from "@main/services";
 import { getDeployFunction } from "@games/registry";
 import { scanEnvironment } from "@mods/services/environment-scanner";
+import { findUsableProton } from "@container/core/init";
 import { ensureProton } from "./steps/02-proton";
 import { ensurePrefix } from "./steps/03-prefix";
 import { applyGameConfigs } from "./steps/04-configs";
@@ -20,6 +21,7 @@ export async function playGame(
   gameId: string,
   send: SendProgress,
   profile?: string,
+  deployMods = false,
 ): Promise<PlayResult> {
   const _startAll = Date.now();
   resetStepCounter();
@@ -58,6 +60,13 @@ export async function playGame(
       return { success: false, error: `Caminho não encontrado: ${env.gamePath}`, failedStep: "detect" };
     }
 
+    // Reportar erros do scan (prefix inválido, proton ausente, etc)
+    // Não bloqueia aqui — os Steps 2-4 tentam corrigir automaticamente
+    if (env.errors.length > 0) {
+      logStep(gameId, "scan", `Problemas detectados: ${env.errors.join("; ")}`, "error");
+      send("warning", `Problemas detectados: ${env.errors.join("; ")}. Tentando corrigir automaticamente...`, "warning");
+    }    }
+
     const gamePath = env.gamePath;
     const steamAppId = env.steamAppId;
     const prefixPath = env.prefixPath || path.join(os.homedir(), "Games", "Makai-forger", gameId.toLowerCase().replace(/[\s:/\\]+/g, "-").replace(/[^a-z0-9-]/g, ""));
@@ -73,17 +82,30 @@ export async function playGame(
     let protonPath: string;
     let useCustomPrefix: boolean;
     if (env.protonExists) {
-      // Proton já existe no disco — usar direto
-      protonPath = env.protonPath;
+      // Proton já existe no disco — usar direto (com fallback se não estiver compilado)
+      const configuredProton = env.protonPath;
+      const usableProton = findUsableProton(configuredProton);
+      protonPath = usableProton || configuredProton;
       useCustomPrefix = false;
-      logStep(gameId, "proton", `Proton já configurado: ${protonPath}`, "done");
-      logPlay(gameId, "proton", { protonPath, useCustomPrefix: "false" });
+      if (protonPath !== configuredProton) {
+        logStep(gameId, "proton", `⚠️ Proton configurado (${path.basename(configuredProton)}) não está compilado — usando ${path.basename(protonPath)}`, "done");
+        logPlay(gameId, "proton", { protonPath, useCustomPrefix: "false", fallbackFrom: configuredProton });
+      } else {
+        logStep(gameId, "proton", `Proton já configurado: ${protonPath}`, "done");
+        logPlay(gameId, "proton", { protonPath, useCustomPrefix: "false" });
+      }
     } else {
       try {
         logStep(gameId, "proton", "Verificando Proton...", "working");
         const _s2 = Date.now();
         const protonResult = await ensureProton(gameId, send, prefixPath);
-        protonPath = protonResult.protonPath;
+        let resolvedProtonPath = protonResult.protonPath;
+        const usableProton = findUsableProton(resolvedProtonPath);
+        if (usableProton && usableProton !== resolvedProtonPath) {
+          logStep(gameId, "proton", `⚠️ Proton obtido (${path.basename(resolvedProtonPath)}) não utilizável — usando ${path.basename(usableProton)}`, "done");
+          resolvedProtonPath = usableProton;
+        }
+        protonPath = resolvedProtonPath;
         useCustomPrefix = protonResult.useCustomPrefix || false;
         logStep(gameId, "proton", `Proton: ${protonPath}`, "done", { duration_ms: Date.now() - _s2 });
         logPlay(gameId, "proton", { protonPath, useCustomPrefix: String(useCustomPrefix) });
@@ -189,29 +211,57 @@ export async function playGame(
     });
     logPlay(gameId, "skse", { hasSkse: String(hasSkse), sksePath: sksePath || "" });
 
-    // ── Step 7: Deploy mods ──
-    logStep(gameId, "deploy", "Implantando mods...", "working");
+    // ── Step 7: Deploy mods — SÓ no play do MOD MANAGER (deployMods=true) ──
+    // Jogo ≠ mod. A aba Games inicializa apenas o jogo; o deploy de mods é
+    // responsabilidade do Mod Manager (que passa deployMods=true). Rodar o
+    // deploy por acidente no play da aba Games chegou a apagar o jogo copiado
+    // no prefixo (linkAll({}) → removeDeployedLinks destruía os arquivos).
+    logStep(gameId, "deploy", deployMods ? "Implantando mods..." : "Verificando mods...", "working");
     const _s6 = Date.now();
     try {
       const modlistKey = `game:${gameId}:profile:${usedProfile}:modlist`;
       const modlist = ModStorageService.get<any[]>(modlistKey) || [];
-      const deployFn = getDeployFunction(gameId);
-      const deployResult = await deployFn(
-        gameId, gamePath, env.stagingDir, modlist, usedProfile, resolvedPrefix,
-      );
-      logPlay(gameId, "deploy", {
-        stagingDir: env.stagingDir,
-        modlistCount: String(modlist.length),
-        success: String(deployResult.success),
-      });
-      if (!deployResult.success) {
-        logStep(gameId, "deploy", `Falha: ${deployResult.error || "erro"}`, "error", { duration_ms: Date.now() - _s6 });
-        logEvent(gameId, "play_failed", { reason: "deploy_failed", error: deployResult.error });
-        send("deploy", `Falha no deploy: ${deployResult.error || "erro desconhecido"}`, "error");
-        return { success: false, error: deployResult.error || "Deploy failed", failedStep: "deploy" };
+      const enabledCount = modlist.filter((m: any) => m?.enabled && !m?.isSeparator).length;
+      if (!deployMods) {
+        // Aba Games: nunca implantar mods na pasta do jogo.
+        logPlay(gameId, "deploy", {
+          stagingDir: env.stagingDir,
+          modlistCount: String(modlist.length),
+          enabled: String(enabledCount),
+          deployed: "false",
+          success: "true",
+        });
+        logStep(gameId, "deploy", "Aba Games: sem deploy de mods (inicializar jogo apenas)", "done", { duration_ms: Date.now() - _s6 });
+        send("deploy", "Aba Games: sem deploy de mods", "done");
+      } else if (enabledCount === 0) {
+        logPlay(gameId, "deploy", {
+          stagingDir: env.stagingDir,
+          modlistCount: String(modlist.length),
+          enabled: "0",
+          success: "true",
+        });
+        logStep(gameId, "deploy", "Sem mods habilitados — nada a implantar", "done", { duration_ms: Date.now() - _s6 });
+        send("deploy", "Sem mods habilitados — nada a implantar", "done");
+      } else {
+        const deployFn = getDeployFunction(gameId);
+        const deployResult = await deployFn(
+          gameId, gamePath, env.stagingDir, modlist, usedProfile, resolvedPrefix,
+        );
+        logPlay(gameId, "deploy", {
+          stagingDir: env.stagingDir,
+          modlistCount: String(modlist.length),
+          enabled: String(enabledCount),
+          success: String(deployResult.success),
+        });
+        if (!deployResult.success) {
+          logStep(gameId, "deploy", `Falha: ${deployResult.error || "erro"}`, "error", { duration_ms: Date.now() - _s6 });
+          logEvent(gameId, "play_failed", { reason: "deploy_failed", error: deployResult.error });
+          send("deploy", `Falha no deploy: ${deployResult.error || "erro desconhecido"}`, "error");
+          return { success: false, error: deployResult.error || "Deploy failed", failedStep: "deploy" };
+        }
+        logStep(gameId, "deploy", `${deployResult.log?.length || 0} operações`, "done", { duration_ms: Date.now() - _s6 });
+        send("deploy", `Mods implantados (${deployResult.log?.length || 0} operações)`, "done");
       }
-      logStep(gameId, "deploy", `${deployResult.log?.length || 0} operações`, "done", { duration_ms: Date.now() - _s6 });
-      send("deploy", `Mods implantados (${deployResult.log?.length || 0} operações)`, "done");
     } catch (deployErr) {
       const msg = String(deployErr).slice(0, 150);
       logStep(gameId, "deploy", msg, "error", { duration_ms: Date.now() - _s6 });

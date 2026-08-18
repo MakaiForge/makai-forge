@@ -7,6 +7,7 @@ import { logsPath } from "@main/constants";
 import type { GameShop } from "@types";
 import { getVenvPythonPath } from "@container/core/venv";
 import { logOperation } from "../activity-logger";
+import { logger } from "@main/services";
 
 const getGUIScriptPath = () =>
   path.join(app.getAppPath(), "app", "_resources", "python", "wine_log_gui.py");
@@ -31,15 +32,15 @@ const runWineTool = async (
         });
         child.unref();
         child.on("error", (err) => {
-          console.error("[run-wine-tool] Failed to spawn Python log GUI:", err);
+          logger.error("[run-wine-tool] Failed to spawn Python log GUI:", err);
         });
         child.stderr?.on("data", (data) => {
-          console.error("[run-wine-tool] Python GUI stderr:", data.toString());
+          logger.error("[run-wine-tool] Python GUI stderr:", data.toString());
         });
         logOperation("runWineTool", "success", { shop, objectId, tool, duration_ms: Date.now() - _start });
         return true;
       }
-      console.error("[run-wine-tool] Python or script not found:", { pythonBin, guiScript });
+      logger.error("[run-wine-tool] Python or script not found:", { pythonBin, guiScript });
       logOperation("runWineTool", "error", { shop, objectId, tool, error: "Python or script not found", duration_ms: Date.now() - _start });
       return false;
     }
@@ -55,7 +56,7 @@ const runWineTool = async (
     });
     return result.success;
   } catch (error) {
-    console.error("Failed to run wine tool:", error);
+    logger.error("Failed to run wine tool:", error);
     logOperation("runWineTool", "error", { shop, objectId, tool, error: String(error), duration_ms: Date.now() - _start });
     return false;
   }
