@@ -1,11 +1,34 @@
 import { isStaging } from "@main/constants";
 import { db, storeKeys } from "@main/store";
+import { logger } from "../logger";
 import type { UserPreferences } from "@types";
-import { BrowserWindow, app, shell } from "electron";
+import { BrowserWindow, app, shell, screen } from "electron";
 import { ALLOWED_DOMAINS, CORS_ALLOWED_HEADERS, REALISTIC_UA } from "../webrequest.config";
 import type { WindowManager } from "../window-manager";
 import { saveScreenConfig, loadScreenConfig } from "./screen-config";
 import { loadWindowURL } from "./load-url";
+
+function clampWindowToScreen(
+  config: Electron.BrowserWindowConstructorOptions
+): Electron.BrowserWindowConstructorOptions {
+  const { workArea } = screen.getPrimaryDisplay();
+
+  const maxW = workArea.width - 10;
+  const maxH = workArea.height - 85;
+
+  const clamped = {
+    ...config,
+    width: Math.min(config.width ?? maxW, maxW),
+    height: Math.min(config.height ?? maxH, maxH),
+    minWidth: Math.min(config.minWidth ?? 800, maxW),
+    minHeight: Math.min(config.minHeight ?? 600, maxH),
+  };
+
+  logger.log(`[Screen] workArea=${workArea.width}x${workArea.height}`);
+  logger.log(`[Screen] maxH=${maxH} clamped=${clamped.height}`);
+
+  return clamped;
+}
 
 export async function createMainWindow(wm: typeof WindowManager) {
   if (wm.mainWindow) return;
@@ -13,10 +36,10 @@ export async function createMainWindow(wm: typeof WindowManager) {
   const { isMaximized = false, ...configWithoutMaximized } =
     await loadScreenConfig();
 
-  let mainWindowConfig = {
+  let mainWindowConfig = clampWindowToScreen({
     ...wm.initialConfigInitializationMainWindow,
     ...configWithoutMaximized,
-  };
+  });
 
   const mainWindow = new BrowserWindow(mainWindowConfig);
 
@@ -67,14 +90,17 @@ export async function createMainWindow(wm: typeof WindowManager) {
       );
 
       if (isAllowed) {
-        responseHeaders["Access-Control-Allow-Origin"] = ["*"];
+        // Usar origin específico em vez de * para prevenir ataques CSRF
+        const origin = details.url.startsWith("https://")
+          ? new URL(details.url).origin
+          : "*";
+        responseHeaders["Access-Control-Allow-Origin"] = [origin];
         responseHeaders["Access-Control-Allow-Methods"] = [
           "GET, POST, OPTIONS",
         ];
         responseHeaders["Access-Control-Allow-Headers"] = [
           CORS_ALLOWED_HEADERS.join(", "),
         ];
-        responseHeaders["Access-Control-Allow-Credentials"] = ["true"];
       }
 
       if (details.method === "OPTIONS") {

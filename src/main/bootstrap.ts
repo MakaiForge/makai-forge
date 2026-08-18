@@ -12,6 +12,7 @@ import {
   isQBittorrentAlive,
 } from "./services/qbittorrent";
 import { registerProtocols } from "./services/protocols";
+import { prewarmLibraryImages } from "./services/image-cache";
 import { db, storeKeys } from "@main/store";
 import { migrateJsonToSqlite } from "@main/services/sqlite-store";
 import { loadState } from "./main";
@@ -42,6 +43,27 @@ async function tryRefreshFlag() {
   } catch {}
 }
 
+/**
+ * Baixa as capas da biblioteca em segundo plano e, quando terminar, avisa o
+ * renderer para refazer o fetch (agora com URLs locais `local://`).
+ */
+function prewarmAndRefreshLibrary() {
+  prewarmLibraryImages().then((downloaded) => {
+    if (downloaded <= 0) return;
+    const win = WindowManager.mainWindow;
+    if (win && !win.isDestroyed()) {
+      const wc = win.webContents;
+      if (wc.isLoading()) {
+        wc.once("did-finish-load", () => {
+          win.webContents.send("on-library-batch-complete");
+        });
+      } else {
+        win.webContents.send("on-library-batch-complete");
+      }
+    }
+  });
+}
+
 export async function bootstrap() {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const headers = details.responseHeaders;
@@ -57,22 +79,6 @@ export async function bootstrap() {
   electronApp.setAppUserModelId("com.makaiforger.app");
   registerProtocols();
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    await startQBittorrent();
-    const ready = await waitForQBittorrent();
-    if (ready) break;
-
-    if (!isQBittorrentAlive() && attempt < 3) {
-      logger.warn(`[QBittorrent] Attempt ${attempt}/3 failed, retrying in 1s...`);
-      await new Promise((r) => setTimeout(r, 1000));
-    } else {
-      logger.warn("[QBittorrent] Continuing without torrent support");
-      break;
-    }
-  }
-
-  await loadState();
-
   const deepLinkArg = process.argv.find((arg) =>
     arg.startsWith("protonforge://")
   );
@@ -82,13 +88,15 @@ export async function bootstrap() {
   );
 
   if (process.argv.includes("--hidden") || isRunDeepLink) {
+    await loadState();
     ensureVenv();
     ensureResources();
     WindowManager.createMainWindow();
+    prewarmAndRefreshLibrary();
     WindowManager.createSystemTray("en");
     if (deepLinkArg) await handleDeepLinkPath(deepLinkArg);
     else if (exeArg) {
-      const { openCompatFlowWindow } = await import("@provision/CompactFlow");
+      const { openCompatFlowWindow } = await import("@provision/compatflow-adapter");
       openCompatFlowWindow(exeArg);
     }
     return;
@@ -105,9 +113,10 @@ export async function bootstrap() {
     show: false,
     title: "Makai Forge",
     webPreferences: {
-      sandbox: false,
-      contextIsolation: false,
-      nodeIntegration: true,
+      preload: path.join(__dirname, "../preload/setup.mjs"),
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
@@ -117,22 +126,41 @@ export async function bootstrap() {
 
   const setupStart = Date.now();
 
-  await ensureVenv().then((ok) => {
-    logger.info(`[bootstrap] Venv: ${ok ? "pronto" : "falha"}`);
-  });
+  // qBittorrent + venv + resources rodam em paralelo (antes eram sequenciais).
+  const qbtLoop = (async () => {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await startQBittorrent();
+      const ready = await waitForQBittorrent();
+      if (ready) break;
 
-  await ensureResources().then((ok) => {
-    logger.info(`[bootstrap] Resources: ${ok ? "pronto" : "falha"}`);
-  });
+      if (!isQBittorrentAlive() && attempt < 3) {
+        logger.warn(`[QBittorrent] Attempt ${attempt}/3 failed, retrying in 1s...`);
+        await new Promise((r) => setTimeout(r, 1000));
+      } else {
+        logger.warn("[QBittorrent] Continuing without torrent support");
+        break;
+      }
+    }
+  })();
+
+  await Promise.all([
+    ensureVenv().then((ok) => {
+      logger.info(`[bootstrap] Venv: ${ok ? "pronto" : "falha"}`);
+    }),
+    ensureResources().then((ok) => {
+      logger.info(`[bootstrap] Resources: ${ok ? "pronto" : "falha"}`);
+    }),
+    qbtLoop,
+  ]);
 
   const elapsed = Date.now() - setupStart;
-  const minDelay = 3000;
+  const minDelay = 800;
   if (elapsed < minDelay) {
     await new Promise((r) => setTimeout(r, minDelay - elapsed));
   }
 
   sendSetupComplete(WindowManager);
-  await new Promise((r) => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 300));
 
   try { WindowManager.setupWindow?.close(); } catch {}
   WindowManager.setupWindow = null;
@@ -144,11 +172,13 @@ export async function bootstrap() {
   if (language) i18n.changeLanguage(language);
 
   WindowManager.createMainWindow();
+  await loadState();
   await tryRefreshFlag();
+  prewarmAndRefreshLibrary();
   WindowManager.createSystemTray(language || "en");
 
   if (exeArg) {
-    const { openCompatFlowWindow } = await import("@provision/CompactFlow");
+    const { openCompatFlowWindow } = await import("@provision/compatflow-adapter");
     openCompatFlowWindow(exeArg);
   }
 

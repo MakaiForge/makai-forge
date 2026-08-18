@@ -36,8 +36,9 @@ export function openAuthWindow(
     resizable: false,
     minimizable: false,
     webPreferences: {
-      sandbox: false,
-      nodeIntegrationInSubFrames: true,
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 

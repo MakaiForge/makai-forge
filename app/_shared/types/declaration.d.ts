@@ -24,6 +24,8 @@ import type {
   ShopDetailsWithAssets,
   Game,
   DiskUsage,
+  SystemSpecs,
+  GameCompatibilityResult,
   DownloadSource,
   LocalNotification,
   ProtonVersion,
@@ -31,6 +33,7 @@ import type {
   CreateSteamShortcutOptions,
   TorrentFilesResponse,
   FomodConfig,
+  FomodComponent,
   PluginEntry,
   DeploymentResult,
   FileConflict,
@@ -489,6 +492,12 @@ declare global {
     getDiskFreeSpace: (path: string) => Promise<DiskUsage>;
     checkFolderWritePermission: (path: string) => Promise<boolean>;
 
+    /* System specs — hardware do usuário + compatibilidade de jogos */
+    getSystemSpecs: () => Promise<SystemSpecs>;
+    getStoredSystemSpecs: () => Promise<SystemSpecs | null>;
+    refreshSystemSpecs: () => Promise<SystemSpecs>;
+    checkGameCompatibility: (minimum: string | null | undefined, recommended: string | null | undefined) => Promise<GameCompatibilityResult>;
+
     /* Cloud save */
     uploadSaveGame: (
       objectId: string,
@@ -877,14 +886,17 @@ declare global {
     installModOrchestrated: (archivePath: string, config: {
       gameId: string;
       profile: string;
-      stagingDir: string;
-      overwriteExisting: boolean;
-      verifyAfterExtract: boolean;
-      maxRetries: number;
-      timeoutMs: number;
+      stagingDir?: string;
+      overwriteExisting?: boolean;
+      verifyAfterExtract?: boolean;
+      maxRetries?: number;
+      timeoutMs?: number;
+      password?: string;
     }) => Promise<{
       success: boolean;
       modName: string;
+      gameName: string;
+      gameId: string;
       stagingDir: string;
       archiveInfo: {
         path: string;
@@ -914,10 +926,14 @@ declare global {
       verified: boolean;
       plugins: string[];
       hasFomod: boolean;
+      hasBain: boolean;
       hasSkse: boolean;
       category: string;
       error?: string;
       durationMs: number;
+      alreadyExists?: boolean;
+      deployed?: boolean;
+      deployLog?: string[];
     }>;
     abortInstall: () => Promise<{ ok: boolean; error?: string }>;
     onModInstallProgress: (cb: (data: any) => void) => () => void;
@@ -930,7 +946,13 @@ declare global {
     getGameConfig: (gameName: string) => Promise<any>;
     listGameConfigs: () => Promise<{ name: string; config: any }[]>;
     modLaunchGame: (gameId: string) => Promise<{ success: boolean; method?: string; error?: string }>;
-    modPlayGame: (gameId: string, profile?: string) => Promise<{ success: boolean; method?: string; error?: string; failedStep?: string; gamePath?: string }>;
+    /**
+     * Inicializa um jogo.
+     * - Aba Games: chamar SEM options → apenas inicializa o jogo, NUNCA toca em mods.
+     * - Mod Manager: chamar com { deployMods: true } → inicializa o jogo COM deploy de mods.
+     * Jogo ≠ mod: o deploy de mods nunca deve rodar por acidente no play da aba Games.
+     */
+    modPlayGame: (gameId: string, profile?: string, options?: { deployMods?: boolean }) => Promise<{ success: boolean; method?: string; error?: string; failedStep?: string; gamePath?: string }>;
     modKillGame: () => Promise<boolean>;
     modScanFixGame: (gameId: string) => Promise<{ success: boolean; gamePath?: string; skseFound?: boolean; error?: string }>;
     onModLaunchProgress: (cb: (data: { step: string; message: string; status: "working" | "done" | "error" | "prompt"; promptType?: string }) => void) => () => void;
@@ -1069,6 +1091,26 @@ declare global {
     deleteScriptComment: (scriptId: number, commentId: number) => Promise<any>;
     toggleCommentLike: (scriptId: number, commentId: number) => Promise<any>;
     toggleCommentDislike: (scriptId: number, commentId: number) => Promise<any>;
+
+    /* Mods bridge */
+    getGameModuleTools: (gameId: string) => Promise<unknown>;
+    installExternalTool: (gameId: string, toolName: string) => Promise<unknown>;
+    installFomodWithComponents: (stagingDir: string, targetDir: string, selections: Record<string, string[]>) => Promise<{ success: boolean; log: string[]; filesCopied: number; components: FomodComponent[] }>;
+    toggleFomodComponent: (stagingDir: string, files: string[], enable: boolean, sourceFiles?: { source: string; destination: string }[]) => Promise<unknown>;
+    captureFomodComponents: (stagingDir: string) => Promise<FomodComponent[]>;
+    translateText: (text: string, targetLang: string) => Promise<unknown>;
+    getModCompatibleInfo: () => Promise<{ steamIds?: string[]; names?: string[] }>;
+
+    /* Supplemental (Konami gate + pirate data) */
+    getFeatureState: () => Promise<{ unlocked: boolean }>;
+    getGameData: (shop: string, objectId: string) => Promise<{ downloadSources: string[]; downloads: any[] } | null>;
+    getGameDataBatch: (entries: { shop: string; objectId: string }[]) => Promise<Record<string, { downloadSources: string[]; downloads: any[] }>>;
+
+    /* Util / cloud backup */
+    getHomeDir: () => Promise<string>;
+    connectCloudProvider: (providerId: string) => Promise<{ success: boolean; error?: string }>;
+    backupToCloud: (provider: string) => Promise<{ success: boolean; error?: string }>;
+    disconnectCloudProvider: (provider: string) => Promise<void>;
   }
 
   interface EslifyResult {
@@ -1082,6 +1124,11 @@ declare global {
 
   interface Window {
     electron: Electron;
+    setupAPI?: {
+      onVenvProgress: (cb: (data: { status: string; percent: number }) => void) => () => void;
+      onResourceProgress: (cb: (data: { status: string; percent: number; detail?: string }) => void) => () => void;
+      onSetupComplete: (cb: () => void) => () => void;
+    };
   }
 
   namespace JSX {

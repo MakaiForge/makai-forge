@@ -177,6 +177,7 @@ export default function Downloads() {
           <webview
             src="http://localhost:8081"
             style={{ width: "100%", height: "100%" }}
+            partition="qbittorrent-webview"
           />
         </div>
       )}

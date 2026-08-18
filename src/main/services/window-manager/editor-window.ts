@@ -30,7 +30,9 @@ export function openEditorWindow(wm: typeof WindowManager, themeId: string) {
     },
     webPreferences: {
       preload: require("node:path").join(__dirname, "../preload/index.mjs"),
-      sandbox: false,
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
     },
     show: false,
   });

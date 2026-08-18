@@ -99,7 +99,6 @@ body {
   <div class="terminal-area" id="terminal"></div>
 </div>
 <script>
-const { ipcRenderer } = require('electron');
 const terminal = document.getElementById('terminal');
 const statusText = document.getElementById('status-text');
 const progressBar = document.getElementById('progress-bar');
@@ -113,36 +112,38 @@ function addLog(msg, type) {
   terminal.scrollTop = terminal.scrollHeight;
 }
 
-ipcRenderer.on('on-venv-progress', (_, data) => {
-  const s = data.status;
-  const pct = data.percent || 0;
-  progressBar.style.width = pct + '%';
-  if (s==='checking') { statusText.textContent='Verificando Python portátil...'; addLog('Verificando venv...','info'); }
-  else if (s==='downloading') { statusText.textContent='Baixando Python portátil...'; addLog('Baixando venv ('+pct+'%)...','download'); }
-  else if (s==='restoring') { statusText.textContent='Extraindo Python portátil...'; addLog('Extraindo venv...','extract'); }
-  else if (s==='verifying') { statusText.textContent='Verificando Python...'; addLog('Verificando instalação do venv...','info'); }
-  else if (s==='ready') { statusText.textContent='Python pronto ✓'; addLog('Venv pronto ✓','success'); }
-  else if (s==='error') { statusText.textContent='Erro no Python'; addLog('Falha no venv','error'); }
-});
+if (window.setupAPI) {
+  window.setupAPI.onVenvProgress((data) => {
+    const s = data.status;
+    const pct = data.percent || 0;
+    progressBar.style.width = pct + '%';
+    if (s==='checking') { statusText.textContent='Verificando Python portátil...'; addLog('Verificando venv...','info'); }
+    else if (s==='downloading') { statusText.textContent='Baixando Python portátil...'; addLog('Baixando venv ('+pct+'%)...','download'); }
+    else if (s==='restoring') { statusText.textContent='Extraindo Python portátil...'; addLog('Extraindo venv...','extract'); }
+    else if (s==='verifying') { statusText.textContent='Verificando Python...'; addLog('Verificando instalação do venv...','info'); }
+    else if (s==='ready') { statusText.textContent='Python pronto ✓'; addLog('Venv pronto ✓','success'); }
+    else if (s==='error') { statusText.textContent='Erro no Python'; addLog('Falha no venv','error'); }
+  });
 
-ipcRenderer.on('on-resource-progress', (_, data) => {
-  const s = data.status;
-  const pct = data.percent || 0;
-  const det = data.detail || '';
-  progressBar.style.width = pct + '%';
-  detailText.textContent = det;
-  if (s==='checking') { statusText.textContent='Verificando recursos...'; addLog('Verificando recursos necessários...','info'); }
-  else if (s==='downloading') { statusText.textContent='Baixando recursos...'; addLog('Baixando: '+det,'download'); }
-  else if (s==='extracting') { statusText.textContent='Extraindo recursos...'; addLog('Extraindo: '+det,'extract'); }
-  else if (s==='ready') { addLog(det,'success'); }
-  else if (s==='error') { addLog('Erro: '+det,'error'); }
-});
+  window.setupAPI.onResourceProgress((data) => {
+    const s = data.status;
+    const pct = data.percent || 0;
+    const det = data.detail || '';
+    progressBar.style.width = pct + '%';
+    detailText.textContent = det;
+    if (s==='checking') { statusText.textContent='Verificando recursos...'; addLog('Verificando recursos necessários...','info'); }
+    else if (s==='downloading') { statusText.textContent='Baixando recursos...'; addLog('Baixando: '+det,'download'); }
+    else if (s==='extracting') { statusText.textContent='Extraindo recursos...'; addLog('Extraindo: '+det,'extract'); }
+    else if (s==='ready') { addLog(det,'success'); }
+    else if (s==='error') { addLog('Erro: '+det,'error'); }
+  });
 
-ipcRenderer.on('on-setup-complete', () => {
-  statusText.textContent='Pronto! Iniciando...';
-  progressBar.style.width='100%';
-  addLog('Makai Forge pronto!','success');
-});
+  window.setupAPI.onSetupComplete(() => {
+    statusText.textContent='Pronto! Iniciando...';
+    progressBar.style.width='100%';
+    addLog('Makai Forge pronto!','success');
+  });
+}
 </script>
 </body>
 </html>`; }

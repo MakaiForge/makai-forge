@@ -39,7 +39,9 @@ export async function createGameLauncherWindow(
     skipTaskbar: false,
     webPreferences: {
       preload: require("node:path").join(__dirname, "../preload/index.mjs"),
-      sandbox: false,
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
     },
     show: false,
   });
