@@ -175,8 +175,6 @@ export function SettingsGeneral() {
         }))}
       />
 
-      <h2 className="settings-general__section-title">{t("downloads")}</h2>
-
       <h2 className="settings-general__section-title">{t("notifications")}</h2>
 
       <CheckboxField

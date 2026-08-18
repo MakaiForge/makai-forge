@@ -35,6 +35,7 @@ export class DownloadManager {
   private static isPreparingDownload = false;
   private static maxDownloadSpeedBytesPerSecond: number | null = null;
   private static torrentBackend: TorrentBackend = new QBittorrentBackend();
+  private static operationLock = false;
 
   public static hasActiveDownload() {
     return this.downloadingGameId !== null;
@@ -100,45 +101,78 @@ export class DownloadManager {
   }
 
   static async pauseDownload(downloadKey = this.downloadingGameId) {
-    if (this.usingJsDownloader && this.jsDownloader) {
-      logger.log("[DownloadManager] Pausing JS download");
-      this.jsDownloader.pauseDownload();
-    } else if (downloadKey) {
-      await this.torrentBackend.pause(downloadKey).catch(() => {});
+    if (this.operationLock) {
+      logger.warn("[DownloadManager] Pause blocked by operation lock");
+      return;
     }
-    if (downloadKey === this.downloadingGameId) {
-      WindowManager.mainWindow?.setProgressBar(-1);
-      this.downloadingGameId = null;
+    this.operationLock = true;
+    try {
+      if (this.usingJsDownloader && this.jsDownloader) {
+        logger.log("[DownloadManager] Pausing JS download");
+        this.jsDownloader.pauseDownload();
+      } else if (downloadKey) {
+        await this.torrentBackend.pause(downloadKey).catch(() => {});
+      }
+      if (downloadKey === this.downloadingGameId) {
+        WindowManager.mainWindow?.setProgressBar(-1);
+        this.downloadingGameId = null;
+      }
+    } finally {
+      this.operationLock = false;
     }
   }
 
   static async resumeDownload(download: Download) {
-    if (download.downloader === Downloader.Torrent) {
-      const downloadId = storeKeys.game(download.shop, download.objectId);
-      this.downloadingGameId = downloadId;
-      this.isPreparingDownload = false;
-      this.usingJsDownloader = false;
-
-      const stored = await downloadsStore.get(downloadId).catch(() => null);
-      const qbHash = (stored as any)?.qbHash;
-
-      if (qbHash) {
-        await this.torrentBackend.resume(downloadId);
-        logger.log(`[DownloadManager] Torrent resumed via API: ${qbHash}`);
-        return;
-      }
+    if (this.operationLock) {
+      logger.warn("[DownloadManager] Resume blocked by operation lock");
+      return;
     }
+    this.operationLock = true;
+    try {
+      if (download.downloader === Downloader.Torrent) {
+        const downloadId = storeKeys.game(download.shop, download.objectId);
+        this.downloadingGameId = downloadId;
+        this.isPreparingDownload = false;
+        this.usingJsDownloader = false;
 
-    return this.startDownload(download);
+        const stored = await downloadsStore.get(downloadId).catch(() => null);
+        const qbHash = (stored as any)?.qbHash;
+
+        if (qbHash) {
+          await this.torrentBackend.resume(downloadId);
+          logger.log(`[DownloadManager] Torrent resumed via API: ${qbHash}`);
+          return;
+        }
+      }
+
+      return this.startDownload(download);
+    } finally {
+      this.operationLock = false;
+    }
   }
 
   static async cancelDownload(downloadKey = this.downloadingGameId) {
-    const isActiveDownload = downloadKey === this.downloadingGameId;
+    if (this.operationLock) {
+      logger.warn("[DownloadManager] Cancel blocked by operation lock");
+      return;
+    }
+    this.operationLock = true;
+    try {
+      const isActiveDownload = downloadKey === this.downloadingGameId;
 
-    if (isActiveDownload) {
-      if (this.usingJsDownloader && this.jsDownloader) {
-        logger.log("[DownloadManager] Cancelling JS download");
-        this.jsDownloader.cancelDownload();
+      if (isActiveDownload) {
+        if (this.usingJsDownloader && this.jsDownloader) {
+          logger.log("[DownloadManager] Cancelling JS download");
+          this.jsDownloader.cancelDownload();
+        } else if (downloadKey) {
+          await this.torrentBackend
+            .cancel(downloadKey)
+            .catch((err) => logger.error("Failed to cancel game download", err));
+        }
+        WindowManager.mainWindow?.setProgressBar(-1);
+        WindowManager.mainWindow?.webContents.send("on-download-progress", null);
+        this.downloadingGameId = null;
+        this.isPreparingDownload = false;
         this.jsDownloader = null;
         this.usingJsDownloader = false;
       } else if (downloadKey) {
@@ -146,15 +180,8 @@ export class DownloadManager {
           .cancel(downloadKey)
           .catch((err) => logger.error("Failed to cancel game download", err));
       }
-      WindowManager.mainWindow?.setProgressBar(-1);
-      WindowManager.mainWindow?.webContents.send("on-download-progress", null);
-      this.downloadingGameId = null;
-      this.isPreparingDownload = false;
-      this.usingJsDownloader = false;
-    } else if (downloadKey) {
-      await this.torrentBackend
-        .cancel(downloadKey)
-        .catch((err) => logger.error("Failed to cancel game download", err));
+    } finally {
+      this.operationLock = false;
     }
   }
 

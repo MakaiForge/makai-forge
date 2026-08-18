@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ProfileContent } from "./profile-content/profile-content";
 import { SkeletonTheme } from "react-loading-skeleton";
 import { UserProfileContextProvider } from "@context";
@@ -6,6 +7,10 @@ import "./profile.scss";
 
 export default function Profile() {
   const { userId } = useParams();
+
+  useEffect(() => {
+    window.document.title = `Makai Forge — Perfil`;
+  }, []);
 
   return (
     <UserProfileContextProvider userId={userId!}>

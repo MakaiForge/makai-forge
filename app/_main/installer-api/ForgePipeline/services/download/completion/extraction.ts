@@ -5,10 +5,20 @@ import path from "node:path";
 import fs from "node:fs";
 import { logger } from "@main/services/logger";
 
+/** Lock para prevenir extração duplicada do mesmo download */
+const extractionLocks = new Set<string>();
+
 export async function handleExtraction(
   download: Download,
   game: Game
 ): Promise<void> {
+  const lockKey = `${game.shop}:${game.objectId}`;
+  if (extractionLocks.has(lockKey)) {
+    logger.warn(`[DownloadManager] Extraction already in progress for ${lockKey}, skipping`);
+    return;
+  }
+  extractionLocks.add(lockKey);
+
   const gameFilesManager = new GameFilesManager(game.shop, game.objectId);
   const extractionPath = download.folderName
     ? path.join(download.downloadPath, download.folderName)
@@ -75,8 +85,7 @@ export async function handleExtraction(
             failError
           );
         });
-      });
-  } else {
+      });    } else {
     await gameFilesManager
       .failExtraction(
         new Error(
@@ -90,4 +99,6 @@ export async function handleExtraction(
         )
       );
   }
+
+  extractionLocks.delete(lockKey);
 }
