@@ -89,10 +89,19 @@ export const openGameInstaller = async (
 
   const resolvedPrefix = effectiveWinePrefixPath ? resolveActualPrefix(effectiveWinePrefixPath) : null;
 
-  if (objectId && effectiveProtonPath && game && !game.protonPath) {
-    game.protonPath = effectiveProtonPath;
-    game.protonVersion = path.basename(effectiveProtonPath);
-    await gamesStore.put(downloadKey, game).catch(() => {});
+  // Salvar protonPath e winePrefixPath no game (se ainda não salvos)
+  if (objectId && game) {
+    const updates: Record<string, any> = {};
+    if (effectiveProtonPath && !game.protonPath) {
+      updates.protonPath = effectiveProtonPath;
+      updates.protonVersion = path.basename(effectiveProtonPath);
+    }
+    if (effectiveWinePrefixPath && !game.winePrefixPath) {
+      updates.winePrefixPath = effectiveWinePrefixPath;
+    }
+    if (Object.keys(updates).length > 0) {
+      await gamesStore.put(downloadKey, { ...game, ...updates }).catch(() => {});
+    }
   }
 
   let gamePath: string | null = null;

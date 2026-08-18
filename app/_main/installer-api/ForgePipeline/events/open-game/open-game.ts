@@ -1,4 +1,4 @@
-import type { GameShop, Game } from "@types";
+import type { GameShop } from "@types";
 import { gamesStore, storeKeys } from "@main/store";
 import { launchGame } from "@main/helpers";
 import { WindowManager } from "@main/services";
@@ -34,6 +34,7 @@ export async function openGame(
     return;
   }
 
+  // Verificar se o exe já está dentro de um prefixo (flat ou pfx/drive_c)
   const actualPrefix = game.winePrefixPath
     ? resolveActualPrefix(game.winePrefixPath)
     : null;
@@ -45,7 +46,12 @@ export async function openGame(
     (driveC && game.executablePath.startsWith(driveC) ||
      pfxDriveC && game.executablePath.startsWith(pfxDriveC));
 
-  if (exeInsidePrefix) {
+  // Fallback: detectar /drive_c/ no path mesmo sem winePrefixPath salvo
+  const exeInsideAnyPrefix = !exeInsidePrefix && game.executablePath &&
+    (game.executablePath.includes("/drive_c/") ||
+     game.executablePath.includes("\\drive_c\\"));
+
+  if (exeInsidePrefix || exeInsideAnyPrefix) {
     if (fs.existsSync(game.executablePath)) {
       sendProgress("complete", "Tudo ok. Iniciando...");
       await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
@@ -91,6 +97,17 @@ export async function openGame(
 
   if (!fs.existsSync(sourcePath)) {
     sendProgress("error", "Pasta do jogo não encontrada. Verifique se o jogo foi copiado corretamente.");
+    return;
+  }
+
+  // Evitar ciclo: se o sourcePath já está dentro do prefixo, não reinstalar
+  const sourceInsidePrefix = sourcePath.includes("/drive_c/") ||
+    sourcePath.includes("\\drive_c\\");
+
+  if (sourceInsidePrefix) {
+    sendProgress("complete", "Jogo já instalado no prefixo. Iniciando...");
+    await launchGame({ shop, objectId, executablePath: game.executablePath, launchOptions });
+    WindowManager.closeGameLauncherWindow();
     return;
   }
 
