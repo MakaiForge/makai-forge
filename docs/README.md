@@ -121,6 +121,7 @@ Relatório completo do mapeamento de Downloads — fluxo inteiro de download at�
   - [`auditoria-games-completa.md`](Relatorio-Downloads/auditoria-games-completa.md) — Auditoria completa do módulo Games
   - [`auditoria-proton-tools.md`](Relatorio-Downloads/auditoria-proton-tools.md) — Auditoria do ProtonTools (download, extração, armazenamento)
   - [`auditoria-settings-profile.md`](Relatorio-Downloads/auditoria-settings-profile.md) — Auditoria de Settings e Profile
+  - [`auditoria-catalogue-emulators.md`](Relatorio-Downloads/auditoria-catalogue-emulators.md) — Auditoria de Catalogue e Emulators
 
 Página de downloads — gerenciamento de torrents, fila de instalação.
 
