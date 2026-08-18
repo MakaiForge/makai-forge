@@ -225,7 +225,11 @@ export function useGames(options: UseGamesOptions = {}): UseGamesReturn {
           game.executablePath || "",
           game.iconUrl || game.coverImageUrl,
           game.logoImageUrl,
-          game.libraryHeroImageUrl
+          game.libraryHeroImageUrl,
+          game.runner,
+          game.protonVersion,
+          game.protonPath,
+          game.prefix
         );
         showSuccessToast("Jogo duplicado", `"${duplicateTitle}" foi criado.`);
       } catch (error) {

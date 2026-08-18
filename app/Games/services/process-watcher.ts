@@ -401,6 +401,14 @@ function onTickGame(game: Game) {
           ...updatedGame,
           unsyncedDeltaPlayTimeInMilliseconds: 0,
         });
+
+        // Só atualiza lastSyncTick no SUCESSO — no fracasso, o delta continua
+        // acumulado em unsyncedDeltaPlayTimeInMilliseconds para reintentar
+        gamesPlaytime.set(storeKeys.game(game.shop, game.objectId), {
+          ...gamePlaytime,
+          lastTick: now,
+          lastSyncTick: now,
+        });
       })
       .catch((error) => {
         logPlaytimeTrace("periodic-sync-failed", game, {
@@ -409,16 +417,17 @@ function onTickGame(game: Game) {
           error: error instanceof Error ? error.message : String(error),
         });
 
+        // No fracasso: NÃO atualiza lastSyncTick — o delta falhado continua
+        // pendente em unsyncedDeltaPlayTimeInMilliseconds para o próximo ciclo
         gamesStore.put(storeKeys.game(game.shop, game.objectId), {
           ...updatedGame,
           unsyncedDeltaPlayTimeInMilliseconds: deltaToSync,
         });
-      })
-      .finally(() => {
+
+        // Apenas atualiza lastTick (não lastSyncTick)
         gamesPlaytime.set(storeKeys.game(game.shop, game.objectId), {
           ...gamePlaytime,
           lastTick: now,
-          lastSyncTick: now,
         });
       });
   }
