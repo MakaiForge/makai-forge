@@ -40,9 +40,7 @@ export function createExecutableSelectWindow(
     skipTaskbar: false,
     webPreferences: {
       preload: require("node:path").join(__dirname, "../preload/index.mjs"),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
+      sandbox: false,
     },
     show: false,
   });
