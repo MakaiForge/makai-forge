@@ -22,7 +22,7 @@ build_common() {
     print_info "Rodando check:paths..."
     npm run check:paths || return 1
     print_info "Compilando TypeScript + Vite..."
-    electron-vite build || return 1
+    npx electron-vite build || return 1
     print_ok "Build base concluído"
 }
 
@@ -31,7 +31,7 @@ build_target() {
     local output_dir="${APP_DIR}/dist/${target}"
     mkdir -p "$output_dir"
     print_info "Gerando ${target}..."
-    electron-builder --linux "$target" --config.directories.output="$output_dir" 2>&1
+    npx electron-builder --linux "$target" --config.directories.output="$output_dir" 2>&1
     if [ $? -eq 0 ]; then
         print_ok "${target} gerado em: ${output_dir}"
         ls -lh "$output_dir"/*.${target}* 2>/dev/null || ls -lh "$output_dir"/ 2>/dev/null
@@ -51,9 +51,31 @@ build_aur() {
         return 1
     fi
 
+    # Gerar linux-unpacked se não existir
+    if [ ! -d "${APP_DIR}/dist/linux-unpacked" ]; then
+        print_info "Gerando linux-unpacked..."
+        npx electron-builder --linux --dir 2>&1
+        if [ $? -ne 0 ]; then
+            print_err "Falha ao gerar linux-unpacked"
+            return 1
+        fi
+    fi
+
+    # Copiar linux-unpacked para dentro do aur_dir (makepkg precisa acessar)
+    print_info "Copiando linux-unpacked para ${aur_dir}..."
+    rm -rf "${aur_dir}/linux-unpacked"
+    cp -r "${APP_DIR}/dist/linux-unpacked" "${aur_dir}/"
+    cp "${APP_DIR}/app/_assets/assets/icons/app/icon.png" "${aur_dir}/icon.png"
+
     cp PKGBUILD "$aur_dir/"
+
+    local makepkg_user="${SUDO_USER:-$USER}"
     cd "$aur_dir"
-    makepkg -s --noconfirm 2>&1
+    if [ "$(id -u)" -eq 0 ] && [ -n "$SUDO_USER" ]; then
+        sudo -u "$SUDO_USER" makepkg -sf --noconfirm 2>&1
+    else
+        makepkg -sf --noconfirm 2>&1
+    fi
     if [ $? -eq 0 ]; then
         print_ok "Pacote AUR gerado em: ${aur_dir}"
         ls -lh "$aur_dir"/*.pkg.tar.* 2>/dev/null

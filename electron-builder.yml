@@ -18,17 +18,20 @@ extraResources:
   - from: app/_main/bootstrap
   - from: app/_assets/backgrounds
     to: app/_assets/backgrounds
+  - from: app/_venv
+    to: app/_venv
 files:
   - "!**/.vscode/*"
   - "!src/*"
   - "!app/_resources/native/protonforge-native/target"
+  - "!app/_data/**"
+  - "!app/_venv/**"
   - "!electron.vite.config.{js,ts,mjs,cjs}"
   - "!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}"
   - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
 asarUnpack:
   - app/_resources/**
-  - app/_data/**
   - node_modules/sharp/**
   - node_modules/@img/sharp-libvips-*/**
 linux:

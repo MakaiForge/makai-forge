@@ -1,10 +1,10 @@
 # Maintainer: MakaiForge <lucasgertke11-bot@proton.me>
 pkgname=makai-forger
 pkgver=1.0.0
-pkgrel=1
+pkgrel=3
 pkgdesc="Game launcher and compatibility tool for Linux"
 arch=('x86_64')
-url="https://github.com/lucasgertke11-bot/Proton_Forge"
+url="https://github.com/MakaiForge/makai-forge"
 license=('MIT')
 depends=(
     'electron'
@@ -16,56 +16,43 @@ depends=(
     'xdg-utils'
     'python'
     'wine'
-    'protontricks'
 )
 makedepends=(
     'nodejs'
     'npm'
     'rust'
     'cargo'
-    'python-cx_Freeze'
 )
 optdepends=(
+    'protontricks: Runtime compatibility tool'
     'qbittorrent: Download manager'
     'ludusavi: Backup tool'
     'flatpak: Flatpak support'
 )
-source=("${url}/archive/v${pkgver}.tar.gz")
-sha256sums=('SKIP')
-
-build() {
-    cd "Proton_Forge-${pkgver}"
-
-    # Instalar dependências npm
-    npm install --legacy-peer-deps
-
-    # Compilar addon nativo Rust
-    npm run build:native
-
-    # Compilar RPC Python
-    npm run build:torrent-rpc 2>/dev/null || true
-
-    # Compilar aplicativo
-    npm run build:linux
-}
+source=()
+sha256sums=()
 
 package() {
-    cd "Proton_Forge-${pkgver}"
+    # Copiar build descompactado (já compilado pelo start-makaiforge.sh)
+    local unpacked="${startdir}/linux-unpacked"
+    if [ ! -d "$unpacked" ]; then
+        echo "ERRO: linux-unpacked não encontrado. Execute o build primeiro."
+        return 1
+    fi
 
-    # Copiar build descompactado
     install -dm755 "${pkgdir}/opt/${pkgname}"
-    cp -r dist/linux-unpacked/* "${pkgdir}/opt/${pkgname}/"
+    cp -r "$unpacked"/* "${pkgdir}/opt/${pkgname}/"
 
-    # Criar binário
+    # Binário
     install -dm755 "${pkgdir}/usr/bin"
-    cat > "${pkgdir}/usr/bin/${pkgname}" << EOF
+    cat > "${pkgdir}/usr/bin/${pkgname}" << 'EOF'
 #!/bin/bash
-exec /opt/${pkgname}/${pkgname} "\$@"
+exec /opt/makai-forger/makai-forger "$@"
 EOF
     chmod 755 "${pkgdir}/usr/bin/${pkgname}"
 
     # Ícone
-    install -Dm644 "${pkgdir}/opt/${pkgname}/resources/app/_assets/icons/icon.png" \
+    install -Dm644 "${startdir}/icon.png" \
         "${pkgdir}/usr/share/icons/hicolor/256x256/apps/${pkgname}.png"
 
     # Desktop entry
@@ -82,7 +69,7 @@ StartupWMClass=${pkgname}
 EOF
 
     # MIME types
-    install -Dm644 /dev/stdin "${pkgdir}/usr/share/mime/packages/${pkgname}.xml" << 'EOF'
+    install -Dm644 /dev/stdin "${pkgdir}/usr/share/mime/packages/${pkgname}.xml" << 'MIMEEOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
   <mime-type type="application/vnd.microsoft.portable-executable">
@@ -94,5 +81,5 @@ EOF
     <glob pattern="*.msi"/>
   </mime-type>
 </mime-info>
-EOF
+MIMEEOF
 }

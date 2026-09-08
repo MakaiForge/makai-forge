@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
     main: {
       build: {
         sourcemap: true,
+        rollupOptions: {
+          external: ["canvas"],
+        },
       },
       resolve: {
         alias: {
