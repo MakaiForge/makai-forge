@@ -1,5 +1,5 @@
 import { registerEvent } from "@main/events/register-event";
-import { logOperation, logError as auditLogError } from "../activity-logger";
+import { logOperation } from "../activity-logger";
 import fs from "node:fs";
 import p from "node:path";
 import { app } from "electron";
@@ -316,7 +316,11 @@ registerEvent("setupProtonEnvironment", async (_event, gameName: string, protonP
           if (catalogEntry) {
             const overrides: Record<string, string> = { ...catalogEntry.wineDllOverrides };
             if (catalogEntry.wineDllOverridesRange) {
-              for (const [prefix2, range] of Object.entries(catalogEntry.wineDllOverridesRange)) {
+              const ranges = catalogEntry.wineDllOverridesRange as Record<
+                string,
+                { start: number; end: number; mode: string }
+              >;
+              for (const [prefix2, range] of Object.entries(ranges)) {
                 for (let i = range.start; i <= range.end; i++) {
                   overrides[`${prefix2}${i}`] = range.mode;
                 }

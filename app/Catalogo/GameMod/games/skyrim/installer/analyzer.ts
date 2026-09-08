@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import type { ModStructure, ModFileEntry, ModCategory } from "./types";
 import { detectWrappers, stripWrappers, findDeepestFomod } from "./detectors/wrapper-detector";
-import { detectFomod, getFomodInfo } from "./detectors/fomod-detector";
 import { scanStructure } from "./detectors/structure-detector";
 
 export function analyzeMod(extractedDir: string): ModStructure {
@@ -37,7 +36,7 @@ export function analyzeMod(extractedDir: string): ModStructure {
   };
 }
 
-function collectFiles(rootDir: string, startDir: string, destBase: string, excludeDirs: Set<string>): ModFileEntry[] {
+function collectFiles(_rootDir: string, startDir: string, destBase: string, excludeDirs: Set<string>): ModFileEntry[] {
   const files: ModFileEntry[] = [];
   const seen = new Set<string>();
 

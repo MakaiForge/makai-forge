@@ -1,5 +1,5 @@
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
-import type { ArchiveInfo } from "@types/install.types";
+import type { ArchiveInfo } from "@mods/types/install.types";
 
 export async function readArchiveInfo(archivePath: string): Promise<ArchiveInfo> {
   try {

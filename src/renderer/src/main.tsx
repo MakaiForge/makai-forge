@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
@@ -13,33 +13,46 @@ import "@fontsource/noto-sans/700.css";
 import "react-loading-skeleton/dist/skeleton.css";
 import "react-tooltip/dist/react-tooltip.css";
 
-import { App } from "../../../app/app";
+import { App, RouteLoading } from "../../../app/app";
 
 import { store } from "@shared-store";
 
-import resources from "@locales";
+// Apenas o idioma padrão entra no bundle inicial.
+// Os demais idiomas são carregados dinamicamente quando o usuário seleciona.
+import en from "@locales/en/translation.json";
 
 import { logger } from "@shared-logger";
 import { addCookieInterceptor } from "@shared-cookies";
 import * as Sentry from "@sentry/react";
 import { storeService } from "@shared-services/store.service";
-import Catalogue from "@catalogue";
-import Home from "@home/home";
-import ProtonToolsPage from "@proton/renderer/pages/proton-tools/index";
-import ModManager from "@mods/ui/ModManager";
-import ExecutableSelect from "@executable-select/executable-select";
-import FolderSelect from "@folder-select/folder-select";
-import Games from "@games-ui";
-import Downloads from "@downloads";
-import GameDetails from "@games-ui/pages/game-details/game-details";
-import Settings from "@settings/settings";
-import Emulators from "@emulators/emulators";
-import EmulatorDetail from "@emulator-detail/emulator-detail";
-import Profile from "@profile/profile";
-import ThemeEditor from "@theme-editor/theme-editor";
-import Notifications from "@notifications/notifications";
-import GameLauncher from "@games-ui/pages/game-launcher/game-launcher";
-import GameLog from "@games-ui/pages/game-log/game-log";
+
+// Code-splitting das rotas: cada página só é baixada/parseada quando aberta.
+// Isso reduz o bundle inicial de ~6,5 MB para apenas o shell do app.
+const Catalogue = lazy(() => import("@catalogue"));
+const Home = lazy(() => import("@home/home"));
+const ProtonToolsPage = lazy(() =>
+  import("@proton/renderer/pages/proton-tools/index")
+);
+const ModManager = lazy(() => import("@mods/ui/ModManager"));
+const ExecutableSelect = lazy(() =>
+  import("@executable-select/executable-select")
+);
+const FolderSelect = lazy(() => import("@folder-select/folder-select"));
+const Games = lazy(() => import("@games-ui"));
+const Downloads = lazy(() => import("@downloads"));
+const GameDetails = lazy(() =>
+  import("@games-ui/pages/game-details/game-details")
+);
+const Settings = lazy(() => import("@settings/settings"));
+const Emulators = lazy(() => import("@emulators/emulators"));
+const EmulatorDetail = lazy(() => import("@emulator-detail/emulator-detail"));
+const Profile = lazy(() => import("@profile/profile"));
+const ThemeEditor = lazy(() => import("@theme-editor/theme-editor"));
+const Notifications = lazy(() => import("@notifications/notifications"));
+const GameLauncher = lazy(() =>
+  import("@games-ui/pages/game-launcher/game-launcher")
+);
+const GameLog = lazy(() => import("@games-ui/pages/game-log/game-log"));
 
 console.log = logger.log;
 
@@ -63,6 +76,11 @@ const syncDocumentLanguage = (language: string) => {
   document.documentElement.dir = i18n.dir(language);
 };
 
+// Carrega o bundle de um idioma sob demanda (ex.: pt-BR/translation.json)
+const localeModules = import.meta.glob("../../locales/*/translation.json");
+
+const resources = { en: { translation: en } };
+
 await i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -81,7 +99,20 @@ const userPreferences = (await storeService.get(
 )) as { language?: string } | null;
 
 if (userPreferences?.language) {
-  await i18n.changeLanguage(userPreferences.language);
+  const lang = userPreferences.language;
+  if (lang !== "en") {
+    try {
+      const mod = await localeModules[`../../locales/${lang}/translation.json`]();
+      i18n.addResourceBundle(
+        lang,
+        "translation",
+        (mod as { default?: Record<string, unknown> }).default ?? (mod as Record<string, unknown>)
+      );
+    } catch (err) {
+      logger.warn(`[i18n] Failed to load locale ${lang}, falling back to en`, err);
+    }
+  }
+  await i18n.changeLanguage(lang);
 } else {
   globalThis.electron.updateUserPreferences({ language: i18n.language });
 }
@@ -93,30 +124,32 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Provider store={store}>
       <HashRouter>
-        <Routes>
-          <Route element={<App />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/catalogue" element={<Catalogue />} />
-            <Route path="/downloads" element={<Downloads />} />
-            <Route path="/game/:shop/:objectId" element={<GameDetails />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/profile/:userId" element={<Profile />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/proton-tools" element={<ProtonToolsPage />} />
-            <Route path="/games" element={<Games />} />
-            <Route path="/emulators" element={<Emulators />} />
-<Route path="/emulator/:runnerId" element={<EmulatorDetail />} />
-            <Route path="/mod-manager" element={<ModManager />} />
-          </Route>
+        <Suspense fallback={<RouteLoading />}>
+          <Routes>
+            <Route element={<App />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/catalogue" element={<Catalogue />} />
+              <Route path="/downloads" element={<Downloads />} />
+              <Route path="/game/:shop/:objectId" element={<GameDetails />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/profile/:userId" element={<Profile />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/proton-tools" element={<ProtonToolsPage />} />
+              <Route path="/games" element={<Games />} />
+              <Route path="/emulators" element={<Emulators />} />
+              <Route path="/emulator/:runnerId" element={<EmulatorDetail />} />
+              <Route path="/mod-manager" element={<ModManager />} />
+            </Route>
 
-          <Route path="/game-log" element={<GameLog />} />
+            <Route path="/game-log" element={<GameLog />} />
 
-          <Route path="/executable-select" element={<ExecutableSelect />} />
-          <Route path="/folder-select" element={<FolderSelect />} />
+            <Route path="/executable-select" element={<ExecutableSelect />} />
+            <Route path="/folder-select" element={<FolderSelect />} />
 
-          <Route path="/theme-editor" element={<ThemeEditor />} />
-          <Route path="/game-launcher" element={<GameLauncher />} />
-        </Routes>
+            <Route path="/theme-editor" element={<ThemeEditor />} />
+            <Route path="/game-launcher" element={<GameLauncher />} />
+          </Routes>
+        </Suspense>
       </HashRouter>
     </Provider>
   </React.StrictMode>

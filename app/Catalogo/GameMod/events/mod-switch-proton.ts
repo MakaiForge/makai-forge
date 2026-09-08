@@ -89,10 +89,11 @@ registerEvent("modSwitchProton", async (_event, gameId: string, newProtonPath: s
   // 2. Verificar se o jogo não está rodando (wineserver ativo)
   let gameRunning = false;
   try {
-    const psResult = await MakaiRPC.call("exec_command", {
+    const psResult = (await MakaiRPC.call("exec_command", {
       command: "pgrep -a wineserver 2>/dev/null || true",
       timeout: 5,
-    });
+    })) as { stdout?: string };
+    void psResult;
     gameRunning = (psResult.stdout || "").trim().length > 0;
   } catch { /* ignore */ }
 

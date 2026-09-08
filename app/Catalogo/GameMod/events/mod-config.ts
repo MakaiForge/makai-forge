@@ -3,8 +3,6 @@ import { ModStorageService } from "@main/services";
 import { getGameInfo } from "@games/registry";
 import { getStagingDir, findStagingDir } from "@games/_shared/filemap";
 import { undeployMod } from "@mods/services/mod-deploy/core";
-import { findAllSteamLibraries } from "@container/core/steam-paths";
-import { findGogGamePath } from "@mods/services/gog-detection";
 import { gameDllCatalog } from "@mods/services/game-dlls-service";
 import { detectGame } from "@mods/services/detection";
 import { defaultStagingDir, defaultPrefixDir } from "@mods/services/steam-library";
@@ -35,8 +33,10 @@ registerEvent("saveGameConfig", async (_event, gameName: string, config: { gameP
 });
 
 registerEvent("getGameConfig", async (_event, gameName: string) => {
-  const cfg = ModStorageService.get(`game:${gameName}:config`) || null;
-  logPlay(gameName, "getGameConfig", cfg ? { gamePath: cfg.gamePath, stagingDir: cfg.stagingDir, protonPrefix: cfg.protonPrefix } : {});
+  const cfg = (ModStorageService.get<Record<string, unknown>>(
+    `game:${gameName}:config`
+  ) || null) as Record<string, unknown> | null;
+  logPlay(gameName, "getGameConfig", cfg ? { gamePath: String(cfg.gamePath), stagingDir: String(cfg.stagingDir), protonPrefix: String(cfg.protonPrefix) } : undefined);
   return cfg;
 });
 
@@ -180,7 +180,7 @@ registerEvent("prefixAutoFix", async (_event, gameId: string) => {
   return { ok: true, data: result };
 });
 
-registerEvent("modBridgeSetContext", async (_event, ctx: { source: string; gameId: string; prefixPath: string; gamePath?: string }) => {
+registerEvent("modBridgeSetContext", async (_event, ctx: { source: "mod-manager" | "proton-tools" | "unknown"; gameId: string; prefixPath: string; gamePath?: string }) => {
   setBridgeContext(ctx);
   return { ok: true, data: getBridgeContext() };
 });

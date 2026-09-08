@@ -1123,7 +1123,6 @@
   "proton_confidence_low": "Baixa confiança (1-2 relatos)",
   "also_compatible": "Tambem compativel com:",
   "install_progress": {
-    "title": "Instalando {{gameTitle}}",
     "please_wait": "Por favor, aguarde até o fim da instalação",
     "step_preparing": "Preparando ambiente...",
     "step_download": "Baixando {{protonName}}...",
@@ -1134,7 +1133,8 @@
     "hint_close_launcher": "Instale o jogo pelo launcher e feche-o quando terminar",
     "step_complete": "Instalação concluída!",
     "step_error": "Erro: {{error}}",
-    "button_close": "Fechar"
+    "button_close": "Fechar",
+    "install_progress_title": "Preparação de Ambiente — {{gameTitle}}"
   },
   "mod_manager": {
     "title": "Mod Manager",

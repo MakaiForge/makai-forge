@@ -132,17 +132,6 @@ contextBridge.exposeInMainWorld("electron", {
       { ok: true; data: TorrentFilesResponse } | { ok: false; error: string }
     >,
 
-  /* Catalogue */
-  getGameShopDetails: (objectId: string, shop: GameShop, language: string) =>
-    ipcRenderer.invoke("getGameShopDetails", objectId, shop, language),
-  getRandomGame: () => ipcRenderer.invoke("getRandomGame"),
-  getLocalResource: (filename: string) =>
-    ipcRenderer.invoke("getLocalResource", filename),
-  getGameStats: (objectId: string, shop: GameShop) =>
-    ipcRenderer.invoke("getGameStats", objectId, shop),
-  getGameAssets: (objectId: string, shop: GameShop) =>
-    ipcRenderer.invoke("getGameAssets", objectId, shop),
-
   /* User preferences */
   getUserPreferences: () => ipcRenderer.invoke("getUserPreferences"),
   updateUserPreferences: (preferences: UserPreferences) =>
@@ -522,6 +511,16 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("getDiskFreeSpace", path),
   checkFolderWritePermission: (path: string) =>
     ipcRenderer.invoke("checkFolderWritePermission", path),
+
+  /* System specs (hardware do usuário + compatibilidade de jogos) */
+  getSystemSpecs: () =>
+    ipcRenderer.invoke("getSystemSpecs"),
+  getStoredSystemSpecs: () =>
+    ipcRenderer.invoke("getStoredSystemSpecs"),
+  refreshSystemSpecs: () =>
+    ipcRenderer.invoke("refreshSystemSpecs"),
+  checkGameCompatibility: (minimum: string | null | undefined, recommended: string | null | undefined) =>
+    ipcRenderer.invoke("checkGameCompatibility", minimum, recommended),
 
   /* Cloud save */
   uploadSaveGame: (
@@ -1124,8 +1123,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("removeMod", gameId, profile, modName),
   modLaunchGame: (gameId: string) =>
     ipcRenderer.invoke("modLaunchGame", gameId),
-  modPlayGame: (gameId: string, profile?: string) =>
-    ipcRenderer.invoke("modPlayGame", gameId, profile),
+  modPlayGame: (gameId: string, profile?: string, options?: { deployMods?: boolean }) =>
+    ipcRenderer.invoke("modPlayGame", gameId, profile, options),
   modKillGame: () =>
     ipcRenderer.invoke("modKillGame"),
   modScanFixGame: (gameId: string) =>
@@ -1157,6 +1156,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("installExternalTool", gameId, toolName),
   getGameModuleTools: (gameId: string) =>
     ipcRenderer.invoke("getGameModuleTools", gameId),
+  getModCompatibleInfo: () =>
+    ipcRenderer.invoke("getModCompatibleInfo"),
   modBridgeLog: (level: string, ...args: unknown[]) =>
     ipcRenderer.invoke("modBridgeLog", level, ...args),
   modBridgeListGames: () =>

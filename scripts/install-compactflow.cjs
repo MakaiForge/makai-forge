@@ -29,12 +29,13 @@ function findSource() {
     return process.env.COMPACTFLOW_SRC;
   }
   const candidates = [
-    "/mnt/926f111f-fdf6-4067-ac31-32f732441bac/MAKAI/compact-flow",
     path.join(os.homedir(), "MAKAI", "compact-flow"),
     path.join(os.homedir(), "Documentos", "CompactFlow"),
     path.join(os.homedir(), "Documents", "CompactFlow"),
   ];
   for (const c of candidates) {
+    const resolved = path.resolve(c);
+    if (resolved === path.resolve(DEST)) continue;
     if (fs.existsSync(c) && fs.existsSync(path.join(c, "renderer", "index.html"))) return c;
   }
   return null;
@@ -49,6 +50,11 @@ console.log(`${CIANO}  Destino: ${DEST}${RESET}`);
 console.log(`${CIANO}════════════════════════════════════════════${RESET}\n`);
 
 if (!COMPACTFLOW_SRC) {
+  if (fs.existsSync(path.join(DEST, "renderer", "index.html"))) {
+    console.log(`\n  ${VERDE}CompactFlow já está instalado em Makai Forge.${RESET}`);
+    console.log(`  Nenhuma sincronização necessária (sem standalone separado).\n`);
+    process.exit(0);
+  }
   console.error(`\n  ${AMARELO}CompactFlow não encontrado.${RESET}`);
   console.error(`  Defina COMPACTFLOW_SRC apontando para a pasta do app standalone.\n`);
   process.exit(1);

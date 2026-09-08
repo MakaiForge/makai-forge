@@ -43,12 +43,20 @@ async function ensureGameConfig(gameId: string) {
   return config;
 }
 
-registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => {
+registerEvent("modPlayGame", async (event, gameId: string, profile?: string, options?: { deployMods?: boolean }) => {
   const sender = event.sender;
   const parts = gameId.split(":");
   const shop = parts[0] as any;
   const objectId = parts.slice(1).join(":");
   const gameKey = storeKeys.game(shop, objectId);
+
+  // Separacão de responsabilidades:
+  // - ABA GAMES: play SEM deploy de mods (apenas inicializar o jogo).
+  // - MOD MANAGER: play COM deploy de mods (inicializar jogo com mods) — o
+  //   chamador passa { deployMods: true }.
+  // Jogo ≠ mod. O deploy de mods nunca deve rodar por acidente no play da
+  // aba Games (chegou a apagar o jogo copiado no prefixo — ver linkAll).
+  const deployMods = options?.deployMods === true;
 
   try {
     await WindowManager.createGameLauncherWindow(shop, objectId);
@@ -84,8 +92,8 @@ registerEvent("modPlayGame", async (event, gameId: string, profile?: string) => 
       config = ModStorageService.get<any>(`game:${gameId}:config`);
     }
 
-    logger.info(`[modPlayGame] Iniciando play: gameId=${gameId}`);
-    const result = await playGame(gameId, sendToWindows, profile);
+    logger.info(`[modPlayGame] Iniciando play: gameId=${gameId} deployMods=${deployMods}`);
+    const result = await playGame(gameId, sendToWindows, profile, deployMods);
 
     logEvent(gameId, "ipc_modPlayGame_result", {
       success: Boolean(result.success), method: String(result.method || ""),

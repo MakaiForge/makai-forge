@@ -72,55 +72,6 @@ const launchNatively = (
   processRef.unref();
 };
 
-const launchWithWine = async (
-  executablePath: string,
-  launchOptions?: string | null,
-  useMangohud = false,
-  useGamemode = false,
-  customEnv?: Record<string, string>,
-  winePrefixPath?: string | null
-): Promise<boolean> => {
-  const workingDirectory = path.dirname(executablePath);
-  const resolvedLaunchCommand = resolveLaunchCommand({
-    baseCommand: "wine",
-    baseArgs: [executablePath],
-    launchOptions,
-    wrapperCommands: [
-      ...(useGamemode ? ["gamemoderun"] : []),
-      ...(useMangohud ? ["mangohud"] : []),
-    ],
-  });
-
-  return await new Promise<boolean>((resolve) => {
-    const processRef = spawn(
-      resolvedLaunchCommand.command,
-      resolvedLaunchCommand.args,
-      {
-        shell: false,
-        detached: true,
-        stdio: "ignore",
-        cwd: workingDirectory,
-        env: {
-          ...process.env,
-          ...(winePrefixPath ? { WINEPREFIX: winePrefixPath } : {}),
-          ...resolvedLaunchCommand.env,
-          ...customEnv,
-        },
-      }
-    );
-
-    processRef.once("spawn", () => {
-      processRef.unref();
-      resolve(true);
-    });
-
-    processRef.once("error", (error) => {
-      logger.error("Failed to launch game with Wine", error);
-      resolve(false);
-    });
-  });
-};
-
 const resolveProtonPathForLaunch = async (
   gameProtonPath?: string | null
 ): Promise<string | null> => {
@@ -321,6 +272,7 @@ export const launchGame = async (options: LaunchGameOptions): Promise<void> => {
           exePath: parsedPath,
           prefixPath: winePrefixPath,
           protonPath,
+          gameId: objectId,
           gamePath: path.dirname(parsedPath),
           envOverrides: gameEnv,
           onLog: (line) => GameLogManager.append(shop, objectId, line),

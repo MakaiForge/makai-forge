@@ -25,11 +25,44 @@ export class PixelDrainApi {
     const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
     const id = pathParts[1];
 
-    if (pathParts[0] !== "u" || !id) {
+    // Aceita /u/<id> (arquivo) e /l/<id> (lista) — alguns catálogos usam listas
+    if ((pathParts[0] !== "u" && pathParts[0] !== "l") || !id) {
       throw new Error(`Invalid pixeldrain URL: ${url}`);
     }
 
     return id;
+  }
+
+  private static extractItemIndex(url: string): number {
+    try {
+      // URLs de lista podem indicar o item: https://pixeldrain.com/l/<id>#item=0
+      const hash = new URL(url).hash;
+      const match = hash.match(/item=(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  private static async resolveList(id: string, itemIndex: number): Promise<string> {
+    const response = await axios.get(`https://pixeldrain.com/api/list/${id}`, {
+      validateStatus: () => true,
+    });
+
+    if (response.status === 404) {
+      throw new Error("List not found");
+    }
+
+    const files = response.data?.files as Array<{ id: string; name?: string }> | undefined;
+    if (!Array.isArray(files) || files.length === 0) {
+      throw new Error("List is empty");
+    }
+
+    const file = files[itemIndex] ?? files[0];
+    logger.log(
+      `[PixelDrain] List ${id} item ${itemIndex} -> ${file?.name ?? file?.id}`
+    );
+    return `https://pixeldrain.com/api/file/${file.id}?download`;
   }
 
   private static async checkAvailability(id: string): Promise<void> {
@@ -73,7 +106,16 @@ export class PixelDrainApi {
 
   public static async unlock(url: string): Promise<string> {
     try {
+      const parsed = new URL(url);
+      const isList = parsed.pathname.split("/").filter(Boolean)[0] === "l";
+
       const id = this.extractId(url);
+
+      if (isList) {
+        // Link de lista: resolve o arquivo indicado (#item=N, default 0)
+        return this.resolveList(id, this.extractItemIndex(url));
+      }
+
       const bypassUrl = await this.tryBypass(id);
 
       if (bypassUrl) {

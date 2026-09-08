@@ -11,6 +11,40 @@ export interface DiskUsage {
   total: number;
 }
 
+export interface SystemSpecs {
+  /** Versão do formato — bump força re-coleta (ex.: clock corrigido via lscpu) */
+  version?: number
+  collectedAt: number
+  cpu: {
+    model: string
+    cores: number
+    baseClockGhz: number
+  }
+  memory: {
+    totalBytes: number
+    totalGb: number
+  }
+  gpu: {
+    name: string
+    vendor: "nvidia" | "amd" | "intel" | "unknown"
+    vramMb: number
+  }
+  os: {
+    platform: string
+    release: string
+  }
+}
+
+export type GameCompatibilityLevel = "ok" | "weak" | "no" | "unknown";
+
+export interface GameCompatibilityResult {
+  level: GameCompatibilityLevel
+  label: string
+  below: string[]
+  met: string[]
+  checkedAt: number
+}
+
 export interface GameRepack {
   id: string;
   title: string;
@@ -384,6 +418,8 @@ export type CatalogueSearchResult = {
   protonSource?: string | null;
   contentDescriptorIds?: number[];
   requiredAge?: number;
+  /** Requisitos do catálogo (localSearchGames já enriquece cada jogo com estes) */
+  pcRequirements?: { minimum?: string | null; recommended?: string | null } | null;
 } & Pick<ShopAssets, "libraryImageUrl" | "downloadSources">;
 
 export type LibraryGame = Game &

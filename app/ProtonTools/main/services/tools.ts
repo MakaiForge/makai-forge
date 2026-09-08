@@ -51,6 +51,7 @@ export const PROTON_TOOLS: ProtonTool[] = [
     directoryNameFormat: "Proton-CachyOS-$version",
     supportLatest: true,
     type: "github",
+    preferTarball: true,
     extra: {
       githubUrl: "https://github.com/CachyOS/proton-cachyos",
       author: "CachyOS Team",

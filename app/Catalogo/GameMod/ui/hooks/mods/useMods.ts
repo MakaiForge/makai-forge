@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ModlistEntry, ModMedia } from "../../types/mod.types";
+import type { ModInventory } from "@types";
 import { filterMods } from "../../utils/mod-helpers";
 
 export function useMods(gameId: string, profile: string) {
@@ -24,7 +25,7 @@ export function useMods(gameId: string, profile: string) {
           if (mod.isSeparator || mod.inventory) return mod;
           try {
             const invKey = `game:${gameId}:mod:${mod.name}:inventory`;
-            const inventory = await window.electron.modsStore.get(invKey);
+            const inventory = (await window.electron.modsStore.get(invKey)) as ModInventory | undefined;
             return { ...mod, inventory: inventory || undefined };
           } catch {
             return mod;
@@ -124,6 +125,7 @@ export function useMods(gameId: string, profile: string) {
         return {
           name: result.modName,
           enabled: true,
+          locked: false,
           version: "",
           priority: 0,
           isSeparator: false,

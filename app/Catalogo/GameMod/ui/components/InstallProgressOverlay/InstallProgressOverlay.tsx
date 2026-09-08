@@ -6,7 +6,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import type { InstallStage, InstallProgress } from "../../types/install.types";
+import type { InstallStage, InstallProgress } from "../../../types/install.types";
 import "./InstallProgressOverlay.scss";
 
 interface InstallProgressOverlayProps {
@@ -22,6 +22,7 @@ const STAGE_ICONS: Record<InstallStage, string> = {
   extracting: "📦",
   verifying: "✅",
   analyzing: "🔍",
+  preparing: "⚙️",
   saving: "💾",
   ready: "✓",
   error: "❌",

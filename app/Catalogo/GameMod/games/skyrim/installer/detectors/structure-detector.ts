@@ -5,7 +5,6 @@ const PLUGIN_EXTS = new Set([".esp", ".esm", ".esl"]);
 const ARCHIVE_EXTS = new Set([".bsa", ".ba2"]);
 const SKSE_DLL_PATTERN = /\.dll$/i;
 const SKSE_LOADER_PATTERN = /^skse_loader\.exe$/i;
-const BODYSLIDE_PATTERN = /[\\/]CalienteTools[\\/]BodySlide[\\/]/i;
 
 export interface StructureScan {
   hasData: boolean;

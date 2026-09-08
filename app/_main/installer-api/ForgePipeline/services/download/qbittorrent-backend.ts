@@ -1,6 +1,11 @@
 import { QBittorrentClient } from "./qbittorrent-client";
 import { TorrentBackend, TorrentStatus, TorrentInfo } from "./torrent-backend";
 import { logger } from "@main/services/logger";
+import {
+  appendTrackersToMagnet,
+  getTrackers,
+  normalizeDownloadUri,
+} from "@main/services/torrent-trackers";
 import { downloadsStore, gamesStore, storeKeys } from "@main/store";
 import type { Download } from "@types";
 import { calculateETA } from "./helpers";
@@ -40,7 +45,15 @@ export class QBittorrentBackend implements TorrentBackend {
       } as Download);
     }
 
-    await this.client.addMagnet(magnet, savePath);
+    // Garante trackers em todo magnet enviado ao qBittorrent
+    // (mesma lógica da versão antiga, aplicada em qualquer caminho de download)
+    // Normaliza a URI: remove \r\n e decodifica entidades HTML (ex.: &amp; -> &)
+    // que quebram os trackers dentro do magnet.
+    const magnetWithTrackers = appendTrackersToMagnet(
+      normalizeDownloadUri(magnet),
+      getTrackers()
+    );
+    await this.client.addMagnet(magnetWithTrackers, savePath);
     logger.log(`[QBittorrentBackend] Torrent added - Hash: ${hash}`);
   }
 

@@ -21,21 +21,40 @@ export function isValidPrefix(pfxPath: string): boolean {
 }
 
 export function cleanNestedPfx(pfxPath: string): void {
+  // SEGURANÇA: NUNCA apagar uma pasta real — ela pode conter o prefixo Wine
+  // de verdade (e o jogo copiado dentro do drive_c). Só removemos SYMLINK
+  // (o que o umu-run cria: <prefixo>/pfx → <prefixo>).
   const nested = path.join(pfxPath, "pfx");
-  if (fs.existsSync(nested) && fs.existsSync(path.join(nested, "user.reg"))) {
-    logger.warn(`Nested pfx directory detected at ${nested}, cleaning up`);
-    try {
-      fs.rmSync(nested, { recursive: true, force: true });
-      logger.info(`Cleaned up nested pfx directory`);
-    } catch (err) {
-      logger.error(`Failed to clean nested pfx: ${err}`);
-    }
+  let st: fs.Stats | undefined;
+  try {
+    st = fs.lstatSync(nested);
+  } catch {
+    st = undefined; // não existe — ok
   }
-  const deepNested = path.join(pfxPath, "pfx", "pfx");
-  if (fs.existsSync(deepNested)) {
+  if (st?.isSymbolicLink()) {
+    logger.warn(`Nested pfx symlink detected at ${nested}, removing link only`);
     try {
-      fs.rmSync(deepNested, { recursive: true, force: true });
-    } catch {}
+      fs.rmSync(nested, { force: true });
+      logger.info(`Removed nested pfx symlink`);
+    } catch (err) {
+      logger.error(`Failed to remove nested pfx symlink: ${err}`);
+    }
+  } else if (st?.isDirectory()) {
+    // Pasta real com user.reg = prefixo de verdade. NUNCA deletar.
+    logger.warn(`Nested pfx DIRECTORY detected at ${nested} — NÃO removido (pode conter dados do jogo)`);
+  } else if (fs.existsSync(path.join(nested, "user.reg"))) {
+    // Fallback defensivo (lstat falhou): reporta sem deletar.
+    logger.warn(`Nested pfx at ${nested} has user.reg — NÃO removido por segurança`);
+  }
+  // deepNested (<prefixo>/pfx/pfx): só remover se for symlink, nunca pasta real.
+  const deepNested = path.join(pfxPath, "pfx", "pfx");
+  try {
+    const deepSt = fs.lstatSync(deepNested);
+    if (deepSt.isSymbolicLink()) {
+      fs.rmSync(deepNested, { force: true });
+    }
+  } catch {
+    // não existe — ok
   }
 }
 

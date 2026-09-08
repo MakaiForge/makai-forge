@@ -116,11 +116,12 @@ export class ChromeManager {
 
     const isVisible = process.env.CHROME_VISIBLE === "1";
 
-    const profilesDir = path.join(process.resourcesPath || __dirname, "..", "..", ".chrome-profiles");
-    const fallbackDir = path.join(app.getAppPath(), "app", "_data", ".chrome-profiles");
+    const profilesDir = app.isPackaged
+      ? path.join(process.resourcesPath, "app", "_data", ".chrome-profiles")
+      : path.join(app.getAppPath(), "app", "_data", ".chrome-profiles");
     const userDataDir = userConfig.profilePath
       ? path.resolve(userConfig.profilePath)
-      : path.join(fs.existsSync(profilesDir) ? profilesDir : fallbackDir, `profile-${Date.now()}`);
+      : path.join(profilesDir, `profile-${Date.now()}`);
 
     fs.mkdirSync(userDataDir, { recursive: true });
     this._clearSession(userDataDir);
@@ -726,7 +727,8 @@ export class ChromeManager {
   private _findChrome(): string | null {
     const candidates = [
       process.env.CHROME_PATH,
-      path.join(__dirname, "..", "..", "..", "..", "chrome", "chrome-linux64", "chrome"),
+      // Chrome embarcado do app (não usar __dirname — quebra no bundle out/main)
+      path.join(app.getAppPath(), "app", "_resources", "chrome", "chrome-linux64", "chrome"),
       "/usr/bin/google-chrome-stable",
       "/usr/bin/google-chrome",
       "/usr/bin/chromium-browser",

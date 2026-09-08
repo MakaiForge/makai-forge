@@ -113,7 +113,7 @@ function _fallbackDirectProton(
     }).unref();
     return;
   }
-  const bundledUmu = path.join(app.getAppPath(), "tools", "prefix", "umu-run");
+  const bundledUmu = path.join(app.getAppPath(), "app", "_resources", "binaries", "umu-run");
   const umuBin = fs.existsSync(bundledUmu) ? bundledUmu : "umu-run";
   spawn(umuBin, [exePath], {
     cwd: gameDir, env: { ...process.env, ...env, PROTON_LOG: "1" },

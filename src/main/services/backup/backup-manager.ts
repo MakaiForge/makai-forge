@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { app } from "electron";
 import { CloudProvider, RemoteFile } from "./cloud-provider";
-import { collectGameJsons, GameJsonsResult } from "./local-backup";
+import { collectGameJsons } from "./local-backup";
 
 export interface BackupProgress {
   percent: number;

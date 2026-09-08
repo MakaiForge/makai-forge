@@ -2,37 +2,17 @@ import { registerEvent } from "../register-event";
 import type { Download, StartGameDownloadPayload } from "@types";
 import { DownloadManager, logger } from "@main/services";
 import { createGame } from "@main/services/library-sync";
+import {
+  appendTrackersToMagnet,
+  getTrackers,
+  normalizeDownloadUri,
+} from "@main/services/torrent-trackers";
 import { downloadsStore, gamesStore, storeKeys } from "@main/store";
 import {
   handleDownloadError,
   isKnownDownloadError,
   prepareGameEntry,
 } from "@main/helpers";
-import fs from "node:fs";
-import path from "node:path";
-import { app } from "electron";
-
-const TRACKERS = (() => {
-  try {
-    const possiblePaths = [
-      app.isPackaged
-        ? path.join(process.resourcesPath, "app/_resources/binaries/torrent-tracker-list.txt")
-        : null,
-      path.join(app.getAppPath(), "app", "_resources", "binaries", "torrent-tracker-list.txt"),
-    ].filter(Boolean) as string[];
-
-    for (const file of possiblePaths) {
-      try {
-        if (fs.existsSync(file)) {
-          const content = fs.readFileSync(file, "utf-8");
-          const trackers = content.split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#"));
-          if (trackers.length > 0) return trackers;
-        }
-      } catch { /* try next path */ }
-    }
-    return [];
-  } catch { return []; }
-})();
 
 const startGameDownload = async (
   _event: Electron.IpcMainInvokeEvent,
@@ -72,10 +52,8 @@ const startGameDownload = async (
 
   await DownloadManager.cancelDownload(gameKey);
 
-  // Adiciona trackers ao magnet link
-  const finalUri = uri.startsWith("magnet:") && TRACKERS.length > 0
-    ? uri + TRACKERS.map(t => "&tr=" + encodeURIComponent(t)).join("")
-    : uri;
+  // Adiciona trackers ao magnet link (URI sanitizada — remove \r\n, decodifica &amp;)
+  const finalUri = appendTrackersToMagnet(normalizeDownloadUri(uri), getTrackers());
 
   const download: Download = {
     shop,

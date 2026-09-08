@@ -59,16 +59,16 @@ function ensureQbtConfig(): void {
 export async function startQBittorrent() {
   ensureQbtConfig();
   const qbtPath = app.isPackaged
-    ? path.join(process.resourcesPath, "app/_resources/binaries/qbittorrent/qbittorrent-nox")
-    : path.join(app.getAppPath(), "app/_resources/binaries/qbittorrent/qbittorrent-nox");
+    ? path.join(process.resourcesPath, "binaries", "qbittorrent", "qbittorrent-nox")
+    : path.join(app.getAppPath(), "app", "_resources", "binaries", "qbittorrent", "qbittorrent-nox");
 
   killOrphanQBittorrent();
-  await waitForPortFree(8080);
+  await waitForPortFree(8081);
 
   try {
     qbittorrentProcess = spawn(
       qbtPath,
-      ["--confirm-legal-notice", "--webui-port=8080"],
+      ["--confirm-legal-notice", "--webui-port=8081"],
       { stdio: "ignore", detached: false }
     );
 
@@ -100,7 +100,7 @@ export function waitForQBittorrent(): Promise<boolean> {
     let attempts = 0;
 
     const check = () => {
-      const req = http.get("http://localhost:8080", (res) => {
+      const req = http.get("http://localhost:8081", (res) => {
         res.resume();
         resolve(true);
       });

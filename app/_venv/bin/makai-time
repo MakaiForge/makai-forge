@@ -1,4 +1,4 @@
-#!/home/cas/Documentos/Makai-forge/tools/venv/bin/python3.10.bin
+#!/home/cas/Documentos/Makai_forge/app/_venv/bin/python3.10.bin
 # -*- coding: utf-8 -*-
 import re
 import sys

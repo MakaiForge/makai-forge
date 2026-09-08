@@ -123,7 +123,7 @@ export class SqliteStore {
     this.table = tableName;
   }
 
-  async get<KK = string, VV = any>(key: string, _options?: unknown): Promise<VV> {
+  async get<KK extends string = string, VV = any>(key: KK, _options?: unknown): Promise<VV> {
     const db = getDb();
     const row = db.prepare(`SELECT data FROM ${this.table} WHERE id = ?`).get(key);
     if (!row) {
@@ -260,9 +260,7 @@ export class SqliteStore {
     };
   }
 
-  sublevel<SK extends string = string, SV = unknown>(
-    _name: string
-  ): SqliteStore {
+  sublevel(_name: string): SqliteStore {
     return this;
   }
 

@@ -7,7 +7,7 @@ export class QBittorrentClient {
 
   constructor(
     private host = "http://localhost",
-    private port = 8080,
+    private port = 8081,
     private username = "admin",
     private password = ""
   ) {

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { app } from "electron";
+import { normalizeDownloadUri } from "./torrent-trackers";
 
 const Database = require("better-sqlite3") as typeof import("better-sqlite3");
 
@@ -42,6 +43,16 @@ export function getSupplementalData(
   } catch {
     return null;
   }
+
+  // Sanitiza URIs (remove \r\n e decodifica entidades HTML — &amp; -> &)
+  downloads = (downloads || []).map((d: any) => ({
+    ...d,
+    uris: Array.isArray(d?.uris)
+      ? d.uris
+          .filter((u: any) => u?.trim())
+          .map((u: any) => normalizeDownloadUri(u))
+      : d?.uris,
+  }));
 
   if (!downloadSources?.length && !downloads?.length) return null;
 

@@ -15,11 +15,15 @@ registerEvent("modValidateLoadOrder", async (_event, gameId: string, plugins: { 
     plugins,
     full: false,
   });
+  const data = result.data as {
+    validation?: string[];
+    warnings?: string[];
+  } | null;
   return {
     ok: result.ok,
     data: {
-      validation: result.data?.validation ?? [],
-      warnings: result.data?.warnings ?? [],
+      validation: data?.validation ?? [],
+      warnings: data?.warnings ?? [],
     },
     error: result.error,
   };

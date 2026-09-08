@@ -6,7 +6,7 @@ import { logger, Umu } from "@main/services";
 import { findProtonPath, findSteamClientPath, parseLibraryFolders } from "./steam-paths";
 import { clearCompatData, ensureCompatData } from "./clear";
 import { normalizePrefixPath } from "./validate";
-import { logOperation, logCall, logError as auditLogError } from "../activity-logger";
+import { logOperation } from "../activity-logger";
 import { getSteamLocation } from "@main/services/steam";
 import { getSteamGameProton, setSteamGameProton } from "@main/services/steam-config-vdf";
 
@@ -37,6 +37,85 @@ function detectProtonStructure(protonPath: string): {
     return { status: "not_compiled", detail: "Proton TKG source — execute 'make' para compilar primeiro" };
   }
   return { status: "invalid", detail: "Estrutura de Proton não reconhecida — sem wine binário encontrado" };
+}
+
+function hasCompiledWine(protonPath: string): boolean {
+  for (const base of ["dist", "files"]) {
+    if (fs.existsSync(path.join(protonPath, base, "bin", "wine"))) return true;
+  }
+  // TKG compilado: wine/bin/name ou wine/bin-wow64/name
+  for (const sub of ["bin", "bin-wow64"]) {
+    if (fs.existsSync(path.join(protonPath, "wine", sub, "wine"))) return true;
+  }
+  return false;
+}
+
+const PROTON_SEARCH_ROOTS = [
+  path.join(os.homedir(), ".config", "makai-forger", "compat-tools", "compatibilitytools.d"),
+  path.join(os.homedir(), ".steam", "steam", "compatibilitytools.d"),
+  path.join(os.homedir(), ".local", "share", "Steam", "compatibilitytools.d"),
+  "/usr/share/steam/compatibilitytools.d",
+];
+
+/**
+ * Retorna o Proton configurado se ele estiver utilizável (compilado), senão o
+ * melhor Proton compilado encontrado no sistema, senão null.
+ *
+ * Replica o comportamento do launcher antigo (ProtonForger): se o Proton
+ * escolhido não serve, o jogo usa um Proton que funcione — e o lançamento
+ * continua via umu-run com o prefixo que o usuário escolheu.
+ */
+export function findUsableProton(configuredPath?: string): string | null {
+  if (configuredPath && fs.existsSync(path.join(configuredPath, "proton")) && hasCompiledWine(configuredPath)) {
+    return configuredPath;
+  }
+
+  const candidates: string[] = [];
+  for (const root of PROTON_SEARCH_ROOTS) {
+    if (!fs.existsSync(root)) continue;
+    try {
+      for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const p = path.join(root, entry.name);
+        if (fs.existsSync(path.join(p, "proton"))) candidates.push(p);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  // Steam common (Proton 10.0, Proton - Experimental, etc.)
+  for (const sp of [
+    path.join(os.homedir(), ".local", "share", "Steam"),
+    path.join(os.homedir(), ".steam", "steam"),
+    "/usr/share/steam",
+  ]) {
+    const commonDir = path.join(sp, "steamapps", "common");
+    if (!fs.existsSync(commonDir)) continue;
+    try {
+      for (const entry of fs.readdirSync(commonDir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        if (!/^proton/i.test(entry.name)) continue;
+        const p = path.join(commonDir, entry.name);
+        if (fs.existsSync(path.join(p, "proton"))) candidates.push(p);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  const compiled = candidates.filter(hasCompiledWine);
+  if (compiled.length === 0) return null;
+
+  // Preferência: GE-Proton > UMU-Proton > demais (melhor compatibilidade com umu-run)
+  const score = (p: string): number => {
+    const name = path.basename(p).toLowerCase();
+    if (name.includes("ge-proton")) return 0;
+    if (name.includes("umu")) return 1;
+    return 2;
+  };
+  compiled.sort((a, b) => score(a) - score(b) || b.localeCompare(a));
+  return compiled[0];
 }
 
 export interface CreatePrefixOptions {
@@ -76,11 +155,28 @@ function resolveActualPrefix(prefixPath: string): string {
   return prefixPath;
 }
 
-function prefixExists(prefixPath: string): boolean {
+/**
+ * Um .reg de prefixo Wine real começa com "WINE REGISTRY Version 2" e tem
+ * centenas de KB. Stubs como "REGEDIT4\n\n" (10 bytes, gravados por fluxos
+ * antigos como marcador) são inválidos e fazem o wineboot falhar com
+ * "system.reg is not a valid registry file".
+ */
+function isValidRegFile(filePath: string): boolean {
+  try {
+    const size = fs.statSync(filePath).size;
+    if (size < 128) return false;
+    const head = fs.readFileSync(filePath, "utf-8").slice(0, 128);
+    return /WINE REGISTRY|REGEDIT4/i.test(head);
+  } catch {
+    return false;
+  }
+}
+
+export function prefixExists(prefixPath: string): boolean {
   const actual = resolveActualPrefix(prefixPath);
   return (
-    fs.existsSync(path.join(actual, "user.reg")) &&
-    fs.existsSync(path.join(actual, "system.reg")) &&
+    isValidRegFile(path.join(actual, "user.reg")) &&
+    isValidRegFile(path.join(actual, "system.reg")) &&
     fs.existsSync(path.join(actual, "drive_c")) &&
     fs.existsSync(path.join(actual, "dosdevices"))
   );
@@ -108,7 +204,6 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
     protonPath,
     prefixPath,
     compatDataPath,
-    steamClientPath,
     useUmu,
     onProgress,
     timeout = 120000,
@@ -116,17 +211,62 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
     umuBinary: umuOverride,
   } = options;
 
-  const pfxDir = normalizePrefixPath(prefixPath);
-  const protonBin = path.join(protonPath, "proton");
+  // umu-run é o caminho comprovado (wineboot + Steam Runtime) — usar por padrão;
+  // as demais estratégias (proton wineboot/run) falham com GE-Proton porque o
+  // script `proton` exige STEAM_COMPAT_DATA_PATH.
+  const useUmuDefault = useUmu !== false;
 
-  // Pre-flight: validar estrutura do Proton antes de tentar qualquer estratégia
-  const structure = detectProtonStructure(protonPath);
+  const pfxDir = normalizePrefixPath(prefixPath);
+
+  // Prefixo já existe e é válido → não há nada a criar (comportamento do launcher antigo).
+  if (prefixExists(pfxDir)) {
+    logger.info("Prefix already exists", { pfxDir });
+    onProgress?.("✅ Prefixo já existe");
+    logOperation("createPrefix", "success", {
+      pfxDir,
+      method: undefined,
+      duration_ms: Date.now() - _start,
+    });
+    return Promise.resolve({ success: true, pfxDir });
+  }
+
+  // Limpar stubs .reg inválidos (ex.: "REGEDIT4\n\n" de 10 bytes gravados por
+  // fluxos antigos como marcador de prefixo). O wine se recusa a inicializar o
+  // registro sobre eles — removendo, o wineboot cria os .reg de verdade.
+  for (const name of ["user.reg", "system.reg", "userdef.reg", "system.reg.new"]) {
+    const regFile = path.join(pfxDir, name);
+    if (fs.existsSync(regFile) && !isValidRegFile(regFile)) {
+      try {
+        fs.rmSync(regFile, { force: true });
+        logger.warn(`[createPrefix] Removido stub .reg inválido: ${regFile}`);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  // Pre-flight: validar estrutura do Proton antes de tentar qualquer estratégia.
+  // Proton source (TKG) não compilado ou path inválido → cai para um Proton
+  // compilado do sistema, em vez de travar o jogo com erro (como o ProtonForger
+  // fazia: o jogo sempre roda com um Proton que funcione).
+  let effectiveProtonPath = protonPath;
+  const structure = detectProtonStructure(effectiveProtonPath);
   if (structure.status !== "ready") {
+    const usable = findUsableProton();
+    if (usable && usable !== effectiveProtonPath) {
+      logger.warn(`[createPrefix] Proton configurado inválido (${effectiveProtonPath}): ${structure.detail}; usando ${usable}`);
+      onProgress?.(`⚠️ Proton configurado (${path.basename(effectiveProtonPath)}) inválido — usando ${path.basename(usable)}`);
+      effectiveProtonPath = usable;
+    }
+  }
+
+  const finalStructure = detectProtonStructure(effectiveProtonPath);
+  if (finalStructure.status !== "ready") {
     const result: CreatePrefixResult = {
       success: false,
       pfxDir,
-      error: structure.detail,
-      errorType: structure.status === "not_compiled" ? "not_compiled" as any : "not_found",
+      error: finalStructure.detail,
+      errorType: finalStructure.status === "not_compiled" ? "not_compiled" as any : "not_found",
     };
     logOperation("createPrefix", "error", {
       pfxDir: result.pfxDir,
@@ -137,8 +277,22 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
     return Promise.resolve(result);
   }
 
+  const protonBin = path.join(effectiveProtonPath, "proton");
+
   return new Promise((resolve) => {
     const _loggedResolve = (result: CreatePrefixResult) => {
+      if (result.success) {
+        // Estampa o prefixo com o Proton EFETIVO usado — validação de que o
+        // prefixo foi criado com o Proton escolhido (lido pelo ensurePrefix
+        // via .makai-proton-version). Mesmo nome/forma do marker do play.
+        try {
+          fs.writeFileSync(
+            path.join(pfxDir, ".makai-proton-version"),
+            path.basename(effectiveProtonPath),
+            "utf-8",
+          );
+        } catch { /* marker não-crítico */ }
+      }
       logOperation("createPrefix", result.success ? "success" : "error", {
         pfxDir: result.pfxDir,
         method: result.method,
@@ -150,14 +304,6 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
     };
 
     const emit = onProgress || (() => {});
-
-    // Already exists?
-    if (prefixExists(pfxDir)) {
-      logger.info("Prefix already exists", { pfxDir });
-      emit("✅ Prefixo já existe");
-      _loggedResolve({ success: true, pfxDir });
-      return;
-    }
 
     fs.mkdirSync(pfxDir, { recursive: true });
 
@@ -177,10 +323,18 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
     if (!fs.existsSync(makaiClientPath)) {
       fs.mkdirSync(path.join(makaiClientPath, "legacycompat"), { recursive: true });
     }
-    if (compatDataPath) baseEnv.STEAM_COMPAT_DATA_PATH = compatDataPath;
+    // STEAM_COMPAT_DATA_PATH só vale para layout compatdata (Steam). Para prefixo
+    // custom (pasta única), NÃO setar — senão umu/proton usa <path>/pfx como
+    // prefixo e destrói o prefixo real. WINEPREFIX já aponta o prefixo.
+    const compatDataIsPfx = !!compatDataPath && path.basename(compatDataPath) === "pfx";
+    const isCompatDataLayout = !!compatDataPath && (compatDataIsPfx || compatDataPath.includes(path.sep + "compatdata" + path.sep));
+    if (isCompatDataLayout) {
+      const scdp = compatDataIsPfx ? path.dirname(compatDataPath) : compatDataPath;
+      baseEnv.STEAM_COMPAT_DATA_PATH = scdp;
+      baseEnv.MAKAI_COMPAT_DATA_PATH = scdp;
+    }
     baseEnv.STEAM_COMPAT_CLIENT_INSTALL_PATH = makaiClientPath;
     baseEnv.MAKAI_CLIENT_INSTALL_PATH = makaiClientPath;
-    if (compatDataPath) baseEnv.MAKAI_COMPAT_DATA_PATH = compatDataPath;
     baseEnv.WINEDLLOVERRIDES = "winemenubuilder.exe=d";
 
     const trySpawn = (
@@ -190,7 +344,7 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
       _method: CreatePrefixResult["method"],
       attached = true,
       strategyTimeoutMs?: number,
-    ): Promise<{ ok: boolean; errType?: CreatePrefixResult["errorType"]; stderr?: string }> => {
+    ): Promise<{ ok: boolean; prefixOk: boolean; errType?: CreatePrefixResult["errorType"]; stderr?: string }> => {
       return new Promise((r) => {
         const child = spawn(cmd, args, {
           env,
@@ -208,9 +362,11 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
           emit(text.trimEnd());
         });
 
+        // prefixOk = o prefixo ficou REALMENTE válido após o processo (o umu-run
+        // pode retornar exit 0 mesmo com o registro quebrado — ex.: stubs .reg).
         const done = (ok: boolean, errType?: CreatePrefixResult["errorType"]) => {
           child.kill();
-          r({ ok, errType, stderr: stderrAccum });
+          r({ ok, prefixOk: prefixExists(pfxDir), errType, stderr: stderrAccum });
         };
 
         if (attached) {
@@ -246,28 +402,36 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
 
     const exec = async () => {
       // Strategy 1: umu-run
-      if (useUmu) {
+      if (useUmuDefault) {
         const umuBin = umuOverride || (await findUmuBinary());
         if (umuBin) {
           emit("🔧 Usando umu-run...");
           const umuEnv = { ...baseEnv };
-          if (gameId) umuEnv.GAMEID = gameId;
-          umuEnv.PROTONPATH = protonPath;
+          // GAMEID no modo genérico ("umu-") = o umu NÃO cria <prefixo>/pfx nem
+          // faz normalização de compatdata — o prefixo fica no topo, como o launch
+          // já faz. Passar o gameId cru faz o umu tratar como app Steam e criar
+          // um pfx real aninhado (que pode engolir o jogo em limpezas).
+          if (gameId) umuEnv.GAMEID = `umu-${gameId}`;
+          umuEnv.PROTONPATH = effectiveProtonPath;
           const r = await trySpawn(umuBin, ["wineboot", "-u"], umuEnv, "umu");
-          if (r.ok) {
+          if (r.ok && r.prefixOk) {
             _loggedResolve({ success: true, pfxDir, method: "umu" });
             return;
           }
-          emit("⚠ umu-run falhou, tentando Proton diretamente...");
+          if (r.ok && !r.prefixOk) {
+            emit("⚠ umu-run terminou mas o prefixo não foi validado — tentando outra estratégia...");
+          } else {
+            emit("⚠ umu-run falhou, tentando Proton diretamente...");
+          }
         }
       }
 
       // Strategy 2: direct wineboot from Proton dist/files
-      const winebootBin = findProtonWineBinary(protonPath, "wineboot");
+      const winebootBin = findProtonWineBinary(effectiveProtonPath, "wineboot");
       if (winebootBin) {
         emit("🔧 Usando wineboot direto...");
         const r = await trySpawn(winebootBin, ["-u"], baseEnv, "direct_wineboot");
-        if (r.ok) {
+        if (r.ok && r.prefixOk) {
           _loggedResolve({ success: true, pfxDir, method: "direct_wineboot" });
           return;
         }
@@ -278,7 +442,7 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
       if (fs.existsSync(protonBin)) {
         emit("🔧 Usando proton wineboot...");
         const r = await trySpawn(protonBin, ["wineboot", "-u"], baseEnv, "proton_wineboot", true, 20000);
-        if (r.ok) {
+        if (r.ok && r.prefixOk) {
           _loggedResolve({ success: true, pfxDir, method: "proton_wineboot" });
           return;
         }
@@ -296,9 +460,11 @@ export function createPrefix(options: CreatePrefixOptions): Promise<CreatePrefix
 
         emit("⚠ Proton wineboot falhou, tentando proton run wineboot...");
 
-        // Strategy 4: `proton run wineboot -u` (120s — comprovado funcionar)
+        // Strategy 4: `proton run wineboot -u` (120s)
+        // ATENÇÃO: `proton run` sai com exit 0 mesmo sem criar prefixo
+        // ("No compat data path?") — só conta como sucesso se o prefixo ficou válido.
         const r2 = await trySpawn(protonBin, ["run", "wineboot", "-u"], baseEnv, "proton_run", true, 120000);
-        if (r2.ok || prefixExists(pfxDir)) {
+        if (r2.prefixOk) {
           _loggedResolve({ success: true, pfxDir, method: "proton_run" });
           return;
         }

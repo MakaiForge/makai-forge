@@ -7,6 +7,7 @@ import { HeroPanelActions } from "./hero-panel-actions";
 import { HeroPanelPlaytime } from "./hero-panel-playtime";
 
 import { gameDetailsContext } from "@context";
+import { CompatibilityBadge } from "@games-ui/components/compatibility-badge/compatibility-badge";
 import "./hero-panel.scss";
 
 export function HeroPanel() {
@@ -14,7 +15,7 @@ export function HeroPanel() {
 
   const { formatDate } = useDate();
 
-  const { game, repacks } = useContext(gameDetailsContext);
+  const { game, repacks, shopDetails } = useContext(gameDetailsContext);
 
   const { lastPacket } = useDownload();
 
@@ -60,6 +61,10 @@ export function HeroPanel() {
       <div className="hero-panel">
         <div className="hero-panel__content">{getInfo()}</div>
         <div className="hero-panel__actions">
+          <CompatibilityBadge
+            minimum={shopDetails?.pc_requirements?.minimum}
+            recommended={shopDetails?.pc_requirements?.recommended}
+          />
           <HeroPanelActions />
         </div>
 

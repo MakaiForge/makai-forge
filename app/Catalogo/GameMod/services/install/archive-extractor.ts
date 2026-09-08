@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
-import type { ArchiveInfo, ExtractedFile } from "@types/install.types";
+import type { ArchiveInfo, ExtractedFile } from "@mods/types/install.types";
 
 type ExtractProgressCallback = (
   filesProcessed: number,

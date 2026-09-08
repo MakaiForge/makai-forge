@@ -62,7 +62,9 @@ export function useLaunchGame({
     ]);
     setShowLaunchOverlay(true);
 
-    window.electron.modPlayGame(selectedGame, selectedProfile).then(result => {
+    // Mod Manager: inicializar jogo COM mods (deployMods: true).
+    // A aba Games usa modPlayGame sem essa opção — apenas inicializa o jogo.
+    window.electron.modPlayGame(selectedGame, selectedProfile, { deployMods: true }).then(result => {
       if (result.success) {
         addLog(`✅ ${displayName} iniciado via ${result.method}`);
         setTimeout(() => {

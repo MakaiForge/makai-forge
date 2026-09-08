@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import type { FomodComponent } from "@types";
-import type { ModlistEntry } from "../../types/mod.types";
+import type { FomodComponent, ModlistEntry } from "@types";
 import type { ConflictDetails } from "./mods/useConflictBadges";
 import { normalizeToDeployPath } from "./mods/useConflictBadges";
 

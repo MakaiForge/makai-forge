@@ -31,7 +31,7 @@ const KNOWN_RESOURCES = [
   "installer-api.tar.gz",
   "proton_data.db.gz",
   "fork_catalog.db.gz",
-
+  "catalogo.db.gz",
   "releases.tar.gz",
 ];
 
@@ -51,10 +51,6 @@ function isAutoUpdateEnabled(): boolean {
   } catch {
     return true;
   }
-}
-
-function getUserDataDir(): string {
-  return path.join(app.getPath("userData"), "resources");
 }
 
 function getMirrorUrls(entry: ResourceEntry, filename: string): string[] {

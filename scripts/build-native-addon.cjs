@@ -8,12 +8,16 @@ const execFile = util.promisify(childProcess.execFile);
 const projectRoot = process.cwd();
 const manifestPath = path.join(
   projectRoot,
+  "app",
+  "_resources",
   "native",
   "protonforge-native",
   "Cargo.toml"
 );
 const cargoTargetDir = path.join(
   projectRoot,
+  "app",
+  "_resources",
   "native",
   "protonforge-native",
   "target"

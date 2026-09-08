@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { findSteamAppPath, steamCompatDataPath, defaultPrefixDir } from "../steam-library";
+import { findSteamAppPath, defaultPrefixDir } from "../steam-library";
 import { findGogGamePath } from "../gog-detection";
 import { gameDllCatalog } from "../game-dlls-service";
 import { logger } from "@main/services";

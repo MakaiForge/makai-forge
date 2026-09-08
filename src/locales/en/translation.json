@@ -960,7 +960,6 @@
     "script_conflicts": "Script Conflicts",
     "asset_conflicts": "Asset Conflicts",
     "involved_mods": "Involved Mods",
-    "priority": "Priority",
     "apply_resolution": "Apply Resolution",
     "refresh": "Refresh",
     "collections": "Collections",
@@ -1363,5 +1362,8 @@
     "prefix_not_found": "Proton changed, but no prefix found to clear",
     "proton_removed": "Proton removed (Steam Default)",
     "save_failed": "Failed to save config.vdf!"
+  },
+  "install_progress": {
+    "install_progress_title": "Preparing environment — {{gameTitle}}"
   }
 }

@@ -72,7 +72,7 @@ function stripWrappers(stagingDir: string): void {
   }
 }
 
-function getStagingPath(archivePath: string, gameId: string, modName: string): string {
+function getStagingPath(_archivePath: string, gameId: string, modName: string): string {
   const config = ModStorageService.get<any>(`game:${gameId}:config`);
   const baseDir = config?.stagingDir || getStagingDir(gameId);
   return path.join(baseDir, modName);

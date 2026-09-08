@@ -5,6 +5,26 @@
   "../app/Catalogo/GameMod/services/**/*",
   "../app/ProtonTools/main/**/*",
   "../app/Games/**/*", "../app/_main/**/*", "../app/_main/emulators/**/*"],
+  "exclude": [
+    // Cópia morta do antigo src/ (nada importa estes arquivos)
+    "../app/Games/src/**",
+    // Código de UI (renderer) — checado pelo tsconfig.web.json
+    "../app/Games/pages/**",
+    "../app/Games/hooks/**",
+    "../app/Games/components/**",
+    "../app/Games/AddGame/**",
+    "../app/Games/utils/**",
+    "../app/Games/index.tsx",
+    "../app/Games/services/game-launcher/game-bar/**",
+    "../app/Catalogo/GameMod/ui/**",
+    "../app/Catalogo/GameMod/presets/**",
+    "../app/ProtonTools/renderer/**",
+    "../app/_main/**/ui/**",
+    // Barrel de UI do renderer (main importa só services/proton-recommendation)
+    "../app/_main/installer-api/proton_recommended/index.ts",
+    // Modal de UI do renderer dentro do container
+    "../app/_main/container/wine_prefix/**"
+  ],
   "compilerOptions": {
     "module": "ESNext",
     "composite": true,

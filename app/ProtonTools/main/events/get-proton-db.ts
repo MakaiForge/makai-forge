@@ -19,7 +19,7 @@ interface ProtonDbData {
 
 function getDbPath(): string {
   const baseDir = app.isPackaged
-    ? path.join(process.resourcesPath, "data")
+    ? path.join(process.resourcesPath, "app", "_data")
     : path.join(app.getAppPath(), "app", "_main", "installer-api");
 
   return path.join(

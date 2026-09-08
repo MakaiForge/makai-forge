@@ -4,7 +4,7 @@ def register_handlers(register):
 
     @register("detect_installer_type")
     def handle_detect_installer_type(params: dict):
-        from game_launcher.game_install import detect_installer_type
+        from game_install_core import detect_installer_type
         source_path = params.get("source_path") if isinstance(params, dict) else None
         if not source_path:
             raise RpcError("invalid_params", "source_path required")
@@ -13,7 +13,7 @@ def register_handlers(register):
 
     @register("copy_to_prefix")
     def handle_copy_to_prefix(params: dict):
-        from game_launcher.game_install import copy_to_prefix
+        from game_install_core import copy_to_prefix
         source_path = params.get("source_path") if isinstance(params, dict) else None
         prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
         if not source_path or not prefix_path:
@@ -27,7 +27,7 @@ def register_handlers(register):
 
     @register("scan_prefix_for_exes")
     def handle_scan_prefix_for_exes(params: dict):
-        from game_launcher.game_install import scan_prefix_for_exes
+        from game_install_core import scan_prefix_for_exes
         prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
         game_folder_name = params.get("game_folder_name") if isinstance(params, dict) else None
         if not prefix_path:
@@ -37,7 +37,7 @@ def register_handlers(register):
 
     @register("snapshot_prefix")
     def handle_snapshot_prefix(params: dict):
-        from game_launcher.game_install import snapshot_prefix
+        from game_install_core import snapshot_prefix
         prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
         if not prefix_path:
             raise RpcError("invalid_params", "prefix_path required")
@@ -46,7 +46,7 @@ def register_handlers(register):
 
     @register("find_new_executables")
     def handle_find_new_executables(params: dict):
-        from game_launcher.game_install import find_new_executables
+        from game_install_core import find_new_executables
         before = params.get("before") if isinstance(params, dict) else None
         after = params.get("after") if isinstance(params, dict) else None
         if before is None or after is None:
@@ -56,7 +56,7 @@ def register_handlers(register):
 
     @register("install_game")
     def handle_install_game(params: dict):
-        from game_launcher.game_install import install_game
+        from game_install_core import install_game
         source_path = params.get("source_path") if isinstance(params, dict) else None
         prefix_path = params.get("prefix_path") if isinstance(params, dict) else None
         proton_path = params.get("proton_path") if isinstance(params, dict) else None

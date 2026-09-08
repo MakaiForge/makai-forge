@@ -19,7 +19,7 @@ const getLocalResource = async (
   }
 
   const dataDir = app.isPackaged
-    ? path.join(process.resourcesPath, "data")
+    ? path.join(process.resourcesPath, "app", "_data")
     : path.join(app.getAppPath(), "app", "_data");
 
   const filePath = path.join(dataDir, filename);

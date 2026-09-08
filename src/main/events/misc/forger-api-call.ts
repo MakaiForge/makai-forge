@@ -3,6 +3,12 @@ import { handleGetGameDownloadSources } from "@main/services/local-sources-handl
 import { getGameDetails, getFeaturedGames } from "./helpers/steam-local";
 import { MakaiApi } from "@main/services/makai-api";
 import { getGameAssets } from "../catalogue/get-game-assets";
+import {
+  localSearchGames,
+  localSearchSuggestions,
+  localGetGame,
+} from "@main/services/local-catalog";
+import { resolveGameImages } from "@main/services/image-cache";
 
 interface ProtonApiCallPayload {
   method: "get" | "post" | "put" | "patch" | "delete";
@@ -34,13 +40,25 @@ const LOCAL_ROUTES: Array<{
       let gameTitle = title;
       let embeddedDownloads;
 
-      const apiGame = await MakaiApi.getGame(objectId);
-      if (apiGame?.downloads?.length > 0) {
-        embeddedDownloads = apiGame.downloads;
+      // Fonte primária: catálogo local (mesma lógica do ProtonForger antigo)
+      const localGame = await localGetGame(objectId);
+      if (localGame?.downloads?.length > 0) {
+        embeddedDownloads = localGame.downloads;
       }
 
-      if (!gameTitle && apiGame?.title) {
-        gameTitle = apiGame.title;
+      if (!gameTitle && localGame?.title) {
+        gameTitle = localGame.title;
+      }
+
+      // Enriquecimento opcional via API remota (se disponível)
+      if (!embeddedDownloads) {
+        const apiGame = await MakaiApi.getGame(objectId).catch(() => null);
+        if (apiGame && apiGame.downloads && apiGame.downloads.length > 0) {
+          embeddedDownloads = apiGame.downloads;
+        }
+        if (!gameTitle && apiGame?.title) {
+          gameTitle = apiGame.title;
+        }
       }
 
       if (!gameTitle && /^\d+$/.test(objectId)) {
@@ -79,7 +97,7 @@ const LOCAL_ROUTES: Array<{
     handler: async (_method, _match, params) => {
       const title = (params as any)?.title || "";
       if (!title) return [];
-      const result = await MakaiApi.searchSuggestions(title);
+      const result = await localSearchSuggestions(title);
       return result || [];
     },
   },
@@ -105,8 +123,15 @@ const LOCAL_ROUTES: Array<{
       const { take = 20, skip = 0, genres, showAdult, ...filters } = (data || {}) as any;
       if (genres?.length) filters.genre = genres;
       if (showAdult) filters.showAdult = true;
-      const result = await MakaiApi.searchGames(filters, take, skip);
-      return result || { edges: [], count: 0 };
+      const result = await localSearchGames(filters, take, skip);
+      if (!result?.edges?.length) return result || { edges: [], count: 0 };
+      // Miniaturas passam pelo cache local (local://) — instantâneas e offline
+      return {
+        ...result,
+        edges: await Promise.all(
+          result.edges.map((edge: any) => resolveGameImages(edge))
+        ),
+      };
     },
   },
   {

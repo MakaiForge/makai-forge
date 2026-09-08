@@ -14,7 +14,7 @@ export type SendProgress = (
 
 export interface PlayResult {
   success: boolean
-  method?: "skse" | "steam" | "direct"
+  method?: "skse" | "steam" | "direct" | "engine"
   error?: string
   failedStep?: string
   gamePath?: string

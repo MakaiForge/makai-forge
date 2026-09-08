@@ -153,7 +153,7 @@ export async function ensureProton(
     const tool = toolId ? getToolById(toolId) : null;
     if (!tool) throw new Error(`Tool não encontrado para ${forkName}`);
 
-    let releases = await getReleases(toolId);
+    let releases = await getReleases(toolId!);
     if (releases.length === 0) {
       releases = await fetchGitHubReleases(tool.endpoint);
     }
@@ -166,7 +166,7 @@ export async function ensureProton(
 
     send("proton", `⬇️ Baixando ${release.tag_name}...`, "working");
 
-    const result = await downloadTool({ toolId, release });
+    const result = await downloadTool({ toolId: toolId!, release });
     if (!result) throw new Error(`Falha no download de ${release.tag_name}`);
 
     send("proton", `✅ ${release.tag_name} instalado em ${result}`, "done");
@@ -186,10 +186,10 @@ function normalizeProtonVersion(s: string): string {
 }
 
 function pickRelease(
-  releases: { tag_name: string }[],
+  releases: ProtonRelease[],
   version: string,
   _forkName: string,
-): { tag_name: string } | null {
+): ProtonRelease | null {
   if (version === "latest") return releases[0] || null;
   const v = version.toLowerCase().replace(/^v/, "");
   const vNums = normalizeProtonVersion(version);

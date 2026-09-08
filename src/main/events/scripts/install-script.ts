@@ -12,7 +12,6 @@ import { openGameInstaller } from "@provision/ForgePipeline/events/open-game-ins
 import { parseScriptYaml } from "@provision/scripts-install/parser";
 import { downloadFile } from "@provision/scripts-install/downloader";
 import { detectArchiveMagic, extractArchive } from "@provision/scripts-install/extractor";
-import type { ParsedScriptYaml } from "@provision/scripts-install/types";
 import { debugLog } from "@provision/debug-log";
 import { getReleases, downloadTool } from "@proton/main/services/index";
 import { findToolIdByForkName } from "@proton/main/services/tools";
@@ -170,13 +169,14 @@ const installScript = async (
     const folderName = `script-${shop}-${objectId}`;
 
     if (!isSteam && scriptUrl) {
-      try {
-        const sendProgress = (status: string, percent: number) => {
-          if (_event.sender && !_event.sender.isDestroyed()) {
-            _event.sender.send("on-install-progress", { status, percent });
-          }
-        };
+      // Definido fora do try para o catch também conseguir reportar progresso
+      const sendProgress = (status: string, percent: number) => {
+        if (_event.sender && !_event.sender.isDestroyed()) {
+          _event.sender.send("on-install-progress", { status, percent });
+        }
+      };
 
+      try {
         // a. Download (usa scripts-install/downloader.ts)
         sendProgress("download", 0);
         const downloadPath = await getDownloadsPath();

@@ -16,7 +16,7 @@ import type {
   ArchiveEntry,
   VerificationResult,
   VerificationError,
-} from "@types/install.types";
+} from "@mods/types/install.types";
 
 /**
  * Verifica integridade dos arquivos extraídos contra o archive original.

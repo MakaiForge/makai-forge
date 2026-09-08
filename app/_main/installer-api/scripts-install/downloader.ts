@@ -13,7 +13,7 @@ export type ProgressCallback = (status: string, detail?: string) => void;
 export async function downloadFile(
   url: string,
   destDir: string,
-  folderName: string,
+  _folderName: string,
   onProgress?: ProgressCallback
 ): Promise<{ archivePath: string; destDir: string }> {
   fs.mkdirSync(destDir, { recursive: true });

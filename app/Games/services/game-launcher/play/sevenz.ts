@@ -10,7 +10,7 @@ const BUNDLED_7Z_CANDIDATES = [
 let _cached7zPath: string | null | undefined;
 
 export function get7zPath(): string {
-  if (_cached7zPath !== undefined) return _cached7zPath;
+  if (_cached7zPath !== undefined) return _cached7zPath as string;
 
   for (const candidate of BUNDLED_7Z_CANDIDATES) {
     if (fs.existsSync(candidate)) {

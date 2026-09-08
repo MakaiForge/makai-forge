@@ -40,9 +40,15 @@ export function ModManagerTopBar({
           onClick={onLaunchGame}
           disabled={launching}
           theme="primary"
-          title={!hasGame ? "Selecione um jogo primeiro (ou clique para detectar)" : depsMissing.length > 0 ? `Faltando: ${depsMissing.join(", ")}` : undefined}
+          title={
+            !hasGame
+              ? "Selecione um jogo primeiro (ou clique para detectar)"
+              : depsMissing.length > 0
+                ? `Faltando: ${depsMissing.join(", ")}`
+                : "Mod Manager: inicializa o jogo COM deploy dos mods habilitados do perfil (diferente do botão Games / Games da aba Games, que só inicializa o jogo, sem mods)"
+          }
         >
-          {launching ? "Iniciando..." : !hasGame ? "▶ Detectar e Iniciar" : "▶ Iniciar Jogo"}
+          {launching ? "Iniciando..." : !hasGame ? "▶ Detectar e Play Mod Manager" : "▶ Play Mod Manager"}
           {depsMissing.length > 0 && !launching && <span style={{ marginLeft: 6, opacity: 0.8 }}>⚠️</span>}
         </Button>
         <Button theme="primary" onClick={onInstallMod} disabled={installing}>

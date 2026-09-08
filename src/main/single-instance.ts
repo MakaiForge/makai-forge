@@ -29,7 +29,7 @@ export function setupSecondInstance() {
       /\.(exe|msi|sh|AppImage)$/i.test(arg) && fs.existsSync(arg)
     );
     if (exeArg) {
-      import("@provision/CompactFlow").then(({ openCompatFlowWindow }) => {
+      import("@provision/compatflow-adapter").then(({ openCompatFlowWindow }) => {
         openCompatFlowWindow(exeArg);
       });
     }

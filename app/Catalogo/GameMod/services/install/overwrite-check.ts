@@ -10,7 +10,7 @@ import path from "node:path";
 import { ModStorageService } from "@main/services";
 import { readModMeta } from "./meta-writer";
 import { mkMlKey } from "../storage-keys";
-import type { ModlistEntry } from "../../types/install.types";
+
 
 export interface OverwriteInfo {
   /** Se o mod já existe no disco */

@@ -9,7 +9,7 @@ export async function deployMorrowind(
   gamePath: string,
   stagingDir: string,
   modlist: ModlistEntry[],
-  profile: string,
+  _profile: string,
   prefixPath?: string,
 ): Promise<DeploymentResult> {
   const log: string[] = [];
@@ -55,8 +55,8 @@ export async function deployMorrowind(
 
 export async function restoreMorrowind(
   gamePath: string,
-  stagingDir: string,
-  profile: string,
+  _stagingDir: string,
+  _profile: string,
   prefixPath?: string,
 ): Promise<void> {
   const dataDir = path.join(gamePath, "Data Files");
@@ -69,7 +69,7 @@ export async function restoreMorrowind(
     restoreMorrowindIni(iniPath);
   }
 
-  const restored = restoreCore(dataDir, undefined, (msg) => {});
+  restoreCore(dataDir, undefined, () => {});
   return;
 }
 
@@ -99,7 +99,6 @@ function updateMorrowindIni(iniPath: string, filemap: Record<string, string>): v
     newLines.push("[Game Files]");
   }
 
-  let gameFilesDone = false;
   let afterGameFiles = false;
   const remaining: string[] = [];
 
@@ -107,7 +106,6 @@ function updateMorrowindIni(iniPath: string, filemap: Record<string, string>): v
     const trimmed = line.trim();
     if (trimmed.startsWith("[Game Files]")) {
       newLines.push(line);
-      gameFilesDone = true;
       afterGameFiles = true;
       continue;
     }
@@ -116,9 +114,6 @@ function updateMorrowindIni(iniPath: string, filemap: Record<string, string>): v
     }
     if (afterGameFiles) {
       continue;
-    }
-    if (trimmed.startsWith("[")) {
-      gameFilesDone = true;
     }
     newLines.push(line);
   }

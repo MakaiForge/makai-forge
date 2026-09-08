@@ -1,10 +1,13 @@
 appId: com.makaiforger.app
 productName: Makai forger
+icon: build/icon.png
 directories:
   buildResources: build
 extraResources:
   - from: app/_resources/binaries/ludusavi
     to: binaries/ludusavi
+  - from: app/_resources/binaries/qbittorrent
+    to: binaries/qbittorrent
   - protonforge-python-rpc
   - from: app/_resources/native/protonforge-native.node
     to: protonforge-native/protonforge-native.node
@@ -15,8 +18,6 @@ extraResources:
   - from: app/_main/bootstrap
   - from: app/_assets/backgrounds
     to: app/_assets/backgrounds
-  - from: app/_resources/compact-flow
-    to: app/_resources/compact-flow
 files:
   - "!**/.vscode/*"
   - "!src/*"
@@ -31,6 +32,7 @@ asarUnpack:
   - node_modules/sharp/**
   - node_modules/@img/sharp-libvips-*/**
 linux:
+  executableName: makai-forger
   extraResources:
     - from: app/_resources/binaries/7zzs
     - from: app/_resources/binaries/umu-run
@@ -50,7 +52,6 @@ linux:
     - application/x-dosexec
     - application/x-msdownload
     - application/x-msi
-  afterInstall: scripts/compactflow-postinst.sh
 flatpak:
   runtime: org.freedesktop.Platform
   runtimeVersion: "24.08"

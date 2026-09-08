@@ -17,7 +17,7 @@ export function usePlugins(
     setLoading(true);
     try {
       const saved: PluginEntry[] | undefined =
-        await window.electron.modsStore.get(mkPluginsKey(gameId, profile));
+        (await window.electron.modsStore.get(mkPluginsKey(gameId, profile))) as PluginEntry[] | undefined;
       const savedMap = new Map(
         (saved ?? []).map(p => [p.name.toLowerCase(), p])
       );

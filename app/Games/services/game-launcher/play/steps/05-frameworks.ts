@@ -1,6 +1,5 @@
 import { getGameModule } from "@games/registry";
 import { ensureFrameworks, isFrameworkInstalled } from "@mods/services/framework-installer";
-import type { FrameworkDef } from "@games/_shared/types";
 import type { SendProgress } from "../types";
 
 export interface FrameworksResult {
@@ -43,7 +42,7 @@ export async function ensureGameFrameworks(
     send(step, msg, type);
   });
 
-  const summary = [];
+  const summary: string[] = [];
   if (result.installed.length > 0) summary.push(`Instalados: ${result.installed.join(", ")}`);
   if (result.skipped.length > 0) summary.push(`Já existentes: ${result.skipped.join(", ")}`);
   if (result.failed.length > 0) summary.push(`Falharam: ${result.failed.join(", ")}`);

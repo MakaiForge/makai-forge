@@ -4,6 +4,7 @@ import { DownloadManager, logger } from "@main/services";
 import { createGame } from "@main/services/library-sync";
 import { downloadsStore, gamesStore, storeKeys } from "@main/store";
 import { parseBytes } from "@shared";
+import { normalizeDownloadUri } from "@main/services/torrent-trackers";
 import {
   handleDownloadError,
   isKnownDownloadError,
@@ -40,7 +41,8 @@ const addGameToQueue = async (
     bytesDownloaded: 0,
     downloadPath,
     downloader,
-    uri,
+    // URI sanitizada — remove \r\n, decodifica entidades HTML (&amp; -> &)
+    uri: normalizeDownloadUri(uri),
     folderName: null,
     fileSize: selectedFilesSize ?? parsedFileSize,
     shouldSeed: false,

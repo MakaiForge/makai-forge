@@ -1,7 +1,7 @@
 import type { Game, Download } from "@types";
 import { Downloader } from "@shared";
-import { downloadsStore, storeKeys } from "@main/store";
-import { WindowManager, logger, DownloadManager } from "@main/services";
+import { downloadsStore } from "@main/store";
+import { logger, DownloadManager } from "@main/services";
 import { getDownloadsPath } from "@main/events/helpers/get-downloads-path";
 import { sendProgress } from "./send-progress";
 import path from "node:path";

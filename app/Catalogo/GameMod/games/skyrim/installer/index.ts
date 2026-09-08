@@ -2,9 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { analyzeMod } from "./analyzer";
 import { applySkyrimRules } from "./rules/skyrim-rules";
-import type { ModStructure, ModFileEntry, InstallPlan, InstallStep } from "./types";
-import { parseFomodXml, resolveFomodFiles } from "@mods/services/fomod/fomod-parser";
-import type { FomodConfig } from "@mods/services/fomod/fomod-types";
+import type { ModFileEntry, InstallPlan, InstallStep } from "./types";
+import { parseFomodXml } from "@mods/services/fomod/fomod-parser";
 
 export type { ModStructure, ModFileEntry, InstallPlan, InstallStep } from "./types";
 

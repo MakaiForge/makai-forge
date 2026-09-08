@@ -15,9 +15,39 @@ type ModGameConfig = {
   protonVersion?: string;
 };
 
-/** Procura qualquer Proton instalado no sistema. */
+/** Proton com wine compilado (GE/Valve: dist|files/bin/wine; TKG: wine/bin|bin-wow64/wine). */
+function hasCompiledWine(protonDir: string): boolean {
+  for (const base of ["dist", "files"]) {
+    if (fs.existsSync(path.join(protonDir, base, "bin", "wine"))) return true;
+  }
+  for (const sub of ["bin", "bin-wow64"]) {
+    if (fs.existsSync(path.join(protonDir, "wine", sub, "wine"))) return true;
+  }
+  return false;
+}
+
+/** Procura qualquer Proton COMPILADO instalado no sistema. */
 function findAnyProton(): string | null {
-  // 1. Steam common/Proton*
+  // 1. Protons instalados pelo app (compat-tools) — preferência
+  const compatDirs = [
+    path.join(os.homedir(), ".config", "makai-forger", "compat-tools", "compatibilitytools.d"),
+    path.join(os.homedir(), ".steam", "steam", "compatibilitytools.d"),
+    path.join(os.homedir(), ".local", "share", "Steam", "compatibilitytools.d"),
+    "/usr/share/steam/compatibilitytools.d",
+  ];
+  for (const compatDir of compatDirs) {
+    if (!fs.existsSync(compatDir)) continue;
+    try {
+      for (const entry of fs.readdirSync(compatDir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const protonDir = path.join(compatDir, entry.name);
+        if (!fs.existsSync(path.join(protonDir, "proton"))) continue;
+        if (hasCompiledWine(protonDir)) return protonDir;
+      }
+    } catch { continue; }
+  }
+
+  // 2. Steam common/Proton*
   const steamRoots = [
     path.join(os.homedir(), ".local", "share", "Steam"),
     path.join(os.homedir(), ".steam", "steam"),
@@ -31,24 +61,8 @@ function findAnyProton(): string | null {
         if (!entry.isDirectory()) continue;
         if (entry.name.startsWith("Proton") || entry.name.startsWith("proton")) {
           const protonDir = path.join(commonDir, entry.name);
-          if (fs.existsSync(path.join(protonDir, "proton"))) return protonDir;
+          if (fs.existsSync(path.join(protonDir, "proton")) && hasCompiledWine(protonDir)) return protonDir;
         }
-      }
-    } catch { continue; }
-  }
-
-  // 2. compatibilitytools.d
-  const compatDirs = [
-    path.join(os.homedir(), ".steam", "steam", "compatibilitytools.d"),
-    "/usr/share/steam/compatibilitytools.d",
-  ];
-  for (const compatDir of compatDirs) {
-    if (!fs.existsSync(compatDir)) continue;
-    try {
-      for (const entry of fs.readdirSync(compatDir, { withFileTypes: true })) {
-        if (!entry.isDirectory()) continue;
-        const protonBin = path.join(compatDir, entry.name, "proton");
-        if (fs.existsSync(protonBin)) return path.dirname(protonBin);
       }
     } catch { continue; }
   }
@@ -151,7 +165,7 @@ registerEvent("modCreatePrefix", async (_event, gameId: string) => {
   logPlay(gameId, "modCreatePrefix_result", {
     success: String(prefixResult.success),
     prefix_path: prefixPath,
-    initialized: prefixResult.success,
+    initialized: String(prefixResult.success),
     dlls: dllsInstalled.join(","),
     error: prefixResult.error || "",
   });
@@ -160,7 +174,7 @@ registerEvent("modCreatePrefix", async (_event, gameId: string) => {
     ok: prefixResult.success,
     data: {
       prefixPath,
-      initialized: prefixResult.success,
+      initialized: String(prefixResult.success),
       dllsInstalled,
       errors: prefixResult.error ? [prefixResult.error] : [],
     },

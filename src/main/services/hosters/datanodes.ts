@@ -63,6 +63,15 @@ export class DatanodesApi {
         return decodeURIComponent(response.data.url);
       }
 
+      // O host usa anti-bot (DDoS-Guard: captcha + countdown + token JS).
+      // Quando cai na página de verificação, não há como obter o link direto.
+      const body = String(response.data ?? "");
+      if (body.includes("downloadForm") || body.includes("SecCheck")) {
+        throw new Error(
+          "Datanodes exige verificação anti-bot no navegador — use outra opção de download deste jogo (Gofile, VikingFile ou PixelDrain)."
+        );
+      }
+
       throw new Error("Failed to get the download link");
     } catch (error) {
       logger.error("Error fetching download URL:", error);

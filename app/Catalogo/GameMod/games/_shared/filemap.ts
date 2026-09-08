@@ -230,7 +230,7 @@ export interface BuildFilemapOptions {
 export async function buildFilemap(
   modlist: ModlistEntry[],
   stagingDir: string,
-  gamePath: string,
+  _gamePath: string,
   options?: BuildFilemapOptions,
 ): Promise<Record<string, string>> {
   const filemap: Record<string, string> = {};

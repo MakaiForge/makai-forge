@@ -54,7 +54,7 @@ import "@mods/events/mod-prefix-rpc";
 import "@mods/events/mod-switch-proton";
 import "@mods/events/framework-install";
 import "@game-launcher/play";
-import "./compact-flow";
+import "@games-ui/services/system-specs/events";
 import { registerChromeBrowserEvents } from "./chrome-browser";
 
 registerChromeBrowserEvents();

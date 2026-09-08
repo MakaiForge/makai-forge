@@ -33,12 +33,6 @@ interface GGDealsResponse {
   };
 }
 
-const STORE_IS_KEYSHOP = new Set([
-  "g2a", "eneba", "kinguin", "gamivo", "cdkeys",
-  "instant-gaming", "k4g", "g2play", "gamersgate",
-  "indiegala", "voidu", "gamesplanet",
-]);
-
 export async function getGGDealsPrices(
   steamAppId: string,
   apiKey: string

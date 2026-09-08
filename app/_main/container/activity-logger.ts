@@ -12,7 +12,7 @@ export interface PrefixActivityEntry {
 
 function getLogPath(): string {
   try {
-    return path.join(app.getAppPath(), "tools", "prefix", "activity.log");
+    return path.join(app.getAppPath(), "app", "_data", "activity.log");
   } catch {
     return path.resolve("activity.log");
   }
@@ -79,7 +79,7 @@ export function logError(
     operation,
     error,
     ...details,
-  } as PrefixActivityEntry);
+  } as unknown as PrefixActivityEntry);
 }
 
 function sanitize(v: unknown): unknown {

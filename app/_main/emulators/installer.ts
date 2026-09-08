@@ -87,7 +87,7 @@ async function ensureRetroArch(): Promise<string> {
     return exePath;
   } catch {
     await fs.mkdir(dir, { recursive: true });
-    const downloaded = await downloadWithProgress(RETROARCH_URL, dir);
+    await downloadWithProgress(RETROARCH_URL, dir);
     const appImagePath = (await fs.readdir(dir)).find((e) => e.endsWith(".AppImage"));
     if (appImagePath && appImagePath !== RETROARCH_EXE) {
       await fs.rename(path.join(dir, appImagePath), exePath);
@@ -159,7 +159,6 @@ export async function installRunner(
     return;
   }
 
-  const ext = path.extname(downloadedFile);
   const name = path.basename(downloadedFile);
 
   if (name.endsWith(".tar.gz") || name.endsWith(".tgz")) {
@@ -199,7 +198,7 @@ export async function installRunner(
       await fs.rename(path.join(destDir, soFile), path.join(coreDir, coreName));
     }
     const retroarchPath = await ensureRetroArch();
-    const launcherPath = await createLibretroLauncher(destDir, coreName, retroarchPath);
+    await createLibretroLauncher(destDir, coreName, retroarchPath);
     definition.executablePath = "launcher.sh";
     onStatus?.("RetroArch pronto");
   }
@@ -261,7 +260,6 @@ async function extractTarGz(filePath: string, destDir: string): Promise<void> {
 
 async function extractTarXz(filePath: string, destDir: string): Promise<void> {
   const tar = await import("tar");
-  const { createReadStream } = await import("fs");
   const { spawn } = await import("child_process");
   const xz = spawn("xz", ["-d", "-c", filePath]);
   const writable = await tar.extract({
@@ -292,7 +290,6 @@ async function extractDeb(filePath: string, destDir: string): Promise<void> {
     const tar = await import("tar");
     const dataPath = path.join(tmpDir, dataTar);
     if (dataTar.endsWith(".xz")) {
-      const { createReadStream } = await import("fs");
       const xz = spawn("xz", ["-d", "-c", dataPath]);
       return new Promise((resolve, reject) => {
         const extract = tar.extract({

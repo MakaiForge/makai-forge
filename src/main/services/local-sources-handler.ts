@@ -1,6 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import { app } from "electron";
+import { normalizeDownloadUri } from "./torrent-trackers";
 
 interface SourceConfig {
   name: string;
@@ -24,7 +25,7 @@ function getSourceFiles(): SourceConfig[] {
 
 function getSourcesDir(): string {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "data", "sources");
+    return path.join(process.resourcesPath, "app", "_data", "sources");
   }
   return path.join(app.getAppPath(), "app", "_data", "sources");
 }
@@ -124,7 +125,10 @@ export function handleGetGameDownloadSources(
   const seenUris = new Set<string>();
 
   const addResult = (dl: any, sourceId: string, sourceName: string) => {
-    const uris = dl.uris || [];
+    // Sanitiza URIs (remove \r\n e decodifica entidades HTML — &amp; -> &)
+    const uris = (dl.uris || [])
+      .filter((u: any) => u?.trim())
+      .map((u: any) => normalizeDownloadUri(u));
     if (uris.length > 0) {
       const uriKey = uris.join("|");
       if (seenUris.has(uriKey)) return;

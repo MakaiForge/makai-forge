@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { resolvePrefixDir, isValidPrefix, dllOverridesMatch } from "../prefix-validator";
 import { gameDllCatalog } from "../game-dlls-service";
-import { logger } from "@main/services";
 import { ensurePrefixDir } from "@container/core/validate";
 import { applyWineDllOverrides } from "@games/_shared/prefix";
 

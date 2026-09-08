@@ -40,10 +40,12 @@ import type {
   ArchiveInfo,
   ExtractedFile,
 } from "../../types/install.types";
-import type { ModlistEntry } from "../../types/install.types";
+import type { ModlistEntry } from "@types";
 
 type ProgressCallback = (progress: InstallProgress) => void;
 type StageCallback = (from: InstallStage, to: InstallStage) => void;
+
+const DEFAULT_PLUGIN_EXTENSIONS = [".esp", ".esm", ".esl"];
 
 export class InstallOrchestrator {
   private currentStage: InstallStage = "idle";
@@ -195,7 +197,7 @@ export class InstallOrchestrator {
           hasFomod: modType.hasFomod,
           hasBain: bainDetected,
           hasSkse: modType.hasSkse,
-          category: modType.category,
+          category: "unknown",
           alreadyExists: false,
           deployed,
           deployLog,
@@ -446,7 +448,7 @@ export class InstallOrchestrator {
       const hasModContent = innerEntries.some(name =>
         ["fomod", "Fomod", "FOMOD", "Data", "data", "scripts", "meshes", "textures", "SKSE", "skse"]
           .includes(name) ||
-        pluginExts.some(ext => name.toLowerCase().endsWith(ext))
+        DEFAULT_PLUGIN_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext))
       );
       if (!hasModContent) return { rootDir, extractedFiles };
     } catch {
@@ -472,7 +474,7 @@ export class InstallOrchestrator {
     config: InstallConfig,
     gameConfig: any,
     gamePath: string,
-    gameModule: ReturnType<typeof getGameModule>,
+    _gameModule: ReturnType<typeof getGameModule>,
   ): Promise<void> {
     const send: SendProgress = (step, message, status) => {
       const icon = status === "error" ? "❌" : status === "working" ? "⏳" : "✅";

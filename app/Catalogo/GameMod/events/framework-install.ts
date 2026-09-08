@@ -1,7 +1,6 @@
 import { registerEvent } from "@main/events/register-event";
 import { ModStorageService } from "@main/services";
 import { getGameModule } from "@games/registry";
-import { getStagingDir } from "@mods/games/_shared/filemap";
 import { ensureFrameworks, isFrameworkInstalled } from "@mods/services/framework-installer";
 
 /**

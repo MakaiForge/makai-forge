@@ -1,10 +1,24 @@
 import { net, protocol } from "electron";
 import url from "node:url";
 
+function withCors(response: Promise<Response> | Response): Promise<Response> | Response {
+  // Adiciona CORS para que o canvas do renderer (ex.: color.js → cor dominante
+  // das capas em cache) consiga ler os pixels via getImageData.
+  const apply = (res: Response): Response => {
+    const headers = new Headers(res.headers);
+    headers.set("Access-Control-Allow-Origin", "*");
+    return new Response(res.body, { status: res.status, headers });
+  };
+  if (response instanceof Promise) return response.then(apply);
+  return apply(response);
+}
+
 export function registerProtocols() {
   protocol.handle("local", (request) => {
     const filePath = request.url.slice("local:".length);
-    return net.fetch(url.pathToFileURL(decodeURI(filePath)).toString());
+    return withCors(
+      net.fetch(url.pathToFileURL(decodeURI(filePath)).toString())
+    );
   });
 
   protocol.handle("gradient", (request) => {

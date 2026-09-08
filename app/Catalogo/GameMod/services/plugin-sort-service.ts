@@ -1,7 +1,5 @@
 import fs from "node:fs";
 
-const PLUGIN_EXTS = new Set([".esp", ".esm", ".esl"]);
-
 function parseMasters(filePath: string): string[] {
   const buf = fs.readFileSync(filePath);
   if (buf.length < 20) return [];

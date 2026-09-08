@@ -12,9 +12,10 @@ export interface PythonResult {
 }
 
 function getCliPath(): string {
+  const cliRel = path.join("app", "_main", "container", "makai_time", "engine", "python", "cli.py");
   return app.isPackaged
-    ? path.join(process.resourcesPath, "python", "cli.py")
-    : path.join(app.getAppPath(), "tools", "container", "makai_time", "engine", "python", "cli.py");
+    ? path.join(process.resourcesPath, cliRel)
+    : path.join(app.getAppPath(), cliRel);
 }
 
 export async function runPythonCommand(

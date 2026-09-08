@@ -87,7 +87,7 @@ export async function applyGameConfigs(
       oblivion: "Oblivion", morrowind: "Morrowind", starfield: "Starfield",
       enderal: "Enderal", "enderal-se": "Enderal Special Edition",
     };
-    const regName = BETHESDA_REG_NAMES[gameId] || info?.id || gameId;
+    const regName = BETHESDA_REG_NAMES[gameId] || info?.gameId || gameId;
     const verifyReg = verifyBethesdaRegistry(prefixPath, regName, gamePath);
 
     if (seedOk && verifyReg) {

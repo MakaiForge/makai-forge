@@ -40,6 +40,8 @@ export interface ModlistEntry {
   hasFomod?: boolean;
   hasSkse?: boolean;
   fomodComponents?: FomodComponent[];
+  /** Inventário de arquivos do mod (usado para detecção de conflitos) */
+  inventory?: ModInventory;
 }
 
 export interface ModMeta {
@@ -109,6 +111,7 @@ export interface DeploymentResult {
   success: boolean;
   log: string[];
   filemap: Record<string, string>;
+  error?: string | null;
 }
 
 export interface PluginEntry {

@@ -1,0 +1,1 @@
+/mnt/926f111f-fdf6-4067-ac31-32f732441bac/Makai_forge/app/_resources/native/protonforge-native/target/release/libprotonforge_native.so: /mnt/926f111f-fdf6-4067-ac31-32f732441bac/Makai_forge/app/_resources/native/protonforge-native/build.rs /mnt/926f111f-fdf6-4067-ac31-32f732441bac/Makai_forge/app/_resources/native/protonforge-native/src/lib.rs

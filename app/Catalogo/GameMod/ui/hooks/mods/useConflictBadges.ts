@@ -71,7 +71,7 @@ export function useConflictBadges(mods: ModlistEntry[]) {
       const files = mod.inventory?.files ?? [];
 
       for (const file of files) {
-        const pathLower = file.relativePath?.toLowerCase() ?? file.toLowerCase();
+        const pathLower = file.relativePath?.toLowerCase() ?? (typeof file === "string" ? file.toLowerCase() : "");
         if (!pathLower) continue;
         if (isFomodInternal(pathLower)) continue;
 

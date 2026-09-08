@@ -21,8 +21,8 @@ export const SKYRIM_REQUIRED_FOLDERS = [
 
 export function applySkyrimRules(
   files: ModFileEntry[],
-  structure: ModStructure,
-  stagingDir: string
+  _structure: ModStructure,
+  _stagingDir: string
 ): ModFileEntry[] {
   const result: ModFileEntry[] = [];
 
@@ -50,7 +50,7 @@ export function applySkyrimRules(
   return result;
 }
 
-function isLoosePluginOrArchive(sourcePath: string, destPath: string): boolean {
+function isLoosePluginOrArchive(_sourcePath: string, destPath: string): boolean {
   const ext = path.extname(destPath).toLowerCase();
   return [".esp", ".esm", ".esl", ".bsa", ".ba2"].includes(ext) && !destPath.includes("/") && !destPath.includes("\\");
 }

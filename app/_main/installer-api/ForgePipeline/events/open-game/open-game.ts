@@ -31,6 +31,7 @@ export async function openGame(
 
   if (!game) {
     sendProgress("error", "Jogo não encontrado no banco de dados");
+    WindowManager.closeGameLauncherWindow();
     return;
   }
 
@@ -59,12 +60,16 @@ export async function openGame(
       return;
     }
     sendProgress("error", "Jogo não encontrado no prefixo. Reconfigure o jogo.");
+    WindowManager.closeGameLauncherWindow();
     return;
   }
 
   sendProgress("checking", "Verificando Proton...");
   const protonPathFinal = await ensureProtonAvailable(game, gameKey);
-  if (!protonPathFinal) return;
+  if (!protonPathFinal) {
+    WindowManager.closeGameLauncherWindow();
+    return;
+  }
 
   if (!fs.existsSync(game.winePrefixPath)) {
     sendProgress("installing", "Criando prefixo Wine...");
@@ -77,6 +82,7 @@ export async function openGame(
     });
     if (!prefixResult.success) {
       sendProgress("error", "Falha ao criar prefixo Wine");
+      WindowManager.closeGameLauncherWindow();
       return;
     }
   }
@@ -92,11 +98,13 @@ export async function openGame(
       return;
     }
     sendProgress("error", "Caminho do jogo não configurado");
+    WindowManager.closeGameLauncherWindow();
     return;
   }
 
   if (!fs.existsSync(sourcePath)) {
     sendProgress("error", "Pasta do jogo não encontrada. Verifique se o jogo foi copiado corretamente.");
+    WindowManager.closeGameLauncherWindow();
     return;
   }
 

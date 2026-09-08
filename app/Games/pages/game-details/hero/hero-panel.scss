@@ -43,6 +43,11 @@
 
   &__actions {
     display: flex;
+    align-items: center;
+
+    .compatibility-badge {
+      margin-right: 8px;
+    }
   }
 
   &__download-details {

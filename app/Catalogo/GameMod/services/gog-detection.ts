@@ -44,7 +44,7 @@ function scanSubdirs(dir: string, exes: string[]): string | null {
   return null;
 }
 
-function detectGogByExe(gameId: string, detectExe: string, detectExeAlts?: string[]): string | null {
+function detectGogByExe(_gameId: string, detectExe: string, detectExeAlts?: string[]): string | null {
   const exes = [detectExe, ...(detectExeAlts || [])];
   const searchRoots = getGogSearchRoots();
 

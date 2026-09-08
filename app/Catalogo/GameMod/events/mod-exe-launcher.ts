@@ -1,11 +1,10 @@
 import { registerEvent } from "@main/events/register-event";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
-import { app } from "electron";
-import { ModStorageService, logger } from "@main/services";
+import { ModStorageService } from "@main/services";
 import path from "node:path";
 import fs from "node:fs";
 import { getGameModule } from "@games/registry";
-import { installTool, isToolInstalled, resolveToolPath } from "@mods/services/external-tool-installer";
+import { installTool, resolveToolPath } from "@mods/services/external-tool-installer";
 
 const TOOLS_KEY = "external_tools";
 

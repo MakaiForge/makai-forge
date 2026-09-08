@@ -7,6 +7,7 @@ Fontes únicas por domínio:
 
 import json
 import logging
+import os
 import sqlite3
 
 from ..db.connection import _get_db, _PROTON_API_DIR

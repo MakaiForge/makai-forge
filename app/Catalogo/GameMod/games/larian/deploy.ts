@@ -363,13 +363,13 @@ export async function deployBg3(
 /**
  * Restore BG3 to vanilla state: remove deployed mods, restore Mods_Core.
  */
-export function restoreBg3(
+export async function restoreBg3(
   gamePath: string,
   _stagingDir: string,
   _profile: string,
   prefixPath?: string,
   log?: (msg: string) => void,
-): void {
+): Promise<void> {
   const larianRoot = findLarianRoot(prefixPath);
   if (!larianRoot) {
     log?.("No Larian data folder found — nothing to restore.");

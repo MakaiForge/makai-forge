@@ -17,8 +17,8 @@ export interface RouteDef {
 
 export const routes: (RouteDef | false)[] = [
   { path: "/", nameKey: "home", render: () => <HomeIcon /> },
-  { path: "/catalogue", nameKey: "catalogue", render: () => <AppsIcon />, requiresHackerman: true },
-  { path: "/downloads", nameKey: "downloads", render: () => <DownloadIcon />, requiresHackerman: true },
+  { path: "/catalogue", nameKey: "catalogue", render: () => <AppsIcon /> },
+  { path: "/downloads", nameKey: "downloads", render: () => <DownloadIcon /> },
   { path: "/proton-tools", nameKey: "proton_tools", render: () => <StackIcon /> },
   { path: "/games", nameKey: "Games", render: () => <TabIcon /> },
   { path: "/mod-manager", nameKey: "mod_manager", render: () => <ToolsIcon /> },

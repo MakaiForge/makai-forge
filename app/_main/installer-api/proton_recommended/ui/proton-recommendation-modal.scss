@@ -512,10 +512,31 @@
     font-weight: 500;
   }
 
+  &-subtitle {
+    margin: 0;
+    font-size: 11px;
+    color: #777;
+  }
+
   &-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+}
+
+.prm__fork-badge {
+  margin-left: 6px;
+  font-size: 11px;
+  line-height: 1;
+  vertical-align: middle;
+
+  &--recommended {
+    color: #e6b450;
+  }
+
+  &--installed {
+    color: #4caf50;
   }
 }
 

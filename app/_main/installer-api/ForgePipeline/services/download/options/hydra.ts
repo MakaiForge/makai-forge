@@ -9,7 +9,7 @@ export async function getHydraDownloadOptions(
   resumingFilename?: string
 ): Promise<DownloadOptions> {
   const downloadUrl = await HydraDebridClient.getDownloadUrl(download.uri);
-  if (!downloadUrl) throw new Error(DownloadError.NotCachedOnHydra);
+  if (!downloadUrl) throw new Error(DownloadError.NotCached);
   const filename = resolveFilename(resumingFilename, download.uri, downloadUrl);
   return buildDownloadOptions(downloadUrl, download.downloadPath, filename);
 }

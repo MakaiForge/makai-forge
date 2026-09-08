@@ -2,7 +2,6 @@ import { app, BrowserWindow, Menu } from "electron";
 import i18n from "i18next";
 import { optimizer } from "@electron-toolkit/utils";
 import {
-  logger,
   clearGamesPlaytime,
   killRunningGameProcesses,
   WindowManager,

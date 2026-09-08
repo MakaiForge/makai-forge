@@ -5,6 +5,7 @@ import type { GameShop, ShopDetailsWithAssets } from "@types";
 import { registerEvent } from "../register-event";
 import { storeKeys, gamesShopAssetsStore } from "@main/store";
 import { MakaiApi } from "@main/services/makai-api";
+import { localGetGame } from "@main/services/local-catalog";
 
 function mapApiGameToShopDetails(apiGame: any, assets: any, objectId: string): ShopDetailsWithAssets {
   return {
@@ -40,7 +41,7 @@ function mapApiGameToShopDetails(apiGame: any, assets: any, objectId: string): S
     categories: [],
     content_descriptors: { ids: [] },
     assets: assets || null,
-  } as ShopDetailsWithAssets;
+  } as unknown as ShopDetailsWithAssets;
 }
 
 const getGameShopDetails = async (
@@ -49,7 +50,8 @@ const getGameShopDetails = async (
   shop: GameShop,
   _language: string
 ): Promise<ShopDetailsWithAssets | null> => {
-  const apiGame = await MakaiApi.getGame(objectId);
+  // Fonte primária: catálogo local (mesma lógica do ProtonForger antigo)
+  const apiGame = (await localGetGame(objectId)) || (await MakaiApi.getGame(objectId));
   if (apiGame) {
     let assets = null;
     if (shop !== "steam") {
@@ -65,7 +67,7 @@ const getGameShopDetails = async (
       ...steamDetails,
       objectId,
       assets: null,
-    } as ShopDetailsWithAssets;
+    } as unknown as ShopDetailsWithAssets;
   }
 
   return null;

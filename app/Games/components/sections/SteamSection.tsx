@@ -47,6 +47,7 @@ export function GamesSteamSection({
               title={game.name}
               runner="steam"
               installedSize={game.sizeOnDisk}
+              isSteam appId={game.appId}
               onPlay={() => onPlay(game)}
               onClick={() => onSelect(game)}
               onContextMenu={(e) => {

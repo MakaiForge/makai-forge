@@ -21,7 +21,7 @@ import { logger } from "@main/services/logger";
 interface PendingRpc {
   resolve: (value: unknown) => void;
   reject: (reason?: unknown) => void;
-  timer: NodeJS.Timeout;
+  timer: NodeJS.Timeout | undefined;
 }
 
 export type RpcEventCallback = (event: string, data: Record<string, unknown>) => void;
@@ -76,7 +76,7 @@ export class MakaiRPC {
         }, timeoutMs);
       }
 
-      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
+      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer: timer ?? undefined });
       this.process?.stdin?.write(JSON.stringify(payload) + "\n");
     });
   }
@@ -112,6 +112,11 @@ export class MakaiRPC {
 
     const child = cp.spawn(python, [serverScript, "--stdio"], {
       stdio: ["pipe", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        // Diretório onde o bootstrap baixa os resources (proton_data.db, fork_catalog.db, data/)
+        MAKAI_RESOURCES_DIR: path.join(app.getPath("userData"), "resources"),
+      },
     });
 
     child.stdout?.setEncoding("utf-8");

@@ -17,7 +17,7 @@ logger = logging.getLogger("protonforge.rpc")
 
 
 class QBittorrentClient:
-    def __init__(self, host="localhost", port=8080, max_retries=3, retry_delay=1):
+    def __init__(self, host="localhost", port=8081, max_retries=3, retry_delay=1):
         self.host = host
         self.port = port
         self.logged_in = True

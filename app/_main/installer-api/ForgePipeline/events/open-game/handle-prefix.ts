@@ -5,7 +5,6 @@ import { setupPrefix, resolveActualPrefix } from "@provision/ForgePipeline/orche
 import { ProtonRecommendationService } from "@provision/proton_recommended/services/proton-recommendation";
 import { sendProgress } from "./send-progress";
 import path from "node:path";
-import fs from "node:fs";
 
 export function showExecutableSelect(
   candidates: { path: string; name: string; size: number }[],

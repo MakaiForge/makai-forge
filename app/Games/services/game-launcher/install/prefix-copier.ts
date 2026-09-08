@@ -119,6 +119,7 @@ export async function copyToPrefix(
   const driveC = path.join(actual, "drive_c")
   const folderName = path.basename(absSource)
   const destPath = path.join(driveC, folderName)
+  const tmpPath = destPath + ".tmp-copy"
 
   if (!fs.statSync(absSource, { throwIfNoEntry: false })?.isDirectory()) {
     return {
@@ -129,18 +130,19 @@ export async function copyToPrefix(
     }
   }
 
-  // Remove existing dest
-  if (fs.existsSync(destPath)) {
-    fs.rmSync(destPath, { recursive: true, force: true })
-  }
-
-  // List files
+  // Lista arquivos ANTES de mexer no destino
   const allFiles = walkDir(absSource)
   const total = allFiles.length
 
+  // Fonte vazia → NUNCA falso-sucesso: não mexe no que já existe
   if (total === 0) {
-    fs.mkdirSync(destPath, { recursive: true })
-    return { success: true, dest_path: destPath, files_count: 0, hashes_ok: true }
+    return {
+      success: false,
+      error: "Fonte vazia — nada a copiar",
+      dest_path: destPath,
+      files_count: 0,
+      hashes_ok: false,
+    }
   }
 
   if (total > 50000) {
@@ -160,15 +162,21 @@ export async function copyToPrefix(
   progressCallback?.(0)
   const sourceHashes = await computeHashes(allFiles, absSource, progressCallback, 0, 5)
 
-  // Phase 2: Copy in batches with byte-based progress (5-90%)
+  // Phase 2: Copy in batches to the TEMP dir (5-90%) — nunca toca no destino real
+  if (fs.existsSync(tmpPath)) {
+    fs.rmSync(tmpPath, { recursive: true, force: true })
+  }
+  fs.mkdirSync(tmpPath, { recursive: true })
+
   const batchSize = 50
   let copiedBytes = 0
+  const errors: string[] = []
 
   for (let i = 0; i < total; i += batchSize) {
     const batch = allFiles.slice(i, i + batchSize)
     const tasks = batch.map(async (srcFile) => {
       const rel = path.relative(absSource, srcFile)
-      const destFile = path.join(destPath, rel)
+      const destFile = path.join(tmpPath, rel)
       await fs.promises.mkdir(path.dirname(destFile), { recursive: true })
       try {
         await fs.promises.copyFile(srcFile, destFile)
@@ -177,8 +185,9 @@ export async function copyToPrefix(
         } catch {
           copiedBytes += 1
         }
-      } catch {
-        // skip unreadable files
+      } catch (exc) {
+        // NUNCA engolir erro de cópia — reportar e abortar
+        errors.push(`${rel}: ${(exc as Error).message}`)
       }
     })
     await Promise.all(tasks)
@@ -187,22 +196,38 @@ export async function copyToPrefix(
       const pct = 5 + Math.round((copiedBytes / progressDenom) * 85)
       progressCallback(Math.min(90, pct))
     }
+    if (errors.length >= 20) break
   }
 
-  // Verify count
-  const destFiles = walkDir(destPath)
+  if (errors.length > 0) {
+    // Limpa só o temporário — o destino antigo permanece intacto
+    fs.rmSync(tmpPath, { recursive: true, force: true })
+    return {
+      success: false,
+      error: `Falha ao copiar: ${errors.slice(0, 5).join("; ")}`,
+      dest_path: destPath,
+      files_count: 0,
+      hashes_ok: false,
+      mismatches: errors.slice(0, 10),
+    }
+  }
+
+  // Verify count (no temporário)
+  const destFiles = walkDir(tmpPath)
   if (destFiles.length !== total) {
+    fs.rmSync(tmpPath, { recursive: true, force: true })
     return {
       success: false,
       error: `Count mismatch: source ${total}, dest ${destFiles.length}`,
       dest_path: destPath,
-      files_count: total,
+      files_count: 0,
+      hashes_ok: false,
     }
   }
 
   // Phase 3: SHA256 post-copy + comparison (90-100%)
   progressCallback?.(90)
-  const destHashes = await computeHashes(destFiles, destPath, progressCallback, 90, 10)
+  const destHashes = await computeHashes(destFiles, tmpPath, progressCallback, 90, 10)
 
   const mismatches: string[] = []
   for (const [rel, expected] of Object.entries(sourceHashes)) {
@@ -214,14 +239,31 @@ export async function copyToPrefix(
     }
   }
 
-  const hashesOk = mismatches.length === 0
+  if (mismatches.length > 0) {
+    fs.rmSync(tmpPath, { recursive: true, force: true })
+    return {
+      success: false,
+      error: `${mismatches.length} arquivo(s) com hash divergente após a cópia`,
+      dest_path: destPath,
+      files_count: 0,
+      hashes_ok: false,
+      mismatches: mismatches.slice(0, 10),
+    }
+  }
+
+  // Tudo verificado → swap atômico: só agora mexe no destino real
+  if (fs.existsSync(destPath)) {
+    fs.rmSync(destPath, { recursive: true, force: true })
+  }
+  fs.renameSync(tmpPath, destPath)
+
   progressCallback?.(100)
 
   return {
-    success: hashesOk,
+    success: true,
     dest_path: destPath,
     files_count: total,
-    hashes_ok: hashesOk,
-    mismatches: mismatches.slice(0, 10),
+    hashes_ok: true,
+    mismatches: [],
   }
 }

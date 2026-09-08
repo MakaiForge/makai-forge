@@ -9,7 +9,7 @@ import {
   useUserDetails,
 } from "@hooks";
 import { useDownloadOptionsListener } from "@hooks/use-download-options-listener";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import {
   clearExtraction,
@@ -32,6 +32,18 @@ import { storeService } from "@shared-services/store.service";
 
 export interface AppProps {
   children: React.ReactNode;
+}
+
+/**
+ * Fallback exibido enquanto a página da rota carrega (lazy chunk).
+ * Mantém o shell (sidebar/header) visível — sem escurecer o app inteiro.
+ */
+export function RouteLoading() {
+  return (
+    <div className="page-loading">
+      <div className="page-loading__spinner" />
+    </div>
+  );
 }
 
 export function App() {
@@ -174,7 +186,11 @@ export function App() {
   useEffect(() => {
     const listeners = [
       window.electron.onSignIn(onSignIn),
-      window.electron.onLibraryBatchComplete(() => {}),
+      // Após o pré-aquecimento do cache de capas, refaz o fetch da biblioteca
+      // para trocar URLs remotas por locais (local://) nos cards/miniaturas.
+      window.electron.onLibraryBatchComplete(() => {
+        updateLibrary();
+      }),
       window.electron.onSignOut(() => clearUserDetails()),
       window.electron.onExtractionProgress((shop, objectId, progress) => {
         dispatch(setExtractionProgress({ shop, objectId, progress }));
@@ -285,7 +301,9 @@ export function App() {
             id="scrollableDiv"
             className="container__content"
           >
-            <Outlet />
+            <Suspense fallback={<RouteLoading />}>
+              <Outlet />
+            </Suspense>
           </section>
         </article>
       </main>

@@ -122,8 +122,11 @@ export function GameBar({
           <button
             className={`game-bar__play-button ${isRunning ? "game-bar__play-button--running" : ""}`}
             onClick={isRunning ? onStop : onPlay}
+            title={isRunning
+              ? "Para o jogo"
+              : "Aba Games: inicializa apenas o jogo (SEM mods). Para jogar com mods habilitados, use o Mod Manager (▶ Play Mod Manager)."}
           >
-            {isRunning ? "STOP" : "PLAY"}
+            {isRunning ? "Games / Stop" : "Games / Games"}
           </button>
 
           <div className="game-bar__play-menu-wrapper" ref={playMenuRef}>

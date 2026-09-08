@@ -460,7 +460,7 @@ export function buildModsettingsXml(
 }
 
 function campaignDict(patchVersion: number, campaign: BG3ModInfo | null): Record<string, string> {
-  if (!campaign) return campaignEntry(patchVersion);
+  if (!campaign) return { ...campaignEntry(patchVersion) };
   return {
     Folder: campaign.folder,
     MD5: campaign.md5,
@@ -555,7 +555,7 @@ export async function writeModsettings(
 ): Promise<number> {
   log?.(`Scanning .pak files for mod metadata (patch ${patchVersion}) ...`);
 
-  const { modInfos, noMetadata } = await scanModPaks(stagingDir, enabledModNames, log);
+  const { modInfos } = await scanModPaks(stagingDir, enabledModNames, log);
 
   if (modInfos.size === 0) {
     log?.("No mod metadata found — writing vanilla modsettings.lsx.");

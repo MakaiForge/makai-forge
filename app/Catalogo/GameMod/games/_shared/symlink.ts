@@ -23,18 +23,12 @@ export function removeDeployedLinks(dir: string): void {
         const remaining = fs.readdirSync(fullPath);
         if (remaining.length === 0) fs.rmdirSync(fullPath);
       } catch { /* skip */ }
-    } else {
-      // Remove symlinks, hardlinks (nlink > 1), and copies
-      const isSymlink = entry.isSymbolicLink();
-      const isFile = entry.isFile();
-      if (isSymlink) {
-        try { fs.unlinkSync(fullPath); } catch { /* skip */ }
-      } else if (isFile) {
-        // Check if this looks like a deployed file (hardlink or copy)
-        // We only remove files that have a matching source in the filemap
-        // This is handled by the caller via scanDeployedLinks
-        try { fs.unlinkSync(fullPath); } catch { /* skip */ }
-      }
+    } else if (entry.isSymbolicLink()) {
+      // NUNCA apagar arquivos comuns: apenas symlinks (o que o deploy cria).
+      // Arquivos reais do jogo (hardlinks/copies de mods) não podem ser
+      // distinguidos de arquivos do jogo sem consultar o filemap/staging —
+      // apagá-los destruía o jogo copiado no prefixo.
+      try { fs.unlinkSync(fullPath); } catch { /* skip */ }
     }
   }
 }
@@ -129,8 +123,13 @@ export function linkAll(
   targetBaseDir: string,
   mode: LinkMode = "symlink",
 ): number {
-  // Remove all existing deployed files before creating new ones
-  removeDeployedLinks(targetBaseDir);
+  // Remove existing deployed symlinks before creating new ones — mas só
+  // quando há algo para implantar. Com filemap vazio (jogo sem mods), NÃO
+  // tocar no diretório do jogo: apagar a pasta do jogo antes de criar 0
+  // links era o que destruía jogos copiados no prefixo durante o Play.
+  if (Object.keys(filemap).length > 0) {
+    removeDeployedLinks(targetBaseDir);
+  }
 
   let count = 0;
   for (const [relativePath, sourcePath] of Object.entries(filemap)) {

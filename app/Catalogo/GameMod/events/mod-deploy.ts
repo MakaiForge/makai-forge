@@ -1,5 +1,5 @@
 import { registerEvent } from "@main/events/register-event";
-import { ModStorageService, logger } from "@main/services";
+import { ModStorageService } from "@main/services";
 import { getDeployFunction, getGameModule } from "@games/registry";
 import { getStagingDir } from "@games/_shared/filemap";
 import { applyWineDllOverrides } from "@games/_shared/prefix";
@@ -8,7 +8,7 @@ import { InstallOrchestrator } from "@mods/services/install/install-orchestrator
 import { verifyGameReady } from "@mods/services/install/verify-game-ready";
 import { expandHome } from "@mods/services/path-utils";
 import { mkInvKey, mkMlKey } from "@mods/services/storage-keys";
-import type { InstallConfig, InstallProgress, InstallStage } from "@types/install.types";
+import type { InstallConfig, InstallProgress, InstallStage } from "@mods/types/install.types";
 import path from "node:path";
 import fs from "node:fs";
 

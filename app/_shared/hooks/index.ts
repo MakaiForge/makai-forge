@@ -11,7 +11,7 @@ export * from "./use-game-card";
 export * from "./use-search-history";
 export * from "./use-search-suggestions";
 export * from "./use-game-collections";
-export * from "@provision/proton_recommended/ui/use-install-flow";
+export * from "@provision/ForgePipeline/ui/install-flow/use-install-flow";
 export * from "./use-makai-notifications";
 export * from "./use-runners-running";
 export * from "./use-supplemental";

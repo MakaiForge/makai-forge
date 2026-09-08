@@ -41,7 +41,7 @@ export async function ensureGameExternalTools(
     send(step, msg, type);
   });
 
-  const summary = [];
+  const summary: string[] = [];
   if (result.installed.length > 0) summary.push(`Instaladas: ${result.installed.join(", ")}`);
   if (result.skipped.length > 0) summary.push(`Já existentes: ${result.skipped.join(", ")}`);
   if (result.failed.length > 0) summary.push(`Falharam: ${result.failed.join(", ")}`);

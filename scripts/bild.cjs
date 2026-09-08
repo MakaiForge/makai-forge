@@ -3,10 +3,10 @@ const fs = require("fs");
 const path = require("path");
 const { execSync, spawn } = require("child_process");
 
-const ROOT = "/home/cas/Documentos/protonforgerfull";
+const ROOT = path.resolve(__dirname, "..");
 const PRELOAD_SRC = path.join(ROOT, "src/preload/index.ts");
 const RENDERER_SRC = path.join(ROOT, "src/renderer/src");
-const BACKUP = "/home/cas/Documentos/bbb/protonforgerfull";
+const BACKUP = process.env.PROTONFORGE_BACKUP || "";
 
 const RESET = "\x1b[0m";
 const VERMELHO = "\x1b[31m";

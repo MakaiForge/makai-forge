@@ -15,7 +15,6 @@ export interface SteamInstalledGame {
 }
 
 const COMMON_EXE_DIRS = ["bin", "binaries", "Bin", "Binaries", "Win64", "win64"];
-const EXE_EXTENSIONS = [".exe"];
 
 function findGameExecutable(installPath: string): string | null {
   if (!fs.existsSync(installPath)) return null;

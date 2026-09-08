@@ -162,7 +162,7 @@ export class FomodService {
     config: FomodConfig,
     selections: Record<string, string[]>,
     stagingDir: string,
-    targetDir: string,
+    _targetDir: string,
   ): FomodComponent[] {
     const components: FomodComponent[] = [];
 
@@ -289,9 +289,9 @@ export class FomodService {
               for (const f of files) {
                 if (!existingFileSet.has(f)) existing.files.push(f);
               }
-              const existingSourceSet = new Set(existing.sourceFiles.map(s => s.source));
+              const existingSourceSet = new Set((existing.sourceFiles ?? []).map(s => s.source));
               for (const sf of sourceFiles) {
-                if (!existingSourceSet.has(sf.source)) existing.sourceFiles.push(sf);
+                if (!existingSourceSet.has(sf.source)) (existing.sourceFiles ??= []).push(sf);
               }
             } else {
               map.set(plugin.name, {

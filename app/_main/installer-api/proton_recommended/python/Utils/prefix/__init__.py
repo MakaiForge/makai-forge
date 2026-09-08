@@ -3,7 +3,7 @@ Importa do módulo unificado tools/prefix/python/prefix/.
 """
 import sys, os
 _prefix_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), *([".."] * 7), "tools", "prefix", "python")
+    os.path.join(os.path.dirname(__file__), *([".."] * 6), "_main", "container", "makai_time", "engine", "python")
 )
 if _prefix_path not in sys.path:
     sys.path.insert(0, _prefix_path)

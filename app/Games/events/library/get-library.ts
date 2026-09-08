@@ -9,6 +9,8 @@ import {
   gamesStore,
 } from "@main/store";
 import { MakaiApi } from "@main/services/makai-api";
+import { localGetGame } from "@main/services/local-catalog";
+import { resolveGameImages } from "@main/services/image-cache";
 
 const getLibrary = async (): Promise<LibraryGame[]> => {
   return gamesStore
@@ -21,12 +23,15 @@ const getLibrary = async (): Promise<LibraryGame[]> => {
           const [shopStr, objectId] = key.split(":");
           const shop = shopStr as GameShop;
 
-          let gameAssets = shop !== "steam"
-            ? await gamesShopAssetsStore.get(key).catch(() => null)
-            : null;
+          // Lê o store de assets para TODAS as lojas (a versão antiga lia sem
+          // restrição — o guard `shop !== "steam"` era a regressão que deixava
+          // jogos Steam sem imagem na aba Downloads).
+          let gameAssets = await gamesShopAssetsStore
+            .get(key)
+            .catch(() => null);
 
-          if (!gameAssets && shop !== "steam") {
-            const apiGame = await MakaiApi.getGame(objectId);
+          if (!gameAssets) {
+            const apiGame = await MakaiApi.getGame(objectId).catch(() => null);
             if (apiGame) {
               gameAssets = {
                 iconUrl: apiGame.libraryImageUrl || null,
@@ -35,6 +40,18 @@ const getLibrary = async (): Promise<LibraryGame[]> => {
                 logoImageUrl: apiGame.libraryImageUrl || null,
                 coverImageUrl: null,
               };
+            } else {
+              // Fallback: catálogo local (mesma fonte da versão antiga)
+              const localGame = await localGetGame(objectId).catch(() => null);
+              if (localGame) {
+                gameAssets = {
+                  iconUrl: localGame.iconUrl || null,
+                  libraryImageUrl: localGame.libraryImageUrl || null,
+                  libraryHeroImageUrl: localGame.libraryHeroImageUrl || null,
+                  logoImageUrl: localGame.libraryImageUrl || null,
+                  coverImageUrl: null,
+                };
+              }
             }
           }
 
@@ -67,7 +84,7 @@ const getLibrary = async (): Promise<LibraryGame[]> => {
             }
           }
 
-          return {
+          return resolveGameImages({
             ...game,
             id: key,
             objectId,
@@ -81,7 +98,7 @@ const getLibrary = async (): Promise<LibraryGame[]> => {
             customIconUrl: game.customIconUrl,
             customLogoImageUrl: game.customLogoImageUrl,
             customHeroImageUrl: game.customHeroImageUrl,
-          };
+          });
         })
       );
     });

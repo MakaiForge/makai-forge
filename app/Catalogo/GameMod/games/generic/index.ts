@@ -39,6 +39,13 @@ export async function deployGeneric(
   });
   log.push(`Built filemap with ${Object.keys(filemap).length} entries`);
 
+  // Sem mods habilitados: NADA a implantar. Não tocar no diretório do jogo —
+  // linkAll({}) anteriormente apagava os arquivos do jogo copiados no prefixo.
+  if (Object.keys(filemap).length === 0) {
+    log.push("Sem mods habilitados — nada a implantar (jogo intacto)");
+    return { success: true, log, filemap: {} };
+  }
+
   const preExistingSymlinks = fs.existsSync(targetDir) ? scanSymlinks(targetDir) : {};
   log.push(`Saved manifest: ${Object.keys(preExistingSymlinks).length} pre-existing symlinks`);
 
@@ -85,6 +92,13 @@ export async function deployGenericWithRouting(
   });
   log.push(`Built filemap with ${Object.keys(filemap).length} entries`);
 
+  // Sem mods habilitados: nada a implantar — não tocar no jogo (o linkAll com
+  // filemap vazio apagava o jogo copiado no prefixo durante o Play).
+  if (Object.keys(filemap).length === 0) {
+    log.push("Sem mods habilitados — nada a implantar (jogo intacto)");
+    return { success: true, log, filemap: {} };
+  }
+
   const targetDir = gamePath;
   const preExistingSymlinks = fs.existsSync(targetDir) ? scanSymlinks(targetDir) : {};
   log.push(`Saved manifest: ${Object.keys(preExistingSymlinks).length} pre-existing symlinks`);
@@ -92,7 +106,7 @@ export async function deployGenericWithRouting(
   try {
     // Apply routing rules: move matched files to their custom destinations
     for (const rule of customRules) {
-      applyRoutingRule(rule, filemap, gamePath, log, _prefixPath);
+      applyRoutingRule(rule, filemap, gamePath, (msg) => log.push(msg), _prefixPath);
     }
 
     // Deploy remaining files (not matched by any rule) to default target

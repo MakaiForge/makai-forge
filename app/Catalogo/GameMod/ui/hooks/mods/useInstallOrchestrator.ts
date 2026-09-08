@@ -18,7 +18,7 @@ import type {
   InstallProgress,
   InstallResult,
   InstallConfig,
-} from "../../types/install.types";
+} from "../../../types/install.types";
 
 export interface UseInstallOrchestratorReturn {
   stage: InstallStage;
@@ -103,6 +103,7 @@ export function useInstallOrchestrator(
     extracting: t("install_stage_extracting"),
     verifying: t("install_stage_verifying"),
     analyzing: t("install_stage_analyzing"),
+    preparing: t("install_stage_preparing"),
     saving: t("install_stage_saving"),
     ready: t("install_stage_ready"),
     error: t("install_stage_error"),

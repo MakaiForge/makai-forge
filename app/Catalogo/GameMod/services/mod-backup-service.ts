@@ -19,8 +19,6 @@ const BACKUP_KEYS = [
   "profile_state",
 ] as const;
 
-type BackupKey = (typeof BACKUP_KEYS)[number];
-
 export interface BackupMeta {
   timestamp: string;
   label: string;

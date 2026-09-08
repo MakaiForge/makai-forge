@@ -91,6 +91,7 @@ export function detectInstallerType(sourcePath: string): {
         source_path: abs,
         exe_count: 0,
         total_files: 0,
+        error: null,
       }
     }
     return {
@@ -99,6 +100,7 @@ export function detectInstallerType(sourcePath: string): {
       source_path: abs,
       exe_count: 0,
       total_files: 0,
+      error: null,
     }
   }
 
@@ -111,6 +113,7 @@ export function detectInstallerType(sourcePath: string): {
       source_path: abs,
       exe_count: 0,
       total_files: 0,
+      error: null,
     }
   }
 

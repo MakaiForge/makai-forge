@@ -1,5 +1,4 @@
 import { User, type UserDetails } from "@types";
-import { logger } from "../logger";
 import { db } from "@main/store";
 import { storeKeys } from "@main/store/sublevels";
 

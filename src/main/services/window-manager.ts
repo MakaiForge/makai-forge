@@ -6,7 +6,7 @@ import type { AuthPage } from "@shared";
 import { createMainWindow } from "./window-manager/main-window";
 import { openAuthWindow } from "./window-manager/auth-window";
 import { openEditorWindow, closeEditorWindow } from "./window-manager/editor-window";
-import { createCompactFlowWindow } from "./window-manager/compact-flow-window";
+
 import {
   createGameLauncherWindow,
   showGameLauncherWindow,
@@ -64,7 +64,6 @@ export class WindowManager {
   public static gameLauncherWindow: Electron.BrowserWindow | null = null;
   public static executableSelectWindow: Electron.BrowserWindow | null = null;
   public static folderSelectWindow: Electron.BrowserWindow | null = null;
-  public static compactFlowWindow: Electron.BrowserWindow | null = null;
   static gameLogWindow: Electron.BrowserWindow | null = null;
   static pendingExecutableSelectData: import("./window-manager/types").ExecutableSelectData | null = null;
   static pendingFileSelectData: import("./window-manager/types").FileSelectData | null = null;
@@ -89,10 +88,6 @@ export class WindowManager {
 
   public static async createGameLauncherWindow(shop: string, objectId: string) {
     await createGameLauncherWindow(WindowManager, shop, objectId);
-  }
-
-  public static openCompactFlowWindow() {
-    createCompactFlowWindow(WindowManager);
   }
 
   public static createFolderSelectWindow(data: import("./window-manager/types").FileSelectData) {

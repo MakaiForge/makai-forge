@@ -10,7 +10,7 @@ const SITE_URL = app.isPackaged
 
 const getScriptsByGame = async (
   _event: Electron.IpcMainInvokeEvent,
-  shop: GameShop,
+  _shop: GameShop,
   objectId: string
 ) => {
   try {

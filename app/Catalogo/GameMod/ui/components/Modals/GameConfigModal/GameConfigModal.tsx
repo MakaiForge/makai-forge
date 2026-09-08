@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { BridgeGameInfo as GameInfo } from "../../../types/bridge.types";
-import type { ExternalTool } from "../../../../declaration.d.ts";
+import type { ExternalTool } from "../../../../../../_shared/types/declaration.d.ts";
 
 import "./GameConfigModal.scss";
 

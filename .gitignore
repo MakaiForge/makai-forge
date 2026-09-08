@@ -9,7 +9,6 @@ games-with-downloads/
 app/_data/cache/
 app/_data/releases/
 app/_data/sources/
-resources/catalogo/
 app/_data/.chrome-profiles/
 *.bak
 *.db
@@ -47,7 +46,7 @@ src/main/gg-deals-key.ts
 Data/
 
 # Chrome runtime (arquivos binários enormes, 267MB+)
-resources/chrome/
+app/_resources/chrome/
 
 # Python egg-info (gerado por pip install -e)
 *.egg-info/

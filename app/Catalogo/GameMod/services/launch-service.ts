@@ -1,7 +1,7 @@
 import path from "node:path";
-import fs from "node:fs";
+import { app } from "electron";
 import { MakaiRPC } from "@mods-manager/services/makai-rpc";
-import { ModStorageService, logger } from "@main/services";
+import { logger } from "@main/services";
 import { getGameModule, getGameInfo } from "@games/registry";
 import { scanEnvironment } from "./environment-scanner";
 import { launchViaSteam, launchViaProton, getSteamLaunchEnv } from "@games/_shared/launch";
@@ -157,7 +157,7 @@ export async function launchGame(
       if (fs.default.existsSync(exePath)) {
         send("launch", `Iniciando ${exeName} diretamente via Proton...`, "working");
         const env2 = getSteamLaunchEnv(undefined, env.gamePath, env.prefixPath);
-        const protonPath = env.protonPath || path.join(app.getAppPath(), "tools", "prefix", "umu-run");
+        const protonPath = env.protonPath || path.join(app.getAppPath(), "app", "_resources", "binaries", "umu-run");
         launchViaProton(exePath, protonPath, env2);
         send("launch", `${info?.name || gameId} iniciado!`, "done");
         return { success: true, method: "direct" };

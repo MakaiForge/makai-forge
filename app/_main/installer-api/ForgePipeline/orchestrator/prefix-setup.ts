@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { app } from "electron"
-import { createPrefix } from "@container/core/init"
+import { createPrefix, prefixExists } from "@container/core/init"
 import { logger } from "@main/services"
 
 export function getUmuBinaryPath(): string {
@@ -18,19 +18,13 @@ export function resolveActualPrefix(prefixPath: string): string {
   return prefixPath
 }
 
-function ensurePrefixMarkers(prefixPath: string) {
-  for (const name of ["system.reg", "user.reg", "userdef.reg"]) {
-    const filePath = path.join(prefixPath, name)
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, "REGEDIT4\n\n", "utf-8")
-    }
-  }
-}
-
-const PREFIX_MARKERS = ["drive_c", "dosdevices", "system.reg", "user.reg", "userdef.reg"]
-
+/**
+ * Prefixo válido = prefixo Wine de verdade (user.reg/system.reg reais +
+ * drive_c + dosdevices). Nunca criar arquivos .reg "marcadores" aqui: stubs
+ * como "REGEDIT4\n\n" fazem o wineboot falhar com "not a valid registry file".
+ */
 function prefixIsValid(prefixPath: string): boolean {
-  return PREFIX_MARKERS.every((f) => fs.existsSync(path.join(prefixPath, f)))
+  return prefixExists(resolveActualPrefix(prefixPath))
 }
 
 export async function setupPrefix(
@@ -39,8 +33,9 @@ export async function setupPrefix(
   winePrefixPath: string,
   onLog?: (msg: string) => void
 ): Promise<boolean> {
-  if (prefixIsValid(winePrefixPath)) {
-    if (onLog) onLog(`Prefixo já existe em: ${winePrefixPath}`)
+  const actual = resolveActualPrefix(winePrefixPath)
+  if (prefixIsValid(actual)) {
+    if (onLog) onLog(`Prefixo já existe em: ${actual}`)
     return true
   }
 
@@ -48,17 +43,15 @@ export async function setupPrefix(
     fs.mkdirSync(winePrefixPath, { recursive: true })
   }
 
-  if (onLog) onLog(`Criando prefixo Wine em: ${winePrefixPath}`)
+  if (onLog) onLog(`Criando prefixo Wine em: ${actual}`)
 
   const result = await createPrefix({
     protonPath,
-    prefixPath: winePrefixPath,
+    prefixPath: actual,
     gameId,
     timeout: 120000,
     onProgress: onLog,
   })
-  const actual = resolveActualPrefix(winePrefixPath)
-  ensurePrefixMarkers(actual)
   const valid = result.success && prefixIsValid(actual)
   if (valid) {
     logger.info(`[setupPrefix] Prefix created at ${actual}`)
