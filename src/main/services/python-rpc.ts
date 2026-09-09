@@ -338,16 +338,32 @@ export class PythonRPC {
         binaryName
       );
 
-      if (!fs.existsSync(binaryPath)) {
-        dialog.showErrorBox("Fatal", "Makai Forge Python binary not found.");
+      let childProcess: cp.ChildProcess;
 
-        app.quit();
-        throw new Error(`Makai Forge Python RPC binary not found at ${binaryPath}`);
+      if (fs.existsSync(binaryPath)) {
+        childProcess = cp.spawn(binaryPath, commonArgs, {
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      } else {
+        pythonRpcLogger.log(
+          "Compiled RPC binary not found, using venv Python + script"
+        );
+        const pythonExecutable = this.resolvePythonExecutable();
+        const scriptPath = path.join(
+          app.getAppPath(),
+          "app",
+          "_main",
+          "torrent-rpc",
+          "main.py"
+        );
+        childProcess = cp.spawn(
+          pythonExecutable,
+          [scriptPath, ...commonArgs],
+          {
+            stdio: ["pipe", "pipe", "pipe"],
+          }
+        );
       }
-
-      const childProcess = cp.spawn(binaryPath, commonArgs, {
-        stdio: ["pipe", "pipe", "pipe"],
-      });
 
       this.logStderr(childProcess.stderr);
       this.logStdout(childProcess.stdout);
