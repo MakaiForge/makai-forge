@@ -4,22 +4,32 @@ icon: build/icon.png
 directories:
   buildResources: build
 extraResources:
+  # ── Binários essenciais ──
   - from: app/_resources/binaries/ludusavi
     to: binaries/ludusavi
   - from: app/_resources/binaries/qbittorrent
     to: binaries/qbittorrent
-  - protonforge-python-rpc
   - from: app/_resources/native/protonforge-native.node
     to: protonforge-native/protonforge-native.node
-  - seeds
+
+  # ── Python venv (runtime) ──
+  - from: app/_venv
+    to: venv
+
+  # ── Áudio ──
   - from: app/_assets/audio/achievement.wav
-  - from: app/_data/releases
-  - from: app/_data/sources
-  - from: app/_main/bootstrap
+
+  # ── Backgrounds ──
   - from: app/_assets/backgrounds
     to: app/_assets/backgrounds
-  - from: app/_venv
-    to: app/_venv
+
+  # ── Bootstrap (verificação de versão) ──
+  - from: app/_main/bootstrap
+
+  # ── Dados essenciais (fallback do bootstrap) ──
+  - from: app/_data/exchange-rates.json
+  - from: app/_main/installer-api/proton_recommended
+    to: app/_data/proton_recommended
 files:
   - "!**/.vscode/*"
   - "!src/*"
