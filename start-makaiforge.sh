@@ -104,12 +104,11 @@ show_build_menu() {
     echo "  1) AppImage"
     echo "  2) DEB (Debian/Ubuntu)"
     echo "  3) RPM (Fedora/openSUSE)"
-    echo "  4) Snap"
-    echo "  5) Flatpak"
-    echo "  6) AUR (Arch Linux)"
-    echo "  7) Todos (AppImage + DEB + RPM)"
-    echo "  8) Todos Linux (AppImage + DEB + RPM + Snap)"
-    echo "  9) Voltar"
+    echo "  4) Flatpak"
+    echo "  5) AUR (Arch Linux)"
+    echo "  6) Todos (AppImage + DEB + RPM)"
+    echo "  7) Todos Linux (AppImage + DEB + RPM + Flatpak)"
+    echo "  8) Voltar"
     echo ""
     read -p "  Escolha: " build_opt
 
@@ -117,12 +116,11 @@ show_build_menu() {
         1) build_appimage ;;
         2) build_deb ;;
         3) build_rpm ;;
-        4) build_snap ;;
-        5) build_flatpak ;;
-        6) build_aur_only ;;
-        7) build_all_basic ;;
-        8) build_all_linux ;;
-        9) return ;;
+        4) build_flatpak ;;
+        5) build_aur_only ;;
+        6) build_all_basic ;;
+        7) build_all_linux ;;
+        8) return ;;
         *) print_err "Opção inválida"; show_build_menu ;;
     esac
 }
@@ -146,17 +144,6 @@ build_rpm() {
     print_info "=== RPM ==="
     build_common || return 1
     build_target "rpm"
-}
-
-build_snap() {
-    echo ""
-    print_info "=== Snap ==="
-    if ! check_tool snapcraft; then
-        print_err "snapcraft não encontrado. Instale: sudo snap install snapcraft --classic"
-        return 1
-    fi
-    build_common || return 1
-    build_target "snap"
 }
 
 build_flatpak() {
@@ -202,11 +189,7 @@ build_all_linux() {
     build_target "AppImage"
     build_target "deb"
     build_target "rpm"
-    if check_tool snapcraft; then
-        build_target "snap"
-    else
-        print_warn "snapcraft não encontrado, pulando Snap"
-    fi
+    build_target "flatpak"
     echo ""
     print_ok "Builds concluídos! Verifique dist/"
 }
@@ -241,13 +224,12 @@ case "${1:-}" in
     appimage)     build_appimage ;;
     deb)          build_deb ;;
     rpm)          build_rpm ;;
-    snap)         build_snap ;;
     flatpak)      build_flatpak ;;
     aur)          build_aur_only ;;
     build-all)    build_all_basic ;;
     build-linux)  build_all_linux ;;
     -h|--help)
-        echo "Uso: $0 [dev|build|appimage|deb|rpm|snap|flatpak|aur|build-all|build-linux]"
+        echo "Uso: $0 [dev|build|appimage|deb|rpm|flatpak|aur|build-all|build-linux]"
         echo ""
         echo "  Sem argumentos: menu interativo"
         ;;

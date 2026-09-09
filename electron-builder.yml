@@ -43,7 +43,6 @@ linux:
       to: app/_resources/python
   target:
     - AppImage
-    - snap
     - deb
     - rpm
   maintainer: electronjs.org
@@ -70,19 +69,6 @@ flatpak:
     - --filesystem=host
     - --env=COMPACTFLOW_IN_FLATPAK=1
     - --talk-name=org.freedesktop.Flatpak
-snap:
-  plugs:
-    - desktop
-    - desktop-legacy
-    - home
-    - network
-    - opengl
-    - wayland
-    - x11
-    - pulseaudio
-    - removable-media
-  environment:
-    COMPACTFLOW_IN_SNAP: "1"
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
