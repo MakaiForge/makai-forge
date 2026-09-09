@@ -349,13 +349,15 @@ export class PythonRPC {
           "Compiled RPC binary not found, using venv Python + script"
         );
         const pythonExecutable = this.resolvePythonExecutable();
-        const scriptPath = path.join(
-          app.getAppPath(),
-          "app",
-          "_main",
-          "torrent-rpc",
-          "main.py"
-        );
+        const scriptPath = app.isPackaged
+          ? path.join(process.resourcesPath, "torrent-rpc", "main.py")
+          : path.join(
+              app.getAppPath(),
+              "app",
+              "_main",
+              "torrent-rpc",
+              "main.py"
+            );
         childProcess = cp.spawn(
           pythonExecutable,
           [scriptPath, ...commonArgs],

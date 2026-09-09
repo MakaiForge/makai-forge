@@ -16,6 +16,10 @@ extraResources:
   - from: app/_venv
     to: venv
 
+  # ── Python RPC script (usado quando binário compilado não existe) ──
+  - from: app/_main/torrent-rpc
+    to: torrent-rpc
+
   # ── Áudio ──
   - from: app/_assets/audio/achievement.wav
 
