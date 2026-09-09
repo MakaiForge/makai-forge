@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
       build: {
         sourcemap: true,
         rollupOptions: {
-          external: ["canvas"],
+          external: ["jsdom", "canvas"],
         },
       },
       resolve: {
