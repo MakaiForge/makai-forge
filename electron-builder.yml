@@ -23,6 +23,11 @@ extraResources:
 files:
   - "!**/.vscode/*"
   - "!src/*"
+  - "!bild/**"
+  - "!dist/**"
+  - "!scripts/**"
+  - "!tools/**"
+  - "!native/**"
   - "!app/_resources/native/protonforge-native/target"
   - "!app/_data/**"
   - "!app/_venv/**"
@@ -30,6 +35,7 @@ files:
   - "!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}"
   - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
+  - "!{*.md,*.txt,*.sh}"
 asarUnpack:
   - app/_resources/**
   - node_modules/sharp/**

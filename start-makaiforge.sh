@@ -192,6 +192,77 @@ build_all_linux() {
     print_ok "Builds concluídos! Verifique bild/"
 }
 
+# ── Desinstaladores ──────────────────────────────────────────
+uninstall_appimage() {
+    echo ""
+    print_info "Desinstalando AppImage..."
+    rm -f "$HOME/.local/bin/makai-forger.AppImage" && print_ok "Removido: ~/.local/bin/makai-forger.AppImage" || print_warn "AppImage não encontrado"
+    rm -f "$HOME/.local/share/applications/makai-forger.desktop" && print_ok "Removido: desktop entry" || true
+    rm -f "$HOME/.local/share/icons/hicolor/256x256/apps/makai-forger.png" && print_ok "Removido: ícone" || true
+    rm -rf "$HOME/.config/makai-forge" && print_ok "Removido: ~/.config/makai-forge" || true
+    print_ok "AppImage desinstalado!"
+}
+
+uninstall_deb() {
+    echo ""
+    print_info "Desinstalando pacote DEB..."
+    echo "cas" | sudo -S dpkg --remove makai-forger 2>/dev/null && print_ok "Pacote removido" || print_warn "Não instalado via dpkg"
+    rm -rf "$HOME/.config/makai-forge" && print_ok "Removido: ~/.config/makai-forge" || true
+    print_ok "DEB desinstalado!"
+}
+
+uninstall_rpm() {
+    echo ""
+    print_info "Desinstalando pacote RPM..."
+    echo "cas" | sudo -S rpm -e makai-forger 2>/dev/null && print_ok "Pacote removido" || print_warn "Não instalado via rpm"
+    rm -rf "$HOME/.config/makai-forge" && print_ok "Removido: ~/.config/makai-forge" || true
+    print_ok "RPM desinstalado!"
+}
+
+uninstall_flatpak() {
+    echo ""
+    print_info "Desinstalando Flatpak..."
+    flatpak uninstall -y com.makai.forge 2>/dev/null && print_ok "Flatpak removido" || print_warn "Não instalado via flatpak"
+    rm -rf "$HOME/.var/app/com.makai.forge" && print_ok "Removido: ~/.var/app/com.makai.forge" || true
+    print_ok "Flatpak desinstalado!"
+}
+
+uninstall_aur() {
+    echo ""
+    print_info "Desinstalando pacote AUR..."
+    echo "cas" | sudo -S pacman -Rns makai-forger 2>/dev/null && print_ok "Pacote removido" || print_warn "Não instalado via pacman"
+    rm -rf "$HOME/.config/makai-forge" && print_ok "Removido: ~/.config/makai-forge" || true
+    print_ok "AUR desinstalado!"
+}
+
+show_uninstall_menu() {
+    echo ""
+    echo -e "${CYAN}════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}  Desinstalar Makai Forge${NC}"
+    echo -e "${CYAN}════════════════════════════════════════════${NC}"
+    echo ""
+    echo "  1) AppImage"
+    echo "  2) DEB (Debian/Ubuntu)"
+    echo "  3) RPM (Fedora/RHEL)"
+    echo "  4) Flatpak"
+    echo "  5) AUR (Arch/Manjaro)"
+    echo "  0) Voltar"
+    echo ""
+    read -p "  Opção: " opt
+    case "$opt" in
+        1) uninstall_appimage ;;
+        2) uninstall_deb ;;
+        3) uninstall_rpm ;;
+        4) uninstall_flatpak ;;
+        5) uninstall_aur ;;
+        0) show_menu; return ;;
+        *) print_err "Opção inválida"; show_uninstall_menu ;;
+    esac
+    echo ""
+    read -p "  Pressione Enter para continuar..."
+    show_menu
+}
+
 # ── Menu principal ─────────────────────────────────────────────
 show_menu() {
     echo ""
@@ -202,7 +273,8 @@ show_menu() {
     echo "  1) Dev (npm run dev)"
     echo "  2) Build (electron-vite build)"
     echo "  3) Builds (AppImage, DEB, RPM, Flatpak, AUR)"
-    echo "  4) Sair"
+    echo "  4) Desinstalar"
+    echo "  5) Sair"
     echo ""
     read -p "  Escolha: " opt
 
@@ -210,7 +282,8 @@ show_menu() {
         1) exec npm run dev ;;
         2) exec npm run build ;;
         3) show_build_menu ;;
-        4) exit 0 ;;
+        4) show_uninstall_menu ;;
+        5) exit 0 ;;
         *) print_err "Opção inválida"; show_menu ;;
     esac
 }
@@ -226,8 +299,9 @@ case "${1:-}" in
     aur)          build_aur_only ;;
     build-all)    build_all_basic ;;
     build-linux)  build_all_linux ;;
+    uninstall)    show_uninstall_menu ;;
     -h|--help)
-        echo "Uso: $0 [dev|build|appimage|deb|rpm|flatpak|aur|build-all|build-linux]"
+        echo "Uso: $0 [dev|build|appimage|deb|rpm|flatpak|aur|build-all|build-linux|uninstall]"
         echo ""
         echo "  Sem argumentos: menu interativo"
         ;;
