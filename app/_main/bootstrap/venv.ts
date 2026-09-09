@@ -34,7 +34,10 @@ export function getVenvDir(): string {
 }
 
 export function getVenvPython(): string {
-  return path.join(getVenvDir(), "bin", "python3");
+  const venvDir = getVenvDir();
+  const binDirect = path.join(venvDir, "bin", "python3.10.bin");
+  if (fs.existsSync(binDirect)) return binDirect;
+  return path.join(venvDir, "bin", "python3");
 }
 
 function getVenvTarPath(): string {
