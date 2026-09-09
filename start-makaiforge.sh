@@ -4,6 +4,8 @@
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$APP_DIR"
 
+BUILD_DIR="${APP_DIR}/bild"
+
 # Cores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -28,9 +30,9 @@ build_common() {
 
 build_target() {
     local target="$1"
-    local output_dir="${APP_DIR}/dist/${target}"
+    local output_dir="${BUILD_DIR}/${target}"
     mkdir -p "$output_dir"
-    print_info "Gerando ${target}..."
+    print_info "Gerando ${target} em: ${output_dir}"
     npx electron-builder --linux "$target" --config.directories.output="$output_dir" 2>&1
     if [ $? -eq 0 ]; then
         print_ok "${target} gerado em: ${output_dir}"
@@ -42,33 +44,31 @@ build_target() {
 }
 
 build_aur() {
-    print_info "Gerando pacote AUR..."
-    local aur_dir="${APP_DIR}/dist/aur"
+    local aur_dir="${BUILD_DIR}/aur"
     mkdir -p "$aur_dir"
 
     if [ ! -f "${APP_DIR}/PKGBUILD" ]; then
-        print_err "PKGBUILD não encontrado. Crie o PKGBUILD primeiro."
+        print_err "PKGBUILD não encontrado."
         return 1
     fi
 
     # Gerar linux-unpacked se não existir
-    if [ ! -d "${APP_DIR}/dist/linux-unpacked" ]; then
+    if [ ! -d "${BUILD_DIR}/linux-unpacked" ]; then
         print_info "Gerando linux-unpacked..."
-        npx electron-builder --linux --dir 2>&1
+        npx electron-builder --linux --dir --config.directories.output="${BUILD_DIR}" 2>&1
         if [ $? -ne 0 ]; then
             print_err "Falha ao gerar linux-unpacked"
             return 1
         fi
     fi
 
-    # Copiar linux-unpacked para dentro do aur_dir (makepkg precisa acessar)
     print_info "Copiando linux-unpacked para ${aur_dir}..."
     rm -rf "${aur_dir}/linux-unpacked"
-    cp -r "${APP_DIR}/dist/linux-unpacked" "${aur_dir}/"
+    cp -r "${BUILD_DIR}/linux-unpacked" "${aur_dir}/"
     cp "${APP_DIR}/app/_assets/assets/icons/app/icon.png" "${aur_dir}/icon.png"
-
     cp PKGBUILD "$aur_dir/"
 
+    print_info "Gerando pacote AUR..."
     local makepkg_user="${SUDO_USER:-$USER}"
     cd "$aur_dir"
     if [ "$(id -u)" -eq 0 ] && [ -n "$SUDO_USER" ]; then
@@ -81,6 +81,7 @@ build_aur() {
         ls -lh "$aur_dir"/*.pkg.tar.* 2>/dev/null
     else
         print_err "Falha ao gerar pacote AUR"
+        cd "$APP_DIR"
         return 1
     fi
     cd "$APP_DIR"
@@ -88,10 +89,7 @@ build_aur() {
 
 # ── Verificar ferramentas ─────────────────────────────────────
 check_tool() {
-    if command -v "$1" &>/dev/null; then
-        return 0
-    fi
-    return 1
+    command -v "$1" &>/dev/null
 }
 
 # ── Menu builds ────────────────────────────────────────────────
@@ -179,7 +177,7 @@ build_all_basic() {
     build_target "deb"
     build_target "rpm"
     echo ""
-    print_ok "Builds concluídos! Verifique dist/"
+    print_ok "Builds concluídos! Verifique bild/"
 }
 
 build_all_linux() {
@@ -191,7 +189,7 @@ build_all_linux() {
     build_target "rpm"
     build_target "flatpak"
     echo ""
-    print_ok "Builds concluídos! Verifique dist/"
+    print_ok "Builds concluídos! Verifique bild/"
 }
 
 # ── Menu principal ─────────────────────────────────────────────
@@ -203,7 +201,7 @@ show_menu() {
     echo ""
     echo "  1) Dev (npm run dev)"
     echo "  2) Build (electron-vite build)"
-    echo "  3) Builds (AppImage, DEB, RPM, Snap, Flatpak, AUR)"
+    echo "  3) Builds (AppImage, DEB, RPM, Flatpak, AUR)"
     echo "  4) Sair"
     echo ""
     read -p "  Escolha: " opt
